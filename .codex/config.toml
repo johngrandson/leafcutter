@@ -1,0 +1,10 @@
+# Tidewave is optional and requires the local development server to be running.
+# Enable it explicitly after starting `mix tidewave` in another terminal.
+#
+# Codex project-scope config only accepts stdio MCP servers (url-based servers
+# are user-scope only), so mcp-proxy bridges stdio to the Tidewave HTTP endpoint.
+
+[mcp_servers.tidewave]
+command = "mcp-proxy"
+args = ["http://localhost:4001/tidewave/mcp"]
+enabled = false
