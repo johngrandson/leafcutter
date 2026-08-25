@@ -9,20 +9,18 @@
 ## Repository state
 
 - Projeto criado como umbrella vazia com `mix new leafcutter --umbrella`.
-- Gate local `mix quality` configurado com compiler warnings, formatter,
-  Credo strict, testes e Dialyzer. Enquanto `apps/` estiver vazio, o gate
-  valida a PLT; a análise completa começa com a primeira child application.
 - Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e do grafo de apps.
 - `Organizations` ratificado.
 - `Catalog` ratificado.
 - `Connections` ratificado.
 - `Integrations` ratificado.
+- `Executions` ratificado.
 
 ## Accepted architecture baseline
 
 - Umbrella com poucas OTP applications.
 - Toda OTP application possui árvore de supervisão desde sua criação.
-- Contexts só recebem supervisors próprios quando processos reais justificarem uma subtree.
+- Contexts recebem subtrees próprias quando processos reais justificarem isso.
 - Phoenix Contexts maduros com facade raiz pequena, capability modules e implementação interna.
 - Contexts se comunicam somente através de APIs públicas.
 - PostgreSQL é a autoridade durável.
@@ -71,7 +69,7 @@ Permission
 access grants / assignments
 ```
 
-API pública:
+API:
 
 ```text
 Organizations
@@ -92,15 +90,15 @@ nenhuma
 Responsabilidade:
 
 ```text
-registrar
+registro
 +
-versionar
+versionamento
 +
-publicar
+publicação
 +
-disponibilizar
+disponibilidade
 +
-permitir descoberta
+descoberta
 ```
 
 Owns:
@@ -118,11 +116,10 @@ PackageVersion
 PackageDependency
 
 CatalogCategory
-
 publication / availability metadata
 ```
 
-API pública:
+API:
 
 ```text
 Catalog
@@ -167,7 +164,7 @@ OAuth token / refresh state
 secret rotation metadata
 ```
 
-API pública:
+API:
 
 ```text
 Connections
@@ -190,11 +187,11 @@ Responsabilidade:
 
 ```text
 transformar um PackageVersion
-em uma configuração executável
+em configuração executável
 dentro de Organization + Environment
 ```
 
-Distinção fundamental:
+Distinção:
 
 ```text
 PackageVersion
@@ -223,19 +220,7 @@ IdentityMapping
 Integration Labels
 ```
 
-Uma `Integration`:
-
-```text
-belongs to
-→ Organization + Environment
-
-references
-→ explicit PackageVersion
-```
-
-Upgrade de `PackageVersion` é explícito.
-
-API pública:
+API:
 
 ```text
 Integrations
@@ -255,39 +240,137 @@ Integrations
    └──→ Connections
 ```
 
-`Integrations` não executa Runs.
+---
 
-Não possui necessidade atual de processos OTP próprios.
+### Executions
+
+Responsabilidade:
+
+```text
+transformar uma Integration configurada
+em uma execução concreta
++
+durável
++
+recuperável
+```
+
+Owns:
+
+```text
+Run
+RunSnapshot
+
+Record
+Delivery
+Attempt
+Enrichment
+Checkpoint
+
+ExecutionEvent
+
+owner_node
+generation / fencing
+recovery / claim state
+node heartbeat relacionado ao ownership
+
+RunCoordinator
+Run supervision tree
+Broadway pipelines
+runtime Registry
+Run DynamicSupervisor
+```
+
+Modelo principal:
+
+```text
+Run
+└── Record
+    └── Delivery
+        └── Attempt
+```
+
+Estado adicional:
+
+```text
+Run
+├── RunSnapshot
+├── Checkpoint
+├── ExecutionEvent
+└── ownership / recovery state
+```
+
+API:
+
+```text
+Executions
+├── Executions.Runs
+├── Executions.Records
+├── Executions.Deliveries
+├── Executions.Attempts
+└── Executions.Recovery
+```
+
+Dependências:
+
+```text
+Executions
+├──→ Organizations
+├──→ Catalog
+├──→ Connections
+└──→ Integrations
+```
+
+Decisões importantes:
+
+- `RunSnapshot` é imutável.
+- mudanças posteriores na Integration não alteram Runs já iniciados.
+- `Record` representa um item extraído da origem.
+- `Delivery` representa uma obrigação durável por destino.
+- `Attempt` representa uma tentativa concreta de Delivery.
+- `Enrichment` e `Checkpoint` fazem parte do estado durável da execução.
+- `ExecutionEvent` registra fatos significativos do lifecycle.
+- ownership de Run utiliza `owner_node + generation`.
+- `generation` funciona como fencing token.
+- heartbeat é por BEAM node, não por Run.
+- PostgreSQL é a autoridade do ownership.
+- semântica base é `at-least-once`.
+- `Executions` é o primeiro Context ratificado com processos OTP próprios.
+- cada Run possuirá subtree supervisionada.
+- Broadway compõe o data plane.
+- `RunCoordinator` compõe o control plane e não deve carregar Records.
 
 ## Ratified dependency graph
 
 ```text
 Organizations
-     ↑
-     │
-  Catalog
-     ↑
-     │
-Connections
-     ↑
-     │
-Integrations
 ```
-
-Com dependências diretas:
 
 ```text
 Catalog
-→ Organizations
+   ↓
+Organizations
+```
 
+```text
 Connections
-→ Catalog
-→ Organizations
+   ├──→ Catalog
+   └──→ Organizations
+```
 
+```text
 Integrations
-→ Connections
-→ Catalog
-→ Organizations
+   ├──→ Connections
+   ├──→ Catalog
+   └──→ Organizations
+```
+
+```text
+Executions
+   ├──→ Integrations
+   ├──→ Connections
+   ├──→ Catalog
+   └──→ Organizations
 ```
 
 Nenhuma dependência circular foi introduzida.
@@ -296,27 +379,27 @@ Nenhuma dependência circular foi introduzida.
 
 Ratificar os contexts restantes:
 
-1. `Executions`
-2. `Notifications`
-3. `Audit`
+1. `Notifications`
+2. `Audit`
 
 Depois:
 
 1. revisar o Context Map completo;
 2. revisar ownership conjunto;
 3. revisar APIs públicas;
-4. ratificar boundaries das OTP applications;
-5. ratificar o grafo de dependências entre apps;
-6. criar as primeiras applications da umbrella.
+4. revisar dependências entre contexts;
+5. ratificar boundaries das OTP applications;
+6. ratificar grafo de dependências entre apps;
+7. criar as primeiras applications da umbrella.
 
 ## Next concrete task
 
-Revisar o context proposto `Executions`.
+Revisar o context proposto `Notifications`.
 
 Primeira decisão:
 
 ```text
-Qual é exatamente a responsabilidade de domínio de Executions?
+Qual é exatamente a responsabilidade de domínio de Notifications?
 ```
 
 Nenhum app, schema ou migration deve ser criado durante essa decisão.
@@ -324,21 +407,16 @@ Nenhum app, schema ou migration deve ser criado durante essa decisão.
 ## Relevant documents
 
 - `docs/architecture/contextos-e-ownership.md`
-- `docs/architecture/runtime-otp-broadway.md`
-- `docs/architecture/durabilidade-e-recovery.md`
+- `docs/architecture/observabilidade-e-auditoria.md`
 - `docs/architecture/principios-e-restricoes.md`
-- `docs/architecture/modelo-conceitual.md`
-- `docs/decisions/ADR-0005-broadway-como-data-plane.md`
-- `docs/decisions/ADR-0009-at-least-once.md`
-- `docs/decisions/ADR-0010-fanout-duravel-sem-fila-externa.md`
-- `docs/decisions/ADR-0011-run-ownership-fencing.md`
+- `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
 
 ## Open warnings
 
-- `Executions`, `Notifications` e `Audit` ainda são propostas.
+- `Notifications` e `Audit` ainda são propostas.
+- O Context Map completo ainda não passou pela revisão conjunta final.
 - A divisão das OTP applications ainda não foi ratificada.
 - Nenhuma application de domínio deve ser criada ainda.
 - O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
 - O JSON Schema definitivo do `manifest.json` ainda não foi fechado.
 - Endpoints, tabelas, campos e índices concretos ainda não foram congelados.
-- O workflow de CI para `mix quality` ainda não foi adicionado.
