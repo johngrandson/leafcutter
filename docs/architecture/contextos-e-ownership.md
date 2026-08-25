@@ -1,6 +1,6 @@
 # Contextos e ownership
 
-> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations` e `Catalog` estão ratificados. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
+> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations`, `Catalog` e `Connections` estão ratificados. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
 
 ## Regra estrutural
 
@@ -190,8 +190,6 @@ Ele não executa os artefatos que registra.
 
 O Catalog não possui a implementação executável dos Connectors ou Operations.
 
-A separação é:
-
 ```text
 Catalog
 → identidade
@@ -211,8 +209,6 @@ connector implementation
 O Catalog registra e versiona os contratos.
 
 Runtime e outros consumidores utilizam versões resolvidas desses contratos.
-
-A existência de `ContractVersion` não define ainda a estratégia física de armazenamento ou cache dos schemas compilados.
 
 #### Integration Packages
 
@@ -238,40 +234,21 @@ O Catalog registra a identidade e as versões desses artefatos.
 
 Categorias não possuem efeito sobre execução ou comportamento de runtime.
 
-A existência conceitual de `CatalogCategory` não implica obrigatoriamente uma tabela dedicada.
-
 ### Escopo
 
-O Catalog suporta dois tipos de entrada:
+O Catalog suporta:
 
 ```text
 platform-wide
-→ artefatos oficiais e reutilizáveis da plataforma
+→ artefatos oficiais
 
 organization-scoped
-→ artefatos privados pertencentes a uma Organization
-```
-
-Exemplos:
-
-```text
-Official Connector
-→ platform-wide
-
-Custom Connector privado
-→ organization-scoped
-
-Package privado
-→ organization-scoped
+→ artefatos privados de uma Organization
 ```
 
 Não criar dois Catalog contexts distintos para esses casos.
 
-O scope faz parte da metadata da entrada.
-
 ### Public surface
-
-A API pública inicial é:
 
 ```text
 Catalog
@@ -280,11 +257,7 @@ Catalog
 └── Catalog.Connectors
 ```
 
-#### Packages
-
-Responsável por registro, versionamento, publicação e consulta de Packages.
-
-Exemplos conceituais:
+Packages:
 
 ```elixir
 Catalog.Packages.register(...)
@@ -292,11 +265,7 @@ Catalog.Packages.publish_version(...)
 Catalog.Packages.get_version(...)
 ```
 
-#### Contracts
-
-Responsável por registro, versionamento e acesso aos Contracts.
-
-Exemplos conceituais:
+Contracts:
 
 ```elixir
 Catalog.Contracts.register(...)
@@ -304,20 +273,14 @@ Catalog.Contracts.compile(...)
 Catalog.Contracts.validate(...)
 ```
 
-A localização definitiva de compile/validate na API pública poderá ser refinada durante a implementação caso essas operações se mostrem responsabilidade de outro componente.
-
-#### Connectors
-
-Responsável por identidade, metadata, versões e descoberta de Connectors e Operations.
-
-Exemplos conceituais:
+Connectors:
 
 ```elixir
 Catalog.Connectors.register(...)
 Catalog.Connectors.get_operation(...)
 ```
 
-As assinaturas não estão congeladas.
+As assinaturas ainda não estão congeladas.
 
 ### Dependências
 
@@ -329,46 +292,15 @@ Catalog
 Organizations
 ```
 
-Essa dependência existe para suportar entradas privadas scoped por Organization.
-
 A interação ocorre somente através da API pública de `Organizations`.
-
-`Catalog` não acessa schemas ou queries internos de `Organizations`.
-
-### Não depende de
-
-`Catalog` não depende de:
-
-```text
-Connections
-Integrations
-Executions
-Notifications
-Audit
-```
-
-Esses contexts poderão consumir Catalog, mas Catalog não deve conhecer seus conceitos.
 
 ### OTP e supervisão
 
 `Catalog` não possui necessidade atual de processos OTP próprios.
 
-Suas responsabilidades iniciais são principalmente:
-
-```text
-Ecto
-Repo
-versionamento
-queries
-contract handling
-metadata
-```
-
 A OTP application que hospedar Catalog será supervisionada desde sua criação.
 
 Não criar um `Catalog.Supervisor` vazio.
-
-Processos específicos só devem surgir se existir lifecycle, estado temporal, concorrência, coordenação ou isolamento de falha que os justifique.
 
 ### Não pertence aqui
 
@@ -390,35 +322,231 @@ Processos específicos só devem surgir se existir lifecycle, estado temporal, c
 
 ## 3. Connections
 
-> **Status: PROPOSTA PARA RATIFICAÇÃO**
+> **Status: RATIFICADO**
 
-Responsabilidade: acesso configurado a sistemas externos.
+### Responsabilidade
+
+`Connections` é responsável por representar e resolver o acesso configurado de uma `Organization` e `Environment` a sistemas externos.
+
+O context responde por questões como:
+
+```text
+Como este Environment acessa este sistema externo?
+
+Qual configuração de acesso deve ser utilizada?
+
+Quais credenciais estão associadas à Connection?
+
+Qual versão válida do Secret deve ser resolvida para o runtime?
+```
+
+`Connections` não executa a integração.
+
+Ele disponibiliza configuração e credenciais para os contexts que precisam acessar sistemas externos.
 
 ### Owns
 
-- Connection;
-- Secret;
-- SecretVersion;
-- Connector authentication configuration;
-- durable OAuth refresh state;
-- secret rotation metadata.
+- `Connection`;
+- `Secret`;
+- `SecretVersion`;
+- authentication configuration;
+- OAuth token state;
+- OAuth refresh state;
+- secret rotation metadata;
+- organization/environment scope da Connection.
 
-### Public surface proposta
+### Connection
+
+`Connection` representa a configuração não sensível necessária para acessar uma instância ou conta de um sistema externo.
+
+Pode conter, conforme o Connector:
+
+```text
+base URL
+account identifier
+region
+timeouts
+connector reference
+authentication scheme configuration
+secret reference
+```
+
+Dados sensíveis não devem ser armazenados diretamente em `Connection`.
+
+### Secret
+
+`Secret` representa credenciais sensíveis associadas a uma Connection.
+
+`SecretVersion` representa versões das credenciais ao longo de rotation e atualização.
+
+Secrets não devem aparecer em texto claro em:
+
+```text
+Integration Package
+Run Snapshot público
+logs
+ExecutionEvent
+AuditEvent
+API responses
+```
+
+### OAuth
+
+Configuração e estado durável necessários para OAuth pertencem a `Connections`.
+
+Isso inclui, quando aplicável:
+
+```text
+access token
+refresh token
+expiration state
+refresh metadata
+rotation state
+```
+
+O mecanismo concreto de refresh poderá futuramente envolver processos OTP ou jobs duráveis caso exista necessidade real de lifecycle ou coordenação.
+
+Essa necessidade não é assumida antecipadamente.
+
+### Escopo
+
+Connections são scoped por:
+
+```text
+Organization
+└── Environment
+    └── Connection
+```
+
+Connections de environments diferentes são independentes.
+
+Uma Connection de homologação não pode ser utilizada como fallback automático em produção.
+
+Promoções entre environments não copiam Secrets.
+
+### Relação com Connector
+
+Uma Connection referencia um Connector conhecido pelo `Catalog`.
+
+```text
+Connection
+→ Connector identity/version metadata
+→ authentication requirements
+```
+
+`Connections` não conhece a implementação concreta do Connector.
+
+A implementação executável continua fora deste context.
+
+### Public surface
+
+A API pública inicial é:
+
+```text
+Connections
+└── Connections.Secrets
+```
+
+Facade principal:
 
 ```elixir
 Connections.create(...)
-Connections.resolve(...)
+Connections.get(...)
 Connections.disable(...)
+Connections.resolve(...)
+```
 
+Secrets:
+
+```elixir
 Connections.Secrets.rotate(...)
 Connections.Secrets.resolve_for_runtime(...)
 ```
 
-### Regras
+As assinaturas são conceituais e ainda não representam contratos congelados.
 
-- Connection guarda configuração não sensível e referência ao Secret.
-- Secret nunca aparece em Package, Run Snapshot público, logs ou AuditEvent em texto claro.
-- Connections são environment-scoped.
+Não criar inicialmente:
+
+```text
+Connections.OAuth
+Connections.Auth
+Connections.SecretServer
+```
+
+Essas capabilities só devem surgir quando complexidade real justificar a separação.
+
+### Dependências
+
+`Connections` depende apenas de:
+
+```text
+Connections
+   ├──→ Organizations
+   └──→ Catalog
+```
+
+`Organizations` é utilizado para validar e resolver o scope de Organization e Environment.
+
+`Catalog` é utilizado para resolver identidade, metadata e requisitos do Connector.
+
+Toda interação ocorre por APIs públicas.
+
+`Connections` não acessa schemas ou queries internos de outros contexts.
+
+### Não depende de
+
+`Connections` não depende de:
+
+```text
+Integrations
+Executions
+Notifications
+Audit
+```
+
+Esses contexts poderão consumir `Connections`, mas `Connections` não deve conhecer seus conceitos.
+
+### OTP e supervisão
+
+`Connections` não possui necessidade atual de processos OTP próprios.
+
+Suas responsabilidades iniciais podem ser implementadas principalmente com:
+
+```text
+Ecto
+Repo
+secret resolution
+OAuth state persistence
+rotation logic
+```
+
+A OTP application que hospedar `Connections` será supervisionada desde sua criação.
+
+Não criar:
+
+```text
+Connections.Supervisor
+Connections.OAuthServer
+Connections.SecretServer
+```
+
+sem lifecycle, estado temporal, coordenação ou isolamento de falha que justifique esses processos.
+
+Se futuramente houver necessidade de refresh coordenado de tokens, cache vivo ou outro estado temporal, processos supervisionados poderão ser adicionados.
+
+### Não pertence aqui
+
+- Connector implementation;
+- Operation implementation;
+- Transport implementation;
+- Integration configuration;
+- Package;
+- Run;
+- Record;
+- Delivery;
+- Attempt;
+- RBAC;
+- execução de integrações.
 
 ---
 
@@ -575,26 +703,34 @@ Até o momento:
 
 ```text
 Organizations
-
      ↑
-
+     │
   Catalog
+     ↑
+     │
+Connections
 ```
 
-Ou, em direção de dependência:
+Além disso, `Connections` também depende diretamente de `Organizations` para resolver seu scope.
+
+Em direção de dependência:
 
 ```text
 Catalog
    ↓
 Organizations
+
+Connections
+   ├──→ Catalog
+   └──→ Organizations
 ```
 
-Regras já ratificadas:
+Regras ratificadas:
 
 - `Organizations` não depende de outros contexts.
 - `Catalog` depende apenas de `Organizations`.
-- essa dependência ocorre via API pública.
-- nenhuma dependência adicional do Catalog foi aprovada.
+- `Connections` depende apenas de `Catalog` e `Organizations`.
+- dependências entre contexts ocorrem somente por APIs públicas.
 
 O restante do grafo permanece em proposta até a ratificação individual dos contexts restantes.
 

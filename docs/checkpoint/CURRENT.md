@@ -13,6 +13,7 @@
 - Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e do grafo de apps.
 - `Organizations` ratificado.
 - `Catalog` ratificado.
+- `Connections` ratificado.
 
 ## Accepted architecture baseline
 
@@ -85,17 +86,6 @@ Organizations
 → nenhuma dependência de domínio
 ```
 
-Decisões importantes:
-
-- `Environment` pertence a `Organizations`.
-- `User` e `ServiceAccount` são atores e sujeitos de autorização.
-- mecanismos concretos de autenticação ficam fora do context.
-- RBAC pertence a `Organizations`.
-- não existe necessidade atual de processos OTP próprios do context.
-- o app que hospedar o context será supervisionado desde sua criação.
-
----
-
 ### Catalog
 
 Responsabilidade:
@@ -144,15 +134,6 @@ Catalog
 └── Catalog.Connectors
 ```
 
-Escopos suportados:
-
-```text
-platform-wide
-organization-scoped
-```
-
-A implementação executável de Connectors, Operations e Integration Packages não pertence ao Catalog.
-
 Dependências:
 
 ```text
@@ -161,45 +142,103 @@ Catalog
 Organizations
 ```
 
-`Catalog` depende apenas da API pública de `Organizations`.
+### Connections
 
-Não depende de:
+Responsabilidade:
+
+```text
+representar
++
+configurar
++
+resolver
+```
+
+o acesso de uma `Organization + Environment` a sistemas externos.
+
+Owns conceitualmente:
+
+```text
+Connection
+Secret
+SecretVersion
+
+authentication configuration
+OAuth token / refresh state
+secret rotation metadata
+organization/environment scope
+```
+
+API pública inicial:
 
 ```text
 Connections
-Integrations
-Executions
-Notifications
-Audit
+└── Connections.Secrets
 ```
 
-Não existe necessidade atual de processos OTP próprios do context.
+Dependências:
+
+```text
+Connections
+   ├──→ Organizations
+   └──→ Catalog
+```
+
+Decisões importantes:
+
+- `Connection` contém configuração não sensível.
+- `Secret` concentra credenciais sensíveis.
+- `SecretVersion` suporta atualização e rotação.
+- Connections são scoped por `Organization + Environment`.
+- configuração e estado durável de OAuth pertencem a `Connections`.
+- uma Connection referencia Connector conhecido pelo `Catalog`.
+- `Connections` não conhece implementação concreta de Connector.
+- `Connections` não depende de `Integrations`, `Executions`, `Notifications` ou `Audit`.
+- não existe necessidade atual de processos OTP próprios do context.
+- o app que hospedar `Connections` será supervisionado desde sua criação.
 
 ## Ratified dependency graph
 
 Até o momento:
 
 ```text
+Organizations
+     ↑
+     │
+  Catalog
+     ↑
+     │
+Connections
+```
+
+Com dependência direta adicional:
+
+```text
+Connections ─────→ Organizations
+```
+
+Em direção de dependência:
+
+```text
 Catalog
    ↓
 Organizations
+
+Connections
+   ├──→ Catalog
+   └──→ Organizations
 ```
-
-`Organizations` é a boundary de fundação.
-
-O restante do grafo permanece em aberto.
 
 ## In progress
 
-Ratificar os contexts restantes, um por vez:
+Ratificar os contexts restantes:
 
-1. `Connections`
-2. `Integrations`
-3. `Executions`
-4. `Notifications`
-5. `Audit`
+1. `Integrations`
+2. `Executions`
+3. `Notifications`
+4. `Audit`
 
-Depois da ratificação dos contexts:
+Depois:
 
 1. revisar ownership conjunto;
 2. revisar APIs públicas e capability modules;
@@ -209,12 +248,12 @@ Depois da ratificação dos contexts:
 
 ## Next concrete task
 
-Revisar o context proposto `Connections`.
+Revisar o context proposto `Integrations`.
 
 Primeira decisão:
 
 ```text
-Qual é exatamente a responsabilidade de domínio de Connections?
+Qual é exatamente a responsabilidade de domínio de Integrations?
 ```
 
 Nenhum app, schema, migration ou código de domínio deve ser criado durante essa decisão.
@@ -224,13 +263,13 @@ Nenhum app, schema, migration ou código de domínio deve ser criado durante ess
 - `docs/architecture/contextos-e-ownership.md`
 - `docs/architecture/umbrella-e-dependencias.md`
 - `docs/architecture/principios-e-restricoes.md`
-- `docs/architecture/connectors-operations-transports.md`
+- `docs/architecture/integration-packages.md`
 - `docs/architecture/ambientes-rbac-homologacao.md`
 - `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
 
 ## Open warnings
 
-- `Connections`, `Integrations`, `Executions`, `Notifications` e `Audit` ainda são propostas.
+- `Integrations`, `Executions`, `Notifications` e `Audit` ainda são propostas.
 - A divisão das OTP applications ainda não foi ratificada.
 - Nenhuma application de domínio deve ser criada ainda.
 - O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
