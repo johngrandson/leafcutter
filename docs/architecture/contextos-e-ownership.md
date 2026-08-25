@@ -1,6 +1,6 @@
 # Contextos e ownership
 
-> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations`, `Catalog` e `Connections` estão ratificados. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
+> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations`, `Catalog`, `Connections` e `Integrations` estão ratificados. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
 
 ## Regra estrutural
 
@@ -491,21 +491,6 @@ Connections
 
 Toda interação ocorre por APIs públicas.
 
-`Connections` não acessa schemas ou queries internos de outros contexts.
-
-### Não depende de
-
-`Connections` não depende de:
-
-```text
-Integrations
-Executions
-Notifications
-Audit
-```
-
-Esses contexts poderão consumir `Connections`, mas `Connections` não deve conhecer seus conceitos.
-
 ### OTP e supervisão
 
 `Connections` não possui necessidade atual de processos OTP próprios.
@@ -522,17 +507,7 @@ rotation logic
 
 A OTP application que hospedar `Connections` será supervisionada desde sua criação.
 
-Não criar:
-
-```text
-Connections.Supervisor
-Connections.OAuthServer
-Connections.SecretServer
-```
-
-sem lifecycle, estado temporal, coordenação ou isolamento de falha que justifique esses processos.
-
-Se futuramente houver necessidade de refresh coordenado de tokens, cache vivo ou outro estado temporal, processos supervisionados poderão ser adicionados.
+Não criar processos dedicados sem lifecycle, estado temporal, coordenação ou isolamento de falha que os justifique.
 
 ### Não pertence aqui
 
@@ -552,45 +527,401 @@ Se futuramente houver necessidade de refresh coordenado de tokens, cache vivo ou
 
 ## 4. Integrations
 
-> **Status: PROPOSTA PARA RATIFICAÇÃO**
+> **Status: RATIFICADO**
 
-Responsabilidade: instanciar Packages para Organizations/Environments e governar seu lifecycle configurável.
+### Responsabilidade
+
+`Integrations` é responsável por transformar um `PackageVersion` em uma configuração executável dentro de uma `Organization + Environment`.
+
+O context governa a configuração concreta de uma integração, seu lifecycle configurável e sua promoção entre environments.
+
+Uma `Integration` não representa código reutilizável e não representa uma execução.
+
+A distinção é:
+
+```text
+Package / PackageVersion
+→ definição reutilizável do que pode ser executado
+
+Integration
+→ configuração concreta desse PackageVersion
+
+Run
+→ execução concreta dessa Integration
+```
+
+### Integration
+
+`Integration` pertence a um único `Organization + Environment`.
+
+```text
+Organization
+└── Environment
+    └── Integration
+```
+
+O mesmo Package pode ser instanciado várias vezes em Organizations ou Environments diferentes.
+
+Cada Integration concreta permanece isolada dentro de seu scope operacional.
+
+### PackageVersion
+
+Uma `Integration` referencia explicitamente um `PackageVersion`.
+
+```text
+Integration
+→ PackageVersion
+```
+
+A publicação de um novo PackageVersion não altera automaticamente Integrations existentes.
+
+Upgrade de PackageVersion é explícito.
+
+Isso garante previsibilidade e permite que Runs continuem referenciando definições imutáveis.
 
 ### Owns
 
-- Integration;
+`Integrations` possui conceitualmente:
+
+- `Integration`;
 - Destination configuration;
-- Trigger/Schedule configuration;
+- Trigger configuration;
+- Schedule configuration;
 - Integration configuration overrides;
-- EnvironmentDeployment;
-- HomologationRequest;
-- Promotion;
+- `EnvironmentDeployment`;
+- `HomologationRequest`;
+- `Promotion`;
 - Rollback record;
-- IdentityMapping;
+- `IdentityMapping`;
 - Labels aplicadas à Integration.
 
-### Public surface proposta
+### Destination configuration
+
+A configuração dos destinos pertence a `Integrations`.
+
+Ela define como aquela Integration concreta utiliza seus destinos.
+
+Pode referenciar Connections pertencentes ao context `Connections`, mas não possui os Secrets concretos.
+
+Conceitualmente:
+
+```text
+Integration
+├── source configuration
+└── destinations
+    ├── destination A
+    ├── destination B
+    └── destination C
+```
+
+Os detalhes físicos da representação ainda não estão congelados.
+
+### Configuration overrides
+
+Overrides específicos da Integration pertencem a este context.
+
+Eles representam valores concretos aplicados sobre defaults e requisitos definidos pelo Package.
+
+O modelo conceitual é:
+
+```text
+Package
+→ capabilities
+→ defaults
+→ required configuration
+
+Integration
+→ concrete overrides
+→ Connections
+→ scheduling
+→ destination configuration
+```
+
+### Trigger e Schedule
+
+`Trigger` e `Schedule` pertencem a `Integrations`.
+
+Eles definem quando uma Integration deve originar um Run.
+
+```text
+Integration
+└── Trigger / Schedule
+    └── cria Run
+```
+
+A criação e execução concreta do Run não pertence a `Integrations`.
+
+Essa responsabilidade pertence a `Executions`.
+
+O mecanismo durável de scheduling poderá utilizar Oban sem transformar o próprio Trigger em um processo OTP permanente.
+
+### EnvironmentDeployment
+
+`EnvironmentDeployment` pertence a `Integrations`.
+
+Ele representa qual estado/versionamento da Integration está ativo em determinado Environment.
+
+Package Versions permanecem imutáveis.
+
+Deployments selecionam explicitamente a versão utilizada.
+
+### Homologation
+
+`HomologationRequest` pertence a `Integrations`.
+
+Homologação governa o processo de validação de uma configuração/versionamento antes de sua promoção.
+
+Pode referenciar evidências e Runs executados por `Executions`, mas o workflow de aprovação pertence a `Integrations`.
+
+### Promotion
+
+`Promotion` pertence a `Integrations`.
+
+Promoção move uma configuração aprovada para um Environment alvo.
+
+Ela não copia Secrets.
+
+O Environment alvo utiliza suas próprias Connections e Secrets.
+
+Conceitualmente:
+
+```text
+PackageVersion 1.4.0
+      ↓
+Integration em homologation
+      ↓
+validation / approval
+      ↓
+promotion
+      ↓
+production deployment
+      ↓
+production Connections
+```
+
+### Rollback
+
+Rollback pertence a `Integrations`.
+
+Rollback seleciona explicitamente um estado ou PackageVersion anterior permitido.
+
+Runs anteriores permanecem associados aos snapshots utilizados no momento de sua execução.
+
+### IdentityMapping
+
+`IdentityMapping` pertence a `Integrations`.
+
+Ele representa a associação entre identidades de entidades externas ao longo da integração.
+
+Exemplo:
+
+```text
+ERP Customer 42
+→ Salesforce Customer 9001
+→ Billing Customer 710
+```
+
+IdentityMapping é scoped pelo menos por:
+
+```text
+Organization
+Environment
+Integration
+Destination
+```
+
+A estrutura física definitiva será definida durante o desenho do modelo de dados.
+
+Transformation e IdentityMapping são responsabilidades diferentes:
+
+```text
+Transformation
+→ transforma payload
+
+IdentityMapping
+→ associa identidades externas
+```
+
+### Labels
+
+Labels aplicadas à Integration pertencem a `Integrations`.
+
+Elas são metadata leve para classificação e busca.
+
+Labels não devem virar um sistema universal de tagging da plataforma sem necessidade concreta.
+
+Não possuem efeito direto sobre execução.
+
+### Public surface
+
+A API pública inicial é:
+
+```text
+Integrations
+├── Integrations.Destinations
+├── Integrations.Triggers
+├── Integrations.Deployments
+├── Integrations.Homologations
+└── Integrations.IdentityMappings
+```
+
+Facade principal:
 
 ```elixir
 Integrations.create(...)
+Integrations.get(...)
 Integrations.activate(...)
 Integrations.disable(...)
 Integrations.get_execution_definition(...)
+```
 
+Destinations:
+
+```elixir
 Integrations.Destinations.configure(...)
+```
+
+Triggers:
+
+```elixir
 Integrations.Triggers.schedule(...)
+```
+
+Deployments:
+
+```elixir
 Integrations.Deployments.promote(...)
+Integrations.Deployments.rollback(...)
+```
+
+Homologations:
+
+```elixir
 Integrations.Homologations.approve(...)
+Integrations.Homologations.reject(...)
+```
+
+Identity mappings:
+
+```elixir
 Integrations.IdentityMappings.resolve(...)
 ```
 
+As assinaturas são conceituais e ainda não representam contratos congelados.
+
+Capability modules só devem permanecer quando representarem capacidades públicas reais.
+
+### Execution definition
+
+`Integrations` deve ser capaz de produzir uma definição resolvível para criação de Run.
+
+Conceitualmente:
+
+```elixir
+Integrations.get_execution_definition(...)
+```
+
+Essa definição pode reunir referências necessárias para que `Executions` construa um snapshot imutável.
+
+`Integrations` não cria o snapshot de Run e não executa o processamento.
+
+### Dependências
+
+`Integrations` depende de:
+
+```text
+Integrations
+   ├──→ Organizations
+   ├──→ Catalog
+   └──→ Connections
+```
+
+#### Organizations
+
+Usado para:
+
+```text
+Organization scope
+Environment scope
+authorization
+```
+
+#### Catalog
+
+Usado para:
+
+```text
+Package
+PackageVersion
+Contracts
+artifact metadata
+```
+
+#### Connections
+
+Usado para:
+
+```text
+source Connection references
+destination Connection references
+connection availability/configuration
+```
+
+Todas as interações ocorrem por APIs públicas.
+
+### Não depende de
+
+`Integrations` não depende de:
+
+```text
+Executions
+Notifications
+Audit
+```
+
+`Executions` consome definições de `Integrations`, nunca o contrário.
+
+Notifications e Audit podem receber fatos relacionados à Integration por mecanismos apropriados, mas não fazem parte da regra de negócio deste context.
+
+### OTP e supervisão
+
+`Integrations` não possui necessidade atual de processos OTP próprios.
+
+Suas responsabilidades iniciais podem ser implementadas principalmente através de:
+
+```text
+Ecto
+Repo
+validation
+configuration rules
+deployment state
+promotion rules
+identity mappings
+```
+
+Scheduling durável pode utilizar Oban quando apropriado.
+
+A OTP application que hospedar `Integrations` será supervisionada desde sua criação.
+
+Não criar um `Integrations.Supervisor` vazio.
+
+Processos dedicados só devem ser adicionados quando lifecycle, estado temporal, concorrência, coordenação ou isolamento de falha justificarem sua existência.
+
 ### Não pertence aqui
 
-- processamento de Records;
-- Attempts;
+- Run;
+- RunSnapshot;
+- Record;
+- Delivery;
+- Attempt;
+- Checkpoint;
 - processos OTP de Run;
-- implementação de Connector;
-- secrets concretos.
+- Connector implementation;
+- Operation implementation;
+- Transport implementation;
+- Secret concreto;
+- execução de Package;
+- execução do data plane.
 
 ---
 
@@ -699,28 +1030,23 @@ Outros contexts podem registrar fatos, mas não devem depender do conteúdo de A
 
 ## Dependências conceituais ratificadas
 
-Até o momento:
-
-```text
-Organizations
-     ↑
-     │
-  Catalog
-     ↑
-     │
-Connections
-```
-
-Além disso, `Connections` também depende diretamente de `Organizations` para resolver seu scope.
-
 Em direção de dependência:
 
 ```text
 Catalog
    ↓
 Organizations
+```
 
+```text
 Connections
+   ├──→ Catalog
+   └──→ Organizations
+```
+
+```text
+Integrations
+   ├──→ Connections
    ├──→ Catalog
    └──→ Organizations
 ```
@@ -730,8 +1056,17 @@ Regras ratificadas:
 - `Organizations` não depende de outros contexts.
 - `Catalog` depende apenas de `Organizations`.
 - `Connections` depende apenas de `Catalog` e `Organizations`.
-- dependências entre contexts ocorrem somente por APIs públicas.
+- `Integrations` depende apenas de `Connections`, `Catalog` e `Organizations`.
+- dependências entre contexts ocorrem somente através de APIs públicas.
+- nenhum dos contexts ratificados depende de `Executions`.
+- nenhuma dependência circular foi introduzida até este ponto.
 
-O restante do grafo permanece em proposta até a ratificação individual dos contexts restantes.
+O restante do grafo permanece em proposta até a ratificação individual de:
 
-O grafo final deve eliminar qualquer dependência circular antes da criação das OTP applications.
+```text
+Executions
+Notifications
+Audit
+```
+
+O grafo final deve ser revisado novamente antes da criação das OTP applications.

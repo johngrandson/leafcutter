@@ -21,3 +21,6 @@ erl_crash.dump
 
 # Remember files
 .remember/
+
+# Local dependency audit evidence is regenerated for each lockfile change.
+.claude/deps-audit/last-run.*

@@ -11,6 +11,10 @@ defmodule Leafcutter.MixProject do
     ]
   end
 
+  def cli do
+    [preferred_envs: [quality: :test]]
+  end
+
   # Dependencies listed here are available only for this
   # project and cannot be accessed from applications inside
   # the apps folder.
@@ -21,14 +25,30 @@ defmodule Leafcutter.MixProject do
       # Keep Tidewave at the umbrella root so `mix tidewave` can inspect every
       # child application running in the shared development runtime.
       {:bandit, "~> 1.0", only: :dev},
-      {:tidewave, "~> 0.9", only: :dev}
+      {:tidewave, "~> 0.9", only: :dev},
+      # Keep quality tooling at the umbrella root so one command checks every
+      # child application without making the tools runtime dependencies.
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
   defp aliases do
     [
       tidewave:
-        "run --no-halt -e '{:ok, _} = Application.ensure_all_started(:tidewave); {:ok, _} = Application.ensure_all_started(:bandit); Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: String.to_integer(System.get_env(\"TIDEWAVE_PORT\", \"4001\"))) end)'"
+        "run --no-halt -e '{:ok, _} = Application.ensure_all_started(:tidewave); {:ok, _} = Application.ensure_all_started(:bandit); Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: String.to_integer(System.get_env(\"TIDEWAVE_PORT\", \"4001\"))) end)'",
+      quality: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict",
+        "test",
+        &run_dialyzer/1
+      ]
     ]
+  end
+
+  defp run_dialyzer(_) do
+    args = if Mix.Project.apps_paths() == %{}, do: ["--plt"], else: []
+    Mix.Task.run("dialyzer", args)
   end
 end

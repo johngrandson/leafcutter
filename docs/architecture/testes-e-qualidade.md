@@ -70,13 +70,20 @@ named error types
 ## Quality gates iniciais
 
 ```bash
-mix format --check-formatted
-mix compile --warnings-as-errors
-mix test
-mix docs
+mix quality
 ```
 
-Credo e Dialyzer são desejáveis, mas devem ser adicionados conscientemente e configurados para ajudar, não gerar ritual sem valor.
+O alias executa compilação com warnings como erros, verificação do formatter,
+Credo strict, testes e Dialyzer para toda a umbrella. A configuração inicial
+não possui suppressions do Dialyzer.
+
+Enquanto `apps/` estiver vazio, o gate valida a PLT sem executar uma análise
+sem BEAMs. A análise completa passa a ocorrer automaticamente após a criação da
+primeira application.
+
+`mix docs` entra no gate quando `ex_doc` for adicionada.
+
+O workflow de CI permanece fora deste marco.
 
 ## Review
 

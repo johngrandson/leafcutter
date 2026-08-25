@@ -9,40 +9,37 @@
 ## Repository state
 
 - Projeto criado como umbrella vazia com `mix new leafcutter --umbrella`.
-- Base de documentação arquitetural preparada.
 - Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e do grafo de apps.
 - `Organizations` ratificado.
 - `Catalog` ratificado.
 - `Connections` ratificado.
+- `Integrations` ratificado.
 
 ## Accepted architecture baseline
 
 - Umbrella com poucas OTP applications.
-- Toda OTP application deve possuir árvore de supervisão desde sua criação.
-- Contexts só recebem supervisors próprios quando possuem processos com lifecycle que justifiquem uma subtree dedicada.
-- Uma release inicial, preparada para separação futura.
+- Toda OTP application possui árvore de supervisão desde sua criação.
+- Contexts só recebem supervisors próprios quando processos reais justificarem uma subtree.
 - Phoenix Contexts maduros com facade raiz pequena, capability modules e implementação interna.
-- Comunicação entre contexts ocorre somente por APIs públicas.
+- Contexts se comunicam somente através de APIs públicas.
 - PostgreSQL é a autoridade durável.
 - OTP representa estado operacional reconstruível.
-- PubSub é usado para propagação efêmera de fatos.
-- Trabalho que não pode ser perdido deve possuir representação durável.
-- Oban é usado quando adequado a jobs duráveis, scheduling, notificações, manutenção ou trabalho futuro.
-- Broadway é o data plane para source, enrichments opcionais e destinations.
-- JSON Schema Draft 2020-12 é o contrato canônico de payload, validado inicialmente com JSV.
-- Integration Packages são versionados, declarados por `manifest.json` e inicialmente compilados com a mesma release.
+- PubSub propaga fatos efêmeros.
+- Trabalho que não pode ser perdido possui representação durável.
+- Oban é utilizado quando adequado a jobs duráveis, scheduling, notificações, manutenção ou trabalho futuro.
+- Broadway é o data plane para source, enrichment e destinations.
+- JSON Schema Draft 2020-12 é o contrato canônico de payload, inicialmente validado com JSV.
+- Integration Packages são versionados e declarados por `manifest.json`.
 - Connector -> Operation -> Transport.
 - Transformation é pura.
 - Enrichment representa side effects externos controlados.
 - Interceptor atua na adaptação de transporte.
-- Fan-out durável usa `Record + N Deliveries` persistidos em batch.
-- Nenhuma fila externa é necessária inicialmente.
+- Fan-out durável utiliza `Record + N Deliveries`.
+- Sem fila externa inicialmente.
 - Semântica base `at-least-once`.
-- Ownership de Run por node utiliza heartbeat por node, `owner_node` e `generation` como fencing token.
-- API-first com OpenAPI canônico e Postman derivado.
+- API-first com OpenAPI canônico.
 - Código e documentação in-code em inglês.
 - Arquitetura externa em português brasileiro.
-- O desenvolvedor é o autor principal; agentes atuam prioritariamente como guias, revisores e parceiros de implementação.
 
 ## Ratified Contexts
 
@@ -58,7 +55,7 @@ operational scope
 authorization
 ```
 
-Owns conceitualmente:
+Owns:
 
 ```text
 Organization
@@ -71,7 +68,7 @@ Permission
 access grants / assignments
 ```
 
-API pública inicial:
+API pública:
 
 ```text
 Organizations
@@ -82,9 +79,10 @@ Organizations
 Dependências:
 
 ```text
-Organizations
-→ nenhuma dependência de domínio
+nenhuma
 ```
+
+---
 
 ### Catalog
 
@@ -102,9 +100,7 @@ disponibilizar
 permitir descoberta
 ```
 
-dos building blocks reutilizáveis da plataforma.
-
-Owns conceitualmente:
+Owns:
 
 ```text
 Connector metadata
@@ -120,12 +116,10 @@ PackageDependency
 
 CatalogCategory
 
-publication metadata
-availability metadata
-organization scope for private entries
+publication / availability metadata
 ```
 
-API pública inicial:
+API pública:
 
 ```text
 Catalog
@@ -142,6 +136,8 @@ Catalog
 Organizations
 ```
 
+---
+
 ### Connections
 
 Responsabilidade:
@@ -154,9 +150,9 @@ configurar
 resolver
 ```
 
-o acesso de uma `Organization + Environment` a sistemas externos.
+o acesso de `Organization + Environment` a sistemas externos.
 
-Owns conceitualmente:
+Owns:
 
 ```text
 Connection
@@ -166,10 +162,9 @@ SecretVersion
 authentication configuration
 OAuth token / refresh state
 secret rotation metadata
-organization/environment scope
 ```
 
-API pública inicial:
+API pública:
 
 ```text
 Connections
@@ -184,22 +179,84 @@ Connections
    └──→ Catalog
 ```
 
-Decisões importantes:
+---
 
-- `Connection` contém configuração não sensível.
-- `Secret` concentra credenciais sensíveis.
-- `SecretVersion` suporta atualização e rotação.
-- Connections são scoped por `Organization + Environment`.
-- configuração e estado durável de OAuth pertencem a `Connections`.
-- uma Connection referencia Connector conhecido pelo `Catalog`.
-- `Connections` não conhece implementação concreta de Connector.
-- `Connections` não depende de `Integrations`, `Executions`, `Notifications` ou `Audit`.
-- não existe necessidade atual de processos OTP próprios do context.
-- o app que hospedar `Connections` será supervisionado desde sua criação.
+### Integrations
+
+Responsabilidade:
+
+```text
+transformar um PackageVersion
+em uma configuração executável
+dentro de Organization + Environment
+```
+
+Distinção fundamental:
+
+```text
+PackageVersion
+→ definição reutilizável
+
+Integration
+→ configuração concreta
+
+Run
+→ execução concreta
+```
+
+Owns:
+
+```text
+Integration
+Destination configuration
+Trigger
+Schedule
+configuration overrides
+EnvironmentDeployment
+HomologationRequest
+Promotion
+Rollback
+IdentityMapping
+Integration Labels
+```
+
+Uma `Integration`:
+
+```text
+belongs to
+→ Organization + Environment
+
+references
+→ explicit PackageVersion
+```
+
+Upgrade de `PackageVersion` é explícito.
+
+API pública:
+
+```text
+Integrations
+├── Integrations.Destinations
+├── Integrations.Triggers
+├── Integrations.Deployments
+├── Integrations.Homologations
+└── Integrations.IdentityMappings
+```
+
+Dependências:
+
+```text
+Integrations
+   ├──→ Organizations
+   ├──→ Catalog
+   └──→ Connections
+```
+
+`Integrations` não executa Runs.
+
+Não possui necessidade atual de processos OTP próprios.
 
 ## Ratified dependency graph
-
-Até o momento:
 
 ```text
 Organizations
@@ -209,67 +266,73 @@ Organizations
      ↑
      │
 Connections
+     ↑
+     │
+Integrations
 ```
 
-Com dependência direta adicional:
-
-```text
-Connections ─────→ Organizations
-```
-
-Em direção de dependência:
+Com dependências diretas:
 
 ```text
 Catalog
-   ↓
-Organizations
+→ Organizations
 
 Connections
-   ├──→ Catalog
-   └──→ Organizations
+→ Catalog
+→ Organizations
+
+Integrations
+→ Connections
+→ Catalog
+→ Organizations
 ```
+
+Nenhuma dependência circular foi introduzida.
 
 ## In progress
 
 Ratificar os contexts restantes:
 
-1. `Integrations`
-2. `Executions`
-3. `Notifications`
-4. `Audit`
+1. `Executions`
+2. `Notifications`
+3. `Audit`
 
 Depois:
 
-1. revisar ownership conjunto;
-2. revisar APIs públicas e capability modules;
-3. ratificar boundaries das OTP applications;
-4. ratificar grafo de dependências entre apps;
-5. criar as primeiras applications da umbrella.
+1. revisar o Context Map completo;
+2. revisar ownership conjunto;
+3. revisar APIs públicas;
+4. ratificar boundaries das OTP applications;
+5. ratificar o grafo de dependências entre apps;
+6. criar as primeiras applications da umbrella.
 
 ## Next concrete task
 
-Revisar o context proposto `Integrations`.
+Revisar o context proposto `Executions`.
 
 Primeira decisão:
 
 ```text
-Qual é exatamente a responsabilidade de domínio de Integrations?
+Qual é exatamente a responsabilidade de domínio de Executions?
 ```
 
-Nenhum app, schema, migration ou código de domínio deve ser criado durante essa decisão.
+Nenhum app, schema ou migration deve ser criado durante essa decisão.
 
 ## Relevant documents
 
 - `docs/architecture/contextos-e-ownership.md`
-- `docs/architecture/umbrella-e-dependencias.md`
+- `docs/architecture/runtime-otp-broadway.md`
+- `docs/architecture/durabilidade-e-recovery.md`
 - `docs/architecture/principios-e-restricoes.md`
-- `docs/architecture/integration-packages.md`
-- `docs/architecture/ambientes-rbac-homologacao.md`
-- `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
+- `docs/architecture/modelo-conceitual.md`
+- `docs/decisions/ADR-0005-broadway-como-data-plane.md`
+- `docs/decisions/ADR-0009-at-least-once.md`
+- `docs/decisions/ADR-0010-fanout-duravel-sem-fila-externa.md`
+- `docs/decisions/ADR-0011-run-ownership-fencing.md`
 
 ## Open warnings
 
-- `Integrations`, `Executions`, `Notifications` e `Audit` ainda são propostas.
+- `Executions`, `Notifications` e `Audit` ainda são propostas.
 - A divisão das OTP applications ainda não foi ratificada.
 - Nenhuma application de domínio deve ser criada ainda.
 - O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
