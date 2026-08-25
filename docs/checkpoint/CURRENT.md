@@ -9,6 +9,9 @@
 ## Repository state
 
 - Projeto criado como umbrella vazia com `mix new leafcutter --umbrella`.
+- Gate local `mix quality` configurado com compiler warnings, formatter,
+  Credo strict, testes e Dialyzer. Enquanto `apps/` estiver vazio, o gate
+  valida a PLT; a análise completa começa com a primeira child application.
 - Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e do grafo de apps.
 - `Organizations` ratificado.
 - `Catalog` ratificado.
@@ -338,3 +341,4 @@ Nenhum app, schema ou migration deve ser criado durante essa decisão.
 - O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
 - O JSON Schema definitivo do `manifest.json` ainda não foi fechado.
 - Endpoints, tabelas, campos e índices concretos ainda não foram congelados.
+- O workflow de CI para `mix quality` ainda não foi adicionado.
