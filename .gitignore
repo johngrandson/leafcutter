@@ -19,8 +19,5 @@ erl_crash.dump
 # Also ignore archive artifacts (built via "mix archive.build").
 *.ez
 
-# Claude Code: diretórios de trabalho locais ficam fora do git,
-# mas o settings.json faz parte do harness versionado (ADR-0015).
-.claude/*
-!.claude/settings.json
+# Remember files
 .remember/

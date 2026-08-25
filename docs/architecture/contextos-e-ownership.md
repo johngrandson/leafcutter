@@ -1,6 +1,6 @@
 # Contextos e ownership
 
-> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations` está ratificado. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
+> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations` e `Catalog` estão ratificados. Os demais contexts permanecem como propostas e devem ser aprovados individualmente antes de influenciarem a implementação.
 
 ## Regra estrutural
 
@@ -21,7 +21,7 @@ Schemas e queries pertencem ao context que controla o dado. Outros contexts usam
 
 A existência de um conceito dentro de um context define ownership de domínio. Não implica automaticamente a existência de uma tabela, processo OTP ou módulo dedicado.
 
-As OTP applications do Leafcutter devem possuir árvore de supervisão desde sua criação. Um context, porém, só recebe um supervisor próprio quando possuir processos com lifecycle que justifiquem uma subtree dedicada.
+As OTP applications do Leafcutter devem possuir árvore de supervisão desde sua criação. Um context só recebe um supervisor próprio quando possuir processos com lifecycle que justifiquem uma subtree dedicada.
 
 ---
 
@@ -33,22 +33,6 @@ As OTP applications do Leafcutter devem possuir árvore de supervisão desde sua
 
 `Organizations` é responsável por tenancy, escopo operacional e autorização dentro do Leafcutter.
 
-O context responde por questões como:
-
-```text
-A qual Organization este recurso pertence?
-
-Em qual Environment ele opera?
-
-Quem pode agir dentro dessa Organization ou Environment?
-
-O que esse ator está autorizado a fazer?
-```
-
-`Organizations` é um context de fundação e não depende de outros contexts de domínio do Leafcutter.
-
-Outros contexts podem depender de sua API pública para resolver organização, ambiente, atores e autorização.
-
 ### Owns
 
 - `Organization`;
@@ -58,23 +42,13 @@ Outros contexts podem depender de sua API pública para resolver organização, 
 - `Membership`;
 - `Role`;
 - `Permission`;
-- access grants e assignments associados ao escopo organizacional.
+- access grants e assignments.
 
-Esse ownership é conceitual. A decisão sobre quais desses conceitos serão persistidos em tabelas próprias será tomada durante o desenho do modelo de dados.
-
-### Organization
-
-`Organization` é a principal fronteira de propriedade do produto.
-
-Recursos pertencentes a clientes devem possuir um escopo organizacional explícito sempre que aplicável.
+O ownership é conceitual. A estratégia física de persistência será definida posteriormente.
 
 ### Environment
 
-`Environment` pertence a `Organizations`.
-
-Ele representa uma subdivisão operacional de uma Organization.
-
-Exemplos comuns:
+`Environment` pertence a `Organizations` e representa uma subdivisão operacional de uma Organization.
 
 ```text
 Organization
@@ -83,30 +57,15 @@ Organization
 └── production
 ```
 
-Os nomes não precisam ser hardcoded.
+Outros contexts podem possuir recursos scoped por Environment sem que esses recursos passem a pertencer a `Organizations`.
 
-Outros domínios podem possuir recursos scoped por Environment, como:
+### Atores e autenticação
 
-```text
-Connection
-Integration
-Run
-IdentityMapping
-Schedule
-access grants
-```
+`User` e `ServiceAccount` pertencem ao context como atores e sujeitos de autorização.
 
-Esses recursos continuam pertencendo aos seus respectivos contexts. `Organizations` é proprietário apenas da identidade e lifecycle do Environment.
+`Membership` representa a relação entre ator e Organization.
 
-### Atores
-
-`User` e `ServiceAccount` pertencem a `Organizations` enquanto atores do domínio e sujeitos de autorização.
-
-`Membership` representa a relação entre um ator e uma Organization.
-
-A boundary não assume ownership dos mecanismos concretos de autenticação.
-
-Ficam fora deste context, por enquanto:
+Mecanismos concretos de autenticação ficam fora desta boundary, incluindo:
 
 ```text
 password management
@@ -117,21 +76,11 @@ authentication refresh tokens
 login attempts
 ```
 
-A localização definitiva da autenticação será decidida quando essa capacidade for desenhada.
-
-Não criar um context separado de Authentication ou Accounts apenas por antecipação.
+Não criar um context separado de Authentication ou Accounts por antecipação.
 
 ### RBAC
 
 RBAC pertence a `Organizations`.
-
-A primitive fundamental é `Permission`.
-
-`Role` agrupa permissions.
-
-Grants e assignments associam atores às capacidades permitidas dentro de um scope.
-
-O modelo conceitual é:
 
 ```text
 who
@@ -144,28 +93,13 @@ where
 → Organization + optional Environment
 ```
 
-Exemplos de permissions:
+`Permission` é a primitive fundamental.
 
-```text
-integration.read
-integration.write
-integration.run
-integration.approve
-integration.promote
-run.cancel
-run.retry
-connection.read_metadata
-secret.rotate
-payload.read
-audit.read
-environment.manage
-```
+`Role` agrupa permissions.
 
-A lista definitiva de permissions e sua estratégia física de persistência ainda não estão congeladas.
+Grants e assignments associam atores às capacidades permitidas dentro de determinado scope.
 
 ### Public surface
-
-A API pública inicial é dividida em:
 
 ```text
 Organizations
@@ -173,9 +107,7 @@ Organizations
 └── Organizations.Access
 ```
 
-A facade raiz controla operações sobre `Organization`.
-
-Exemplo conceitual:
+Facade principal:
 
 ```elixir
 Organizations.create(...)
@@ -183,9 +115,7 @@ Organizations.get(...)
 Organizations.disable(...)
 ```
 
-`Organizations.Environments` controla o lifecycle dos Environments.
-
-Exemplo conceitual:
+Environments:
 
 ```elixir
 Organizations.Environments.create(...)
@@ -193,9 +123,7 @@ Organizations.Environments.get(...)
 Organizations.Environments.disable(...)
 ```
 
-`Organizations.Access` concentra Membership, Role, Permission e autorização.
-
-Exemplo conceitual:
+Access:
 
 ```elixir
 Organizations.Access.add_member(...)
@@ -205,101 +133,34 @@ Organizations.Access.revoke_role(...)
 Organizations.Access.authorize(...)
 ```
 
-Essas assinaturas são conceituais e não representam contratos de implementação congelados.
-
-Não criar inicialmente módulos públicos separados como:
-
-```text
-Organizations.Users
-Organizations.Roles
-Organizations.Permissions
-```
-
-Eles só devem surgir se uma capability pública real justificar essa separação.
-
-### Autorização
-
-Controllers e plugs podem realizar autorização na borda.
-
-Operações privilegiadas de domínio também devem receber actor e scope explícitos quando necessário.
-
-Conceitualmente:
-
-```text
-authorize(
-  actor,
-  permission,
-  scope
-)
-```
-
-onde:
-
-```text
-actor
-→ User | ServiceAccount
-
-permission
-→ capability solicitada
-
-scope
-→ Organization + optional Environment
-```
-
-A assinatura concreta e os tipos de retorno serão definidos durante a implementação da API pública.
+As assinaturas são conceituais e ainda não representam contratos congelados.
 
 ### Dependências
 
-`Organizations` não depende de nenhum outro context de domínio.
+`Organizations` não depende de outros contexts de domínio.
 
-Ele não deve conhecer:
-
-```text
-Integration
-Connection
-Secret
-Package
-Run
-Delivery
-Connector
-```
-
-Isso permite que `Organizations` funcione como uma boundary de fundação utilizada pelos demais domínios.
+Outros contexts podem depender de sua API pública.
 
 ### OTP e supervisão
 
-`Organizations` não exige, neste momento, processos OTP próprios apenas por existir como context.
+`Organizations` não exige processos OTP próprios neste momento.
 
-Isso não significa ausência de supervisão.
+A OTP application que hospedar o context possuirá sua árvore de supervisão desde a criação.
 
-A OTP application que hospedar `Organizations` deve possuir sua árvore de supervisão desde o início.
-
-Conceitualmente:
-
-```text
-Application
-└── root Supervisor
-    ├── Repo
-    ├── infrastructure children
-    └── context processes, quando existirem
-```
-
-Se `Organizations` futuramente possuir processos com lifecycle próprio, esses processos devem entrar nessa árvore e podem receber uma subtree dedicada.
-
-Não criar um `Organizations.Supervisor` vazio apenas para representar a existência do context.
+Não criar um `Organizations.Supervisor` vazio apenas para representar o context.
 
 ### Não pertence aqui
 
 - mecanismos concretos de autenticação;
-- configuração de Integration;
-- Integration Package ou Package Version;
+- Integration;
+- Package;
 - Connection;
 - Secret;
 - Run;
 - Record;
 - Delivery;
 - Attempt;
-- homologação funcional de Integration;
+- homologação funcional;
 - Notification;
 - armazenamento de AuditEvent.
 
@@ -307,40 +168,223 @@ Não criar um `Organizations.Supervisor` vazio apenas para representar a existê
 
 ## 2. Catalog
 
-> **Status: PROPOSTA PARA RATIFICAÇÃO**
+> **Status: RATIFICADO**
 
-Responsabilidade: catálogo versionado de building blocks reutilizáveis.
+### Responsabilidade
+
+`Catalog` é responsável por registrar, versionar e disponibilizar os building blocks reutilizáveis da plataforma.
+
+O Catalog controla identidade, metadata, versões, publicação, disponibilidade e descoberta.
+
+Ele não executa os artefatos que registra.
 
 ### Owns
 
+#### Connectors
+
 - Connector metadata;
 - Operation metadata;
-- Official/Custom Connector versions;
-- Contract;
-- ContractVersion;
-- Package;
-- PackageVersion;
-- PackageDependency;
-- CatalogCategory.
+- Connector versions;
+- publication metadata;
+- availability metadata.
 
-### Public surface proposta
+O Catalog não possui a implementação executável dos Connectors ou Operations.
+
+A separação é:
+
+```text
+Catalog
+→ identidade
+→ metadata
+→ versões
+→ disponibilidade
+
+connector implementation
+→ código executável fora do Catalog
+```
+
+#### Contracts
+
+- `Contract`;
+- `ContractVersion`.
+
+O Catalog registra e versiona os contratos.
+
+Runtime e outros consumidores utilizam versões resolvidas desses contratos.
+
+A existência de `ContractVersion` não define ainda a estratégia física de armazenamento ou cache dos schemas compilados.
+
+#### Integration Packages
+
+- `Package`;
+- `PackageVersion`;
+- `PackageDependency`;
+- publication metadata;
+- availability metadata.
+
+O código executável dos Integration Packages permanece fora do Catalog, inicialmente em:
+
+```text
+packages/
+```
+
+O Catalog registra a identidade e as versões desses artefatos.
+
+#### Categories
+
+- `CatalogCategory`.
+
+`CatalogCategory` serve exclusivamente para classificação, descoberta e busca.
+
+Categorias não possuem efeito sobre execução ou comportamento de runtime.
+
+A existência conceitual de `CatalogCategory` não implica obrigatoriamente uma tabela dedicada.
+
+### Escopo
+
+O Catalog suporta dois tipos de entrada:
+
+```text
+platform-wide
+→ artefatos oficiais e reutilizáveis da plataforma
+
+organization-scoped
+→ artefatos privados pertencentes a uma Organization
+```
+
+Exemplos:
+
+```text
+Official Connector
+→ platform-wide
+
+Custom Connector privado
+→ organization-scoped
+
+Package privado
+→ organization-scoped
+```
+
+Não criar dois Catalog contexts distintos para esses casos.
+
+O scope faz parte da metadata da entrada.
+
+### Public surface
+
+A API pública inicial é:
+
+```text
+Catalog
+├── Catalog.Packages
+├── Catalog.Contracts
+└── Catalog.Connectors
+```
+
+#### Packages
+
+Responsável por registro, versionamento, publicação e consulta de Packages.
+
+Exemplos conceituais:
 
 ```elixir
 Catalog.Packages.register(...)
 Catalog.Packages.publish_version(...)
 Catalog.Packages.get_version(...)
+```
 
+#### Contracts
+
+Responsável por registro, versionamento e acesso aos Contracts.
+
+Exemplos conceituais:
+
+```elixir
 Catalog.Contracts.register(...)
 Catalog.Contracts.compile(...)
 Catalog.Contracts.validate(...)
+```
 
+A localização definitiva de compile/validate na API pública poderá ser refinada durante a implementação caso essas operações se mostrem responsabilidade de outro componente.
+
+#### Connectors
+
+Responsável por identidade, metadata, versões e descoberta de Connectors e Operations.
+
+Exemplos conceituais:
+
+```elixir
 Catalog.Connectors.register(...)
 Catalog.Connectors.get_operation(...)
 ```
 
-### Observação
+As assinaturas não estão congeladas.
 
-A implementação concreta de Connector continua em `leafcutter_connectors`; o Catalog controla identidade, metadata, versões e disponibilidade.
+### Dependências
+
+`Catalog` depende apenas de `Organizations`.
+
+```text
+Catalog
+   ↓
+Organizations
+```
+
+Essa dependência existe para suportar entradas privadas scoped por Organization.
+
+A interação ocorre somente através da API pública de `Organizations`.
+
+`Catalog` não acessa schemas ou queries internos de `Organizations`.
+
+### Não depende de
+
+`Catalog` não depende de:
+
+```text
+Connections
+Integrations
+Executions
+Notifications
+Audit
+```
+
+Esses contexts poderão consumir Catalog, mas Catalog não deve conhecer seus conceitos.
+
+### OTP e supervisão
+
+`Catalog` não possui necessidade atual de processos OTP próprios.
+
+Suas responsabilidades iniciais são principalmente:
+
+```text
+Ecto
+Repo
+versionamento
+queries
+contract handling
+metadata
+```
+
+A OTP application que hospedar Catalog será supervisionada desde sua criação.
+
+Não criar um `Catalog.Supervisor` vazio.
+
+Processos específicos só devem surgir se existir lifecycle, estado temporal, concorrência, coordenação ou isolamento de falha que os justifique.
+
+### Não pertence aqui
+
+- Connector implementation;
+- Operation implementation;
+- Transport implementation;
+- Connection;
+- Secret;
+- Integration configuration;
+- Run;
+- Record;
+- Delivery;
+- Attempt;
+- execução de Integration Package;
+- execução de Connector;
+- orchestration de runtime.
 
 ---
 
@@ -465,7 +509,7 @@ Ao iniciar um Run, Executions consulta APIs públicas de Integrations, Catalog e
 
 Executions é grande, mas potencialmente coeso.
 
-A facade raiz não deve acumular toda a API. Capabilities devem dividir Run control, queries, Deliveries, Attempts e Recovery quando essas boundaries forem ratificadas.
+A facade raiz não deve acumular toda a API.
 
 ---
 
@@ -491,7 +535,7 @@ Notifications.Recipients.create(...)
 Notifications.deliver_for_event(...)
 ```
 
-A entrega utiliza trabalho durável. Oban é a primitive inicial prevista para esse tipo de obrigação.
+A entrega utiliza trabalho durável.
 
 PubSub sozinho não é suficiente para uma obrigação de notificação.
 
@@ -525,23 +569,33 @@ Outros contexts podem registrar fatos, mas não devem depender do conteúdo de A
 
 ---
 
-## Dependências conceituais propostas
+## Dependências conceituais ratificadas
 
-Apenas `Organizations` está ratificado neste momento.
-
-O restante do grafo continua sujeito à ratificação dos demais contexts.
-
-Direção já aprovada:
+Até o momento:
 
 ```text
 Organizations
-      ↑
-      │
-other domain contexts
+
+     ↑
+
+  Catalog
 ```
 
-`Organizations` não depende de outros contexts de domínio.
+Ou, em direção de dependência:
 
-O desenho completo só será congelado depois da ratificação individual de Catalog, Connections, Integrations, Executions, Notifications e Audit.
+```text
+Catalog
+   ↓
+Organizations
+```
+
+Regras já ratificadas:
+
+- `Organizations` não depende de outros contexts.
+- `Catalog` depende apenas de `Organizations`.
+- essa dependência ocorre via API pública.
+- nenhuma dependência adicional do Catalog foi aprovada.
+
+O restante do grafo permanece em proposta até a ratificação individual dos contexts restantes.
 
 O grafo final deve eliminar qualquer dependência circular antes da criação das OTP applications.
