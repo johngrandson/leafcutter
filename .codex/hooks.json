@@ -1,0 +1,29 @@
+{
+  "description": "Leafcutter harness hooks. Espelhados em .claude/settings.json para o Claude Code (ADR-0015).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '## docs/checkpoint/CURRENT.md'; cat docs/checkpoint/CURRENT.md",
+            "statusMessage": "Carregando checkpoint"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -f mix.exs ] && mix format 2>/dev/null || true",
+            "statusMessage": "mix format"
+          }
+        ]
+      }
+    ]
+  }
+}

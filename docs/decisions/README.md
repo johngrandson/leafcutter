@@ -18,6 +18,7 @@ ADRs registram decisões arquiteturais duráveis. Atualize o ADR quando a decis�
 | ADR-0012 | Accepted | OpenAPI canônico; Postman derivado |
 | ADR-0013 | Accepted | Idioma e documentação in-code |
 | ADR-0014 | Accepted | Desenvolvedor como autor principal e harness versionado |
+| ADR-0015 | Accepted | Harness multi-agente com contrato compartilhado |
 
 ## Convenção
 

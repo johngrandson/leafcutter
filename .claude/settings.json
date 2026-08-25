@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '## docs/checkpoint/CURRENT.md'; cat \"$CLAUDE_PROJECT_DIR/docs/checkpoint/CURRENT.md\"",
+            "statusMessage": "Carregando checkpoint"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; case \"$f\" in *.ex|*.exs) cd \"$CLAUDE_PROJECT_DIR\" && mix format \"$f\" 2>/dev/null || true;; esac; }",
+            "statusMessage": "mix format"
+          }
+        ]
+      }
+    ]
+  }
+}

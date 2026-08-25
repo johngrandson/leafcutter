@@ -1,15 +1,12 @@
 # Bootstrap para uma nova sessão
 
-Use este processo quando iniciar uma nova conversa com ChatGPT ou Codex.
+Use este processo apenas em ferramentas sem acesso ao repositório (ChatGPT web).
+
+Codex CLI e Claude Code não precisam dele: ambos carregam `AGENTS.md` automaticamente (Claude Code via import em `CLAUDE.md`) e recebem `docs/checkpoint/CURRENT.md` pelo hook de `SessionStart` em `.codex/hooks.json` e `.claude/settings.json` (ADR-0015).
 
 ## Leitura
 
-1. Leia `AGENTS.md`.
-2. Leia `docs/checkpoint/CURRENT.md`.
-3. Leia `docs/decisions/README.md`.
-4. Leia apenas os documentos listados como relevantes no checkpoint.
-5. Inspecione o código, testes e migrations atuais.
-6. Verifique o último diff ou commit relacionado ao marco corrente.
+Siga a seção "Leitura obrigatória antes de trabalhar" de `AGENTS.md` (ordem canônica), colando o conteúdo dos arquivos na conversa quando a ferramenta não puder lê-los.
 
 ## Prompt de continuidade
 
@@ -30,11 +27,4 @@ Diga:
 
 ## Ao encerrar uma sessão
 
-Atualize `CURRENT.md` com:
-
-- decisão concluída;
-- arquivos alterados;
-- testes executados;
-- riscos ou dúvidas;
-- próxima tarefa concreta;
-- documentos que a próxima sessão deve ler.
+Siga `docs/harness/SESSION_HANDOFF.md`.

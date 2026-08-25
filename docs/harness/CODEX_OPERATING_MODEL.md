@@ -1,14 +1,16 @@
-# Modelo operacional do Codex
+# Modelo operacional do agente
+
+Aplica-se a qualquer agente que opere neste repositório: Codex, Claude Code ou outro (ADR-0015).
 
 ## Objetivo
 
-Usar Codex para aumentar precisão e compreensão sem terceirizar a autoria do Leafcutter.
+Usar o agente para aumentar precisão e compreensão sem terceirizar a autoria do Leafcutter.
 
 ## Modos de trabalho
 
 ### Guide mode - padrão
 
-Codex:
+O agente:
 
 1. lê checkpoint/docs/código;
 2. explica o fluxo;
@@ -19,7 +21,7 @@ Codex:
 
 ### Review mode
 
-Codex revisa um diff ou arquivos e verifica:
+O agente revisa um diff ou arquivos e verifica:
 
 - correctness;
 - context boundaries;
@@ -33,7 +35,7 @@ Codex revisa um diff ou arquivos e verifica:
 
 ### Debug mode
 
-Codex ajuda a reproduzir, ler stacktrace, inspecionar supervision tree, queries e Telemetry. Não aplica refactor amplo antes de isolar a causa.
+O agente ajuda a reproduzir, ler stacktrace, inspecionar supervision tree, queries e Telemetry. Não aplica refactor amplo antes de isolar a causa.
 
 ### Implementation mode - somente explícito
 
@@ -49,13 +51,7 @@ Feature inteira exige pedido explícito e plano aprovado.
 
 ## Read order
 
-```text
-AGENTS.md
-CURRENT.md
-relevant ADRs/docs
-current code/tests
-current diff
-```
+Siga a seção "Leitura obrigatória antes de trabalhar" de `AGENTS.md` (ordem canônica).
 
 ## Saída esperada antes de código
 

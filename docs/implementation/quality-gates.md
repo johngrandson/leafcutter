@@ -6,17 +6,17 @@
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
-mix docs
 ```
 
 ## Quando disponíveis
 
 ```bash
+mix docs
 mix dialyzer
 mix credo --strict
 ```
 
-Dialyzer/Credo entram com configuração revisada. Não adicionar apenas para marcar uma caixa.
+`mix docs` exige `ex_doc` como dependency, ainda não adicionada. Dialyzer/Credo entram com configuração revisada. Não adicionar apenas para marcar uma caixa.
 
 ## Runtime
 
