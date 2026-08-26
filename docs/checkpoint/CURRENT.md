@@ -4,12 +4,11 @@
 
 ## Current phase
 
-**Runtime OTP foundation**
+**Organizations RBAC foundation**
 
-A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
-
-O primeiro recorte de domínio de `Organizations` foi concluído com
-`Organization` e `Environment` persistidos e lifecycle inicial completo.
+A infraestrutura compartilhada mínima de `leafcutter_core` está materializada e o
+trabalho atual está concentrado no primeiro modelo de autorização do context
+`Organizations`.
 
 ## Repository state
 
@@ -29,11 +28,169 @@ Estado atual:
 - `leafcutter_connectors` possui supervision tree vazia;
 - `leafcutter_runtime` possui supervision tree vazia;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
-- `Organizations` possui schemas e migrations para `Organization` e `Environment`;
-- `Organizations` expõe create/get/disable para organizations e environments;
-- testes de integração usam SQL Sandbox e cobrem constraints, concorrência entre
-  disable de organization e criação de environment e disables concorrentes de environment;
-- nenhum Run process, Broadway pipeline ou Registry foi criado.
+- migrations permanecem centralizadas em `apps/leafcutter_core/priv/repo/migrations/`;
+- nenhum Run process, Broadway pipeline ou runtime Registry foi criado.
+
+## Organizations implementation state
+
+Schemas persistidos/representados:
+
+```text
+Organization
+Environment
+User
+Membership
+Role
+RolePermission
+RoleAssignment
+```
+
+`Permission` é uma primitive conhecida em código e não possui tabela própria.
+
+Public surface implementada:
+
+```text
+Leafcutter.Organizations
+├── create/1
+├── get/1
+└── disable/1
+
+Leafcutter.Organizations.Environments
+├── create/1
+├── get/1
+└── disable/1
+
+Leafcutter.Organizations.Users
+├── create/1
+├── get/1
+└── disable/1
+
+Leafcutter.Organizations.Roles
+├── create/1
+├── get/1
+├── disable/1
+├── grant_permission/2
+└── revoke_permission/2
+
+Leafcutter.Organizations.Access
+├── add_member/1
+├── remove_member/2
+├── assign_role/1
+└── revoke_role/1
+```
+
+### Lifecycle baseline
+
+`Organization`, `Environment`, `User`, `Membership` e `Role` usam `disabled_at`.
+
+Operações de disable/remove são idempotentes e preservam o primeiro timestamp.
+
+Locks `FOR UPDATE` são usados quando uma decisão de lifecycle precisa permanecer
+válida até o commit.
+
+### Membership
+
+```text
+User
+  ↓
+Membership
+  ↓
+Organization
+```
+
+Um `User` possui identidade global da plataforma e participa de Organizations por
+`Membership`.
+
+Existe no máximo um Membership durável por `organization_id + user_id`.
+
+Membership desabilitado não é reativado implicitamente por `add_member/1`.
+
+### Permission e Role
+
+Permissions são atoms tipados no domínio e strings canônicas em persistence/external
+boundaries.
+
+Exemplo:
+
+```text
+:environment_read
+↔
+"environment.read"
+```
+
+`RolePermission` representa estado atual de permissions do Role:
+
+```text
+grant_permission
+→ INSERT
+
+revoke_permission
+→ DELETE
+```
+
+Histórico de mudanças de permission pertence futuramente a `AuditEvent`.
+
+### RoleAssignment
+
+Role é atribuído inicialmente a um `Membership`:
+
+```text
+Membership
+└── RoleAssignment
+    ├── role_id
+    └── environment_id | nil
+```
+
+Semântica:
+
+```text
+environment_id == nil
+→ assignment organization-wide
+
+environment_id != nil
+→ assignment restrito ao Environment
+```
+
+`RoleAssignment` não possui ID próprio nem lifecycle separado. Representa estado
+corrente de autorização:
+
+```text
+assign_role
+→ INSERT
+
+revoke_role
+→ DELETE
+```
+
+Invariantes de `assign_role/1`:
+
+- Organization do Membership deve existir e estar ativa;
+- Membership deve existir e estar ativo;
+- Role deve existir, estar ativo e pertencer à mesma Organization;
+- Environment opcional deve existir, estar ativo e pertencer à mesma Organization;
+- organization-wide e environment-scoped assignments podem coexistir;
+- o mesmo Role não pode ser duplicado no mesmo scope para o mesmo Membership.
+
+Revogação é idempotente e pode reduzir acesso mesmo quando os recursos relacionados
+já estão desabilitados.
+
+## Tests
+
+A suíte de `leafcutter_core` usa SQL Sandbox.
+
+A cobertura atual inclui, entre outros:
+
+- validação e constraints dos schemas de Organizations;
+- lifecycle idempotente;
+- criação de Environment apenas sob Organization ativa;
+- criação/remoção de Membership;
+- concorrência envolvendo lifecycle e membership creation/removal;
+- Role lifecycle;
+- grant/revoke de Permission;
+- RoleAssignment organization-wide e environment-scoped;
+- mismatch de Organization para Role/Environment;
+- duplicate assignment por scope;
+- revogação idempotente e scope-specific de RoleAssignment.
 
 ## Ratified Context Map
 
@@ -49,7 +206,7 @@ Notifications
 Audit
 ```
 
-Após a revisão conjunta, todos possuem zero dependências diretas de domínio entre si:
+Todos possuem zero dependências diretas de domínio entre si:
 
 ```text
 Organizations   → none
@@ -61,196 +218,26 @@ Notifications   → none
 Audit           → none
 ```
 
-Cross-context use cases são compostos por application workflow modules na OTP application que possui o use case.
+Cross-context use cases são compostos por application workflow modules na OTP
+application que possui o use case.
 
 Uma referência por ID não cria dependência de API entre contexts.
 
-## Context ownership consolidado
-
-### Organizations
-
-Owns:
-
-```text
-Organization
-Environment
-User
-ServiceAccount
-Membership
-Role
-Permission
-access grants / assignments
-```
-
-Autorização é aplicada na application/API boundary.
-
-### Catalog
-
-Owns:
-
-```text
-Connector metadata
-ConnectorVersion
-Operation metadata
-Contract
-ContractVersion
-Package
-PackageVersion
-publication / availability metadata
-```
-
-Ratificações importantes:
-
-- `Operation` pertence a `ConnectorVersion`; não existe `OperationVersion` inicialmente;
-- published `PackageVersion`, `ConnectorVersion` e `ContractVersion` são imutáveis;
-- `PackageDependency` removido do V1;
-- categorias são metadata, não entidade;
-- PackageVersion topológica inicial: exatamente 1 Source -> 1..N Destinations.
-
-### Connections
-
-Owns:
-
-```text
-Connection
-Secret
-SecretVersion
-auth configuration
-OAuth token / refresh durable state
-rotation metadata
-```
-
-`Connection` referencia Connector identity, não ConnectorVersion.
-
-### Integrations
-
-`Integration` é identidade lógica dentro de uma Organization e possui Package estável.
-
-A configuração executável environment-specific pertence a:
-
-```text
-EnvironmentDeployment
-```
-
-Existe um deployment lógico corrente por `Integration + Environment`.
-
-Ratificações importantes:
-
-- EnvironmentDeployment seleciona PackageVersion;
-- source/destination Connection bindings são environment-local;
-- Triggers são environment-local;
-- promotable config é separado de environment-local config;
-- HomologationRequest aprova state fingerprint específico;
-- Promotion não copia secrets, connections ou triggers;
-- Rollback é operação, não entidade inicial;
-- IdentityMapping pertence a Integrations e é scoped por EnvironmentDeployment + Destination.
-
-### Executions
-
-Owns:
-
-```text
-Run
-RunSnapshot
-Record
-Delivery
-Attempt
-Enrichment execution result/status
-Checkpoint
-ExecutionEvent
-durable ownership/fencing/recovery state
-```
-
-Runtime OTP infrastructure não pertence ao Context ownership.
-
-### Notifications
-
-Owns:
-
-```text
-NotificationRule
-Recipient
-NotificationDelivery
-```
-
-`NotificationChannel` e `NotificationAttempt` não são entidades iniciais.
-
-### Audit
-
-Owns `AuditEvent`, que é append-only e imutável.
-
-Audit é sink e não participa de decisões de negócio de outros contexts.
-
-## Cross-context durable facts
-
-Notifications e Audit consomem fatos duráveis self-contained.
-
-Quando a emissão do fato é obrigação do sistema, ele deve ser persistido atomicamente com a mudança de domínio que o originou.
-
-Não criar um Context `Events` ou `Outbox`.
-
-A implementação física do mecanismo ainda está aberta.
-
-`ExecutionEvent` continua restrito ao lifecycle de execução e não é event bus genérico.
-
 ## Ratified OTP application boundaries
 
-### `leafcutter_core`
-
-Hosts:
-
 ```text
-Organizations
-Catalog
-Connections
-Integrations
-Notifications
-Audit
-Leafcutter.Repo
-Leafcutter.PubSub
-Oban
-```
+leafcutter_core
+→ Organizations + Catalog + Connections + Integrations + Notifications + Audit
+→ Leafcutter.Repo + Leafcutter.PubSub + Oban
 
-### `leafcutter_connectors`
+leafcutter_connectors
+→ Connector / Operation / Transport runtime code
 
-Hosts:
+leafcutter_runtime
+→ Executions + runtime workflows + OTP runtime infrastructure
 
-```text
-Connector behaviours
-Operation behaviours
-Transport behaviours
-HTTP Transport
-Generic HTTP connector
-connector implementations
-shared transport infrastructure when needed
-```
-
-### `leafcutter_runtime`
-
-Hosts:
-
-```text
-Executions
-runtime application workflows
-Registry
-Run DynamicSupervisor
-NodeHeartbeat
-per-Run supervision trees
-Broadway data plane
-```
-
-### `leafcutter_api`
-
-Hosts:
-
-```text
-Phoenix Endpoint
-controllers / plugs
-API authentication
-authorization boundary
-OpenAPI
-health / readiness
-future inbound HTTP endpoints
+leafcutter_api
+→ Phoenix HTTP boundary + authentication/authorization boundary + OpenAPI
 ```
 
 ## Ratified app dependency graph
@@ -261,8 +248,6 @@ leafcutter_connectors → none
 leafcutter_runtime    → leafcutter_core + leafcutter_connectors
 leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
-
-Esse grafo já está materializado nos `mix.exs`.
 
 ## Shared infrastructure decisions
 
@@ -279,17 +264,11 @@ one Oban infrastructure
 → leafcutter_core
 ```
 
-Migrations serão centralizadas em:
-
-```text
-apps/leafcutter_core/priv/repo/migrations/
-```
-
-Mesmo tabelas owned por `Executions` usarão essa migration stream compartilhada.
+PostgreSQL continua sendo a autoridade durável.
 
 ## Runtime baseline
 
-Runtime supervision conceitual:
+Runtime supervision conceitual permanece ratificada, mas ainda não materializada:
 
 ```text
 LeafcutterRuntime.Application
@@ -298,44 +277,9 @@ LeafcutterRuntime.Application
 └── NodeHeartbeat
 ```
 
-Cada Run:
-
-```text
-Run Supervisor
-├── RunCoordinator
-├── SourceBroadway
-├── optional EnrichmentBroadway
-└── DestinationBroadway x N
-```
-
-Uma Run tree permanece em um único node inicialmente.
-
-PostgreSQL é autoridade durável para ownership/fencing.
+Cada Run futuramente possui subtree própria com `RunCoordinator` e Broadways.
 
 Sem `:global`, Horde ou fila externa inicialmente.
-
-## Data-plane baseline
-
-```text
-SourceBroadway
-→ fetch/decode/validate
-→ Record + N Delivery intents
-→ persist durable fan-out + checkpoint atomically
-
-DestinationBroadway
-→ claim pending Deliveries from PostgreSQL
-→ transform
-→ validate
-→ batch
-→ Connector/Operation/Transport
-→ persist Delivery + Attempt outcome
-```
-
-`Delivery` é a representação durável do trabalho.
-
-Não usar Oban ou external queue por Delivery inicialmente.
-
-Semântica base: at-least-once.
 
 ## Integration Packages
 
@@ -349,9 +293,8 @@ packages/<package>/
 └── test/
 ```
 
-Cada Package é um Mix project independente fora de `apps/`.
-
-Packages instalados serão compilados na mesma release inicial.
+Cada Package é um Mix project independente fora de `apps/` e será compilado na
+mesma release inicial.
 
 O mecanismo físico para incluí-los no build ainda está aberto.
 
@@ -363,13 +306,7 @@ Uma única release inicial:
 :leafcutter
 ```
 
-Todos os nodes executam a mesma release completa inicialmente:
-
-```text
-core + connectors + runtime + api + installed packages
-```
-
-Sem classes especializadas de node no V1.
+Todos os nodes executam a mesma release completa inicialmente.
 
 ## Completed milestones
 
@@ -397,36 +334,47 @@ Shared Repo + PubSub + Oban Foundation
 
 Organizations Organization + Environment Foundation
 → completed
+
+Organizations User + Membership Foundation
+→ completed
+
+Organizations Role + Permission Foundation
+→ completed
 ```
 
 ## In progress
 
-Preparar a infraestrutura OTP mínima de `leafcutter_runtime`.
+Completar a primeira foundation de RBAC de `Organizations`.
+
+O modelo de `RoleAssignment` organization-wide/environment-scoped está sendo
+materializado e testado.
 
 ## Next concrete task
 
-Materializar a supervision tree ratificada:
+Depois da ratificação/merge de `RoleAssignment`, definir a semântica de avaliação de
+autorização antes de implementar:
 
 ```text
-LeafcutterRuntime.Application
-├── Registry
-├── Run DynamicSupervisor
-└── NodeHeartbeat
+Organizations.Access.authorize(...)
 ```
 
-Ainda não criar Run processes ou pipelines Broadway nessa etapa.
+A próxima decisão deve esclarecer como organization-wide e environment-scoped
+assignments participam da resolução de Permission e como lifecycle de `User`,
+`Membership`, `Role` e `Environment` afeta a decisão.
 
-Cada mudança deve permanecer pequena e revisável em PR própria quando fizer sentido.
+`ServiceAccount` continua owned por Organizations, mas ainda não foi materializado.
 
 ## Open warnings
 
+- `Organizations.Access.authorize/…` ainda não foi implementado;
+- `ServiceAccount` ainda não foi materializado;
+- AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
 - JSON Schema definitivo de `manifest.json` ainda não foi fechado;
 - mecanismo físico de durable cross-context facts/outbox ainda não foi fechado;
 - mecanismo concreto de historical deployment state ainda não foi fechado;
 - cliente HTTP e pool strategy ainda não foram escolhidos;
-- configuração concreta de Oban queues/plugins ainda não foi escolhida;
-- endpoints, schemas, tabelas, campos e índices de domínio ainda não estão congelados.
+- endpoints, schemas, tabelas, campos e índices de outros contexts ainda não estão congelados.
 
 ## Relevant documents
 
@@ -437,3 +385,4 @@ Cada mudança deve permanecer pequena e revisável em PR própria quando fizer s
 - `docs/architecture/runtime-otp-broadway.md`
 - `docs/architecture/ambientes-rbac-homologacao.md`
 - `docs/architecture/observabilidade-e-auditoria.md`
+- `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
