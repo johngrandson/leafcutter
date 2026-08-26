@@ -94,6 +94,25 @@ Integrations.Triggers
 
 Não crie capability modules apenas para manter arquivos pequenos. Eles devem representar capacidades reais do domínio.
 
+### Organização física dos schemas Ecto
+
+Cada context deve concentrar seus schemas Ecto no diretório físico:
+
+```text
+lib/leafcutter/<context>/schemas/
+```
+
+O diretório `schemas/` organiza arquivos e não adiciona um segmento ao namespace
+do módulo. Por exemplo:
+
+```text
+lib/leafcutter/organizations/schemas/organization.ex
+→ Leafcutter.Organizations.Organization
+```
+
+Não usar `Leafcutter.Organizations.Schemas.Organization`. Facades, capability
+modules e outros módulos do context permanecem fora de `schemas/`.
+
 Nenhum context ou divisão de applications marcado como `PROPOSTA` na documentação deve ser tratado como definitivo antes de sua ratificação.
 
 ## Dependências
