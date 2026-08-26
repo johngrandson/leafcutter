@@ -8,10 +8,12 @@ defmodule LeafcutterRuntime.Application do
   @impl true
   @spec start(Application.start_type(), term()) :: Supervisor.on_start()
   def start(_type, _args) do
+    runtime_node_id = Ecto.UUID.generate()
+
     children = [
       {Registry, keys: :unique, name: LeafcutterRuntime.RunRegistry},
       RunDynamicSupervisor,
-      NodeHeartbeat
+      {NodeHeartbeat, %{runtime_node_id: runtime_node_id}}
     ]
 
     Supervisor.start_link(
