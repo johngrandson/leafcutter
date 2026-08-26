@@ -6,6 +6,12 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
   alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
   alias Leafcutter.Repo
 
+  @typep run_attrs :: %{
+           optional(:status) => Run.status(),
+           optional(:inserted_at) => DateTime.t(),
+           optional(:updated_at) => DateTime.t()
+         }
+
   setup do
     owner = Sandbox.start_owner!(Repo, shared: false)
     on_exit(fn -> Sandbox.stop_owner(owner) end)
@@ -58,7 +64,12 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
           {ownership_token.run_id, ownership_token}
         end)
 
-      assert Map.keys(tokens_by_run) |> MapSet.new() ==
+      claimed_run_ids =
+        tokens_by_run
+        |> Map.keys()
+        |> MapSet.new()
+
+      assert claimed_run_ids ==
                MapSet.new([unowned_run.id, stale_run.id])
 
       assert tokens_by_run[unowned_run.id].runtime_node_id == claimant.id
@@ -149,7 +160,7 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
     end
   end
 
-  @spec insert_run(map()) :: Run.t()
+  @spec insert_run(run_attrs()) :: Run.t()
   defp insert_run(attrs \\ %{}) do
     %Run{}
     |> Changeset.change(attrs)
