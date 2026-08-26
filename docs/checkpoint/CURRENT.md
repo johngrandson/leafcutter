@@ -4,13 +4,16 @@
 
 ## Current phase
 
-**Runtime OTP foundation**
+**Executions durable ownership foundation**
 
 A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
 A primeira foundation funcional de RBAC de `Organizations` está concluída para
 `User` e `ServiceAccount`, incluindo lifecycle, role assignments, permissions e
 avaliação de autorização em scope de Organization ou Environment.
+
+A infraestrutura OTP mínima de `leafcutter_runtime` também está materializada com
+Registry local, Run DynamicSupervisor e NodeHeartbeat Telemetry-only.
 
 ## Repository state
 
@@ -28,7 +31,11 @@ Estado atual:
 
 - `leafcutter_core` supervisiona `Leafcutter.Repo`, `Leafcutter.PubSub` e Oban;
 - `leafcutter_connectors` possui supervision tree vazia;
-- `leafcutter_runtime` possui supervision tree vazia;
+- `leafcutter_runtime` supervisiona `LeafcutterRuntime.RunRegistry`,
+  `LeafcutterRuntime.RunDynamicSupervisor` e `LeafcutterRuntime.NodeHeartbeat`;
+- `LeafcutterRuntime.RunRegistry` é local e usa keys `:unique`;
+- `LeafcutterRuntime.RunDynamicSupervisor` começa vazio e ainda não inicia árvores de Run;
+- `LeafcutterRuntime.NodeHeartbeat` emite Telemetry efêmero e ainda não persiste liveness/ownership;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
 - `Organizations` possui schemas/migrations para `Organization`, `Environment`,
   `User`, `ServiceAccount`, `Membership`, `Role`, `RolePermission`, `RoleAssignment`
@@ -44,7 +51,9 @@ Estado atual:
 - assignments organization-wide satisfazem checks em Environment; assignments environment-scoped não satisfazem checks organization-wide nem outros Environments;
 - testes de integração usam SQL Sandbox e cobrem constraints, lifecycle,
   concorrência e invariantes de RBAC já materializadas;
-- nenhum Run process, Broadway pipeline ou Registry foi criado.
+- testes de runtime cobrem startup da supervision tree, Registry unique/local,
+  DynamicSupervisor e emissão periódica do heartbeat Telemetry;
+- nenhum Run process ou Broadway pipeline foi criado.
 
 ## Ratified Context Map
 
@@ -300,16 +309,16 @@ Mesmo tabelas owned por `Executions` usarão essa migration stream compartilhada
 
 ## Runtime baseline
 
-Runtime supervision conceitual:
+Runtime supervision materializada:
 
 ```text
 LeafcutterRuntime.Application
-├── Registry
-├── Run DynamicSupervisor
-└── NodeHeartbeat
+├── LeafcutterRuntime.RunRegistry
+├── LeafcutterRuntime.RunDynamicSupervisor
+└── LeafcutterRuntime.NodeHeartbeat
 ```
 
-Cada Run:
+Cada Run evoluirá para:
 
 ```text
 Run Supervisor
@@ -322,6 +331,9 @@ Run Supervisor
 Uma Run tree permanece em um único node inicialmente.
 
 PostgreSQL é autoridade durável para ownership/fencing.
+
+`RunRegistry` é apenas local. `NodeHeartbeat` ainda é somente um sinal Telemetry
+efêmero e não substitui a representação durável de liveness prevista no ADR-0011.
 
 Sem `:global`, Horde ou fila externa inicialmente.
 
@@ -426,30 +438,35 @@ Organizations ServiceAccount RoleAssignment Foundation
 
 Organizations Authorization Evaluation Foundation
 → completed
+
+Runtime OTP Infrastructure Foundation
+→ completed
 ```
 
 ## In progress
 
-Preparar a infraestrutura OTP mínima de `leafcutter_runtime`.
+Preparar a foundation durável de ownership/fencing em `Executions` antes de iniciar
+árvores concretas de Run.
 
 ## Next concrete task
 
-Materializar a supervision tree já ratificada:
+Ratificar a menor representação persistida necessária para conectar o ADR-0011 ao runtime:
 
 ```text
-LeafcutterRuntime.Application
-├── Registry
-├── Run DynamicSupervisor
-└── NodeHeartbeat
+node heartbeat durável
++
+Run owner_node
++
+Run generation/fencing
 ```
 
-Nesta etapa ainda não criar Run processes, Broadway pipelines ou lógica de ownership/recovery.
-
-A primeira mudança deve apenas estabelecer os nomes/processos supervisionados mínimos e
-testes de startup/lifecycle que façam sentido.
+A próxima mudança deve definir primeiro schemas/campos/invariantes e transações de
+claim/recovery. Ainda não criar `RunSupervisor`, `RunCoordinator` ou Broadway antes
+dessa autoridade durável existir.
 
 ## Open warnings
 
+- heartbeat durável de node e ownership/generation de Run ainda não foram materializados;
 - autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
 - AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
@@ -470,3 +487,5 @@ testes de startup/lifecycle que façam sentido.
 - `docs/architecture/ambientes-rbac-homologacao.md`
 - `docs/architecture/observabilidade-e-auditoria.md`
 - `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
+- `docs/decisions/ADR-0004-estado-operacional-e-duravel.md`
+- `docs/decisions/ADR-0011-run-ownership-fencing.md`

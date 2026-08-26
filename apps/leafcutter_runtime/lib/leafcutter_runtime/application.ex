@@ -1,20 +1,23 @@
 defmodule LeafcutterRuntime.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
 
   use Application
 
+  alias LeafcutterRuntime.{NodeHeartbeat, RunDynamicSupervisor}
+
   @impl true
+  @spec start(Application.start_type(), term()) :: Supervisor.on_start()
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: LeafcutterRuntime.Worker.start_link(arg)
-      # {LeafcutterRuntime.Worker, arg}
+      {Registry, keys: :unique, name: LeafcutterRuntime.RunRegistry},
+      RunDynamicSupervisor,
+      NodeHeartbeat
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: LeafcutterRuntime.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(
+      children,
+      strategy: :one_for_one,
+      name: LeafcutterRuntime.Supervisor
+    )
   end
 end
