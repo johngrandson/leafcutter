@@ -37,6 +37,8 @@ defmodule LeafcutterApi.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:leafcutter_core, in_umbrella: true},
+      {:leafcutter_runtime, in_umbrella: true},
       {:phoenix, "~> 1.8.9"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
