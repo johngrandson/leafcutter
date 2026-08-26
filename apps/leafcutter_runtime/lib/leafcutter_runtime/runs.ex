@@ -263,6 +263,12 @@ defmodule LeafcutterRuntime.Runs do
       {:ok, run_supervisor_pid} ->
         {:ok, run_supervisor_pid}
 
+      {:ok, run_supervisor_pid, _info} ->
+        {:ok, run_supervisor_pid}
+
+      :ignore ->
+        reconcile_start_failure(ownership_token, :ignore)
+
       {:error, {:already_started, _run_supervisor_pid}} ->
         ensure_local_tree(ownership_token, attempts_remaining - 1)
 
