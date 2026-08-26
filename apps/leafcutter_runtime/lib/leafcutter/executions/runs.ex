@@ -249,9 +249,7 @@ defmodule Leafcutter.Executions.Runs do
     }
   end
 
-  @spec runtime_node_id_active?(RuntimeNode.id() | nil, DateTime.t()) :: boolean()
-  defp runtime_node_id_active?(nil, _database_now), do: false
-
+  @spec runtime_node_id_active?(RuntimeNode.id(), DateTime.t()) :: boolean()
   defp runtime_node_id_active?(runtime_node_id, database_now) do
     case Repo.get(RuntimeNode, runtime_node_id) do
       %RuntimeNode{} = runtime_node -> runtime_node_active?(runtime_node, database_now)
