@@ -27,15 +27,64 @@ operacional dentro do node e não representa ownership distribuído.
 `RunDynamicSupervisor` começa vazio e somente receberá árvores de Run depois que
 ownership, generation/fencing e lifecycle durável estiverem materializados.
 
-`NodeHeartbeat` inicialmente emite apenas Telemetry efêmero:
+## Liveness durável de runtime nodes
+
+Cada inicialização da application `leafcutter_runtime` gera um UUID que representa
+uma incarnação específica do runtime:
+
+```text
+application start
+→ runtime_node_id novo
+
+NodeHeartbeat restart
+→ preserva runtime_node_id
+
+application / BEAM restart
+→ runtime_node_id novo
+```
+
+A persistência pertence ao Context `Executions`:
+
+```text
+LeafcutterRuntime.NodeHeartbeat
+        ↓
+Leafcutter.Executions.Nodes.heartbeat/2
+        ↓
+runtime_nodes
+```
+
+`runtime_nodes` armazena:
+
+```text
+id
+node_name
+last_heartbeat_at
+inserted_at
+updated_at
+```
+
+`id` é a identidade da incarnação. `node_name` registra `node()` apenas como
+metadata e deliberadamente não é único. Uma nova incarnação pode reutilizar o
+mesmo nome sem reviver ownership pertencente a um processo antigo.
+
+O heartbeat segue esta ordem:
+
+```text
+persistir last_heartbeat_at no PostgreSQL
+→ emitir Telemetry efêmero
+→ agendar próxima tentativa
+```
+
+Evento mantido:
 
 ```text
 [:leafcutter, :runtime, :node, :heartbeat]
 ```
 
-Esse heartbeat não é autoridade de liveness ou ownership. A representação durável
-de heartbeat por node será adicionada junto do modelo de ownership/fencing em
-`Executions`, mantendo PostgreSQL como autoridade conforme ADR-0004 e ADR-0011.
+Falhas temporárias de persistência são registradas e tentadas novamente no próximo
+intervalo sem colocar o `NodeHeartbeat` em crash loop. O heartbeat ainda não concede,
+renova ou recupera ownership de Run; essa responsabilidade entra com `owner_node_id`
+e `generation`.
 
 ## Run supervision tree
 

@@ -4,16 +4,14 @@
 
 ## Current phase
 
-**Executions durable ownership foundation**
-
-A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
+**Runtime ownership foundation**
 
 A primeira foundation funcional de RBAC de `Organizations` está concluída para
-`User` e `ServiceAccount`, incluindo lifecycle, role assignments, permissions e
-avaliação de autorização em scope de Organization ou Environment.
+`User` e `ServiceAccount`.
 
-A infraestrutura OTP mínima de `leafcutter_runtime` também está materializada com
-Registry local, Run DynamicSupervisor e NodeHeartbeat Telemetry-only.
+A infraestrutura OTP mínima de `leafcutter_runtime` está materializada e o
+heartbeat por incarnação de runtime agora possui representação durável em
+PostgreSQL.
 
 ## Repository state
 
@@ -33,27 +31,28 @@ Estado atual:
 - `leafcutter_connectors` possui supervision tree vazia;
 - `leafcutter_runtime` supervisiona `LeafcutterRuntime.RunRegistry`,
   `LeafcutterRuntime.RunDynamicSupervisor` e `LeafcutterRuntime.NodeHeartbeat`;
-- `LeafcutterRuntime.RunRegistry` é local e usa keys `:unique`;
-- `LeafcutterRuntime.RunDynamicSupervisor` começa vazio e ainda não inicia árvores de Run;
-- `LeafcutterRuntime.NodeHeartbeat` emite Telemetry efêmero e ainda não persiste liveness/ownership;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
 - `Organizations` possui schemas/migrations para `Organization`, `Environment`,
   `User`, `ServiceAccount`, `Membership`, `Role`, `RolePermission`, `RoleAssignment`
   e `ServiceAccountRoleAssignment`;
 - `Permission` é primitive conhecida em código, sem tabela própria;
-- `Organizations` expõe lifecycle de organizations, environments, users, service accounts e roles;
 - `Organizations.Access` expõe membership, role assignment para usuários e `authorize/3`;
 - `Organizations.Access.ServiceAccounts` expõe role assignment para service accounts;
 - `Organizations.Roles` expõe grant/revoke de permissions;
-- `ServiceAccount` é scoped diretamente por Organization, sem Membership e sem credenciais concretas;
-- User e ServiceAccount possuem modelos de Role assignment separados, ambos com scope organization-wide ou Environment;
-- authorization usa actor tuples (`{:user, id}` / `{:service_account, id}`) e scope tuples (`{:organization, id}` / `{:environment, id}`), sem `Principal` persistido;
-- assignments organization-wide satisfazem checks em Environment; assignments environment-scoped não satisfazem checks organization-wide nem outros Environments;
-- testes de integração usam SQL Sandbox e cobrem constraints, lifecycle,
-  concorrência e invariantes de RBAC já materializadas;
-- testes de runtime cobrem startup da supervision tree, Registry unique/local,
-  DynamicSupervisor e emissão periódica do heartbeat Telemetry;
-- nenhum Run process ou Broadway pipeline foi criado.
+- authorization usa actor tuples (`{:user, id}` / `{:service_account, id}`) e
+  scope tuples (`{:organization, id}` / `{:environment, id}`), sem `Principal` persistido;
+- assignments organization-wide satisfazem checks em Environment; assignments
+  environment-scoped não satisfazem checks organization-wide nem outros Environments;
+- `Executions` possui `RuntimeNode` e `Executions.Nodes.heartbeat/2` para liveness durável;
+- `RuntimeNode.id` identifica uma incarnação específica da application runtime;
+- `node_name` é metadata reutilizável e deliberadamente não possui unicidade;
+- reiniciar apenas `NodeHeartbeat` preserva o `runtime_node_id`; reiniciar a
+  application/BEAM gera outro identificador;
+- `NodeHeartbeat` persiste liveness antes de emitir Telemetry e continua tentando
+  após falhas temporárias de banco sem entrar em crash loop;
+- testes usam SQL Sandbox e cobrem constraints, lifecycle, concorrência, RBAC,
+  supervision e heartbeat durável já materializados;
+- nenhum Run process, Run ownership claim, generation/fencing ou Broadway pipeline foi criado.
 
 ## Ratified Context Map
 
@@ -170,6 +169,7 @@ Ratificações importantes:
 Owns:
 
 ```text
+RuntimeNode
 Run
 RunSnapshot
 Record
@@ -299,17 +299,18 @@ one Oban infrastructure
 → leafcutter_core
 ```
 
-Migrations serão centralizadas em:
+Migrations são centralizadas em:
 
 ```text
 apps/leafcutter_core/priv/repo/migrations/
 ```
 
-Mesmo tabelas owned por `Executions` usarão essa migration stream compartilhada.
+Isso inclui tabelas owned por `Executions` em `leafcutter_runtime`, como
+`runtime_nodes`.
 
 ## Runtime baseline
 
-Runtime supervision materializada:
+Supervision tree materializada:
 
 ```text
 LeafcutterRuntime.Application
@@ -318,7 +319,20 @@ LeafcutterRuntime.Application
 └── LeafcutterRuntime.NodeHeartbeat
 ```
 
-Cada Run evoluirá para:
+`RunRegistry` é local e possui keys `:unique`.
+
+`RunDynamicSupervisor` permanece vazio até existir ownership durável de Run.
+
+`NodeHeartbeat` usa um UUID por incarnação e atualiza:
+
+```text
+runtime_nodes.last_heartbeat_at
+```
+
+A mesma application identity sobrevive a restart isolado do heartbeat. Uma nova
+application identity é criada após restart da application ou do BEAM.
+
+Runtime supervision conceitual futura por Run:
 
 ```text
 Run Supervisor
@@ -330,10 +344,7 @@ Run Supervisor
 
 Uma Run tree permanece em um único node inicialmente.
 
-PostgreSQL é autoridade durável para ownership/fencing.
-
-`RunRegistry` é apenas local. `NodeHeartbeat` ainda é somente um sinal Telemetry
-efêmero e não substitui a representação durável de liveness prevista no ADR-0011.
+PostgreSQL é autoridade durável para liveness, ownership e fencing.
 
 Sem `:global`, Horde ou fila externa inicialmente.
 
@@ -439,34 +450,47 @@ Organizations ServiceAccount RoleAssignment Foundation
 Organizations Authorization Evaluation Foundation
 → completed
 
-Runtime OTP Infrastructure Foundation
+Runtime OTP Supervision Foundation
+→ completed
+
+Durable Runtime Node Liveness Foundation
 → completed
 ```
 
 ## In progress
 
-Preparar a foundation durável de ownership/fencing em `Executions` antes de iniciar
-árvores concretas de Run.
+Preparar o modelo durável mínimo de Run ownership e fencing.
 
 ## Next concrete task
 
-Ratificar a menor representação persistida necessária para conectar o ADR-0011 ao runtime:
+Ratificar e materializar o primeiro schema de `Run` com os campos mínimos necessários
+para ownership:
 
 ```text
-node heartbeat durável
-+
-Run owner_node
-+
-Run generation/fencing
+owner_node_id
+→ runtime_nodes.id | nil
+
+generation
+→ monotonic fencing token
 ```
 
-A próxima mudança deve definir primeiro schemas/campos/invariantes e transações de
-claim/recovery. Ainda não criar `RunSupervisor`, `RunCoordinator` ou Broadway antes
-dessa autoridade durável existir.
+A próxima decisão deve fechar:
+
+- estado mínimo de lifecycle de Run necessário para claim;
+- timeout que torna um `RuntimeNode` expirado;
+- operação atômica de claim/reclaim;
+- incremento de `generation` durante cada nova posse;
+- contrato usado para rejeitar escritas de stale owners;
+- quando ownership pode ser liberado explicitamente.
+
+Ainda não criar `RunSupervisor`, `RunCoordinator` ou Broadway antes dessa authority
+durável existir.
 
 ## Open warnings
 
-- heartbeat durável de node e ownership/generation de Run ainda não foram materializados;
+- Run schema, ownership claim e generation/fencing ainda não foram materializados;
+- timeout de expiração de runtime node ainda não foi fechado;
+- política de retenção/cleanup de incarnações antigas ainda não foi fechada;
 - autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
 - AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
