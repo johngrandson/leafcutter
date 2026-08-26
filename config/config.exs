@@ -46,7 +46,17 @@ config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
   interval: 15_000,
   mode: :durable
 
-config :leafcutter_runtime, Leafcutter.Executions.Runs, runtime_node_stale_after_ms: 45_000
+config :leafcutter_runtime, Leafcutter.Executions.Runs,
+  runtime_node_stale_after_ms: 45_000
+
+config :leafcutter_runtime, LeafcutterRuntime.RunRecovery,
+  enabled: true,
+  initial_delay: 1_000,
+  scan_interval: 5_000,
+  batch_size: 25,
+  drain_delay: 100,
+  initial_backoff: 1_000,
+  max_backoff: 30_000
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
