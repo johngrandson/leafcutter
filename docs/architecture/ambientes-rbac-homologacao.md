@@ -225,4 +225,69 @@ intencional: preserva FKs e tipos explícitos sem introduzir um `Principal` poli
 
 ## Autorização
 
+A API pública de decisão é:
+
+```elixir
+Organizations.Access.authorize(actor, permission, scope)
+```
+
+O contrato de ator não cria entidade persistida `Principal`:
+
+```text
+{:user, user_id}
+{:service_account, service_account_id}
+```
+
+O contrato de scope é explícito:
+
+```text
+{:organization, organization_id}
+{:environment, environment_id}
+```
+
+Semântica de herança:
+
+```text
+Role assignment organization-wide
+→ satisfaz checks na Organization
+→ também satisfaz checks em qualquer Environment ativo daquela Organization
+
+Role assignment environment-scoped
+→ satisfaz somente checks naquele Environment
+→ não satisfaz check organization-wide
+→ não satisfaz outro Environment
+```
+
+Para um `User`, autorização exige:
+
+- User existente e ativo;
+- Membership existente e ativo na Organization resolvida pelo scope.
+
+Para um `ServiceAccount`, autorização exige:
+
+- ServiceAccount existente e ativo;
+- ServiceAccount pertencente à Organization resolvida pelo scope.
+
+Para ambos:
+
+- Organization deve existir e estar ativa;
+- Environment, quando usado como scope, deve existir e estar ativo;
+- somente Roles ativos participam da decisão;
+- a Permission precisa continuar concedida ao Role;
+- assignment revogado deixa de participar imediatamente da decisão.
+
+Quando ator e scope são válidos, mas nenhum Role aplicável concede a Permission:
+
+```text
+{:error, :permission_denied}
+```
+
+Erros de lifecycle e de resolução permanecem explícitos na API interna do domínio,
+como `:user_disabled`, `:membership_not_found`, `:service_account_disabled` e
+`:environment_disabled`. A camada HTTP decide posteriormente quanto desse detalhe é
+exposto externamente.
+
+A autorização é uma leitura point-in-time. Ela não substitui invariantes do domínio
+na operação privilegiada que efetivamente altera estado.
+
 Controllers/plugs fazem checagem na borda, mas operações de domínio privilegiadas também devem exigir actor/scope explícitos. Não depender somente de `require_admin` no controller.

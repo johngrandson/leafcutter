@@ -61,6 +61,122 @@ defmodule Leafcutter.Organizations.Access do
           | :role_already_assigned
           | Ecto.Changeset.t()
 
+  @typedoc """
+  An authorization actor.
+
+  Users are represented directly by user identifier and resolved through an
+  active membership for the requested organization. Service accounts are
+  organization-scoped actors and do not use Membership.
+  """
+  @type actor ::
+          {:user, User.id()}
+          | {:service_account, Leafcutter.Organizations.ServiceAccount.id()}
+
+  @typedoc """
+  The scope in which a permission is evaluated.
+
+  Organization scope accepts only organization-wide role assignments.
+  Environment scope accepts both organization-wide assignments and assignments
+  for that exact environment.
+  """
+  @type scope ::
+          {:organization, Organization.id()}
+          | {:environment, Environment.id()}
+
+  @typedoc """
+  Error returned when an authorization decision cannot allow access.
+  """
+  @type authorization_error ::
+          :organization_not_found
+          | :organization_disabled
+          | :environment_not_found
+          | :environment_disabled
+          | :user_not_found
+          | :user_disabled
+          | :membership_not_found
+          | :membership_disabled
+          | :service_account_not_found
+          | :service_account_disabled
+          | :service_account_organization_mismatch
+          | :permission_denied
+
+  @doc """
+  Authorizes an actor for a permission within an organization or environment scope.
+
+  ## Parameters
+
+  * `actor` - The user or service account requesting access
+  * `permission` - The typed domain permission being evaluated
+  * `scope` - The organization or environment in which access is requested
+
+  ## Returns
+
+  * `:ok` when an active applicable role grants the requested permission
+  * `{:error, :organization_not_found}` when the organization scope does not exist
+  * `{:error, :organization_disabled}` when the organization is disabled
+  * `{:error, :environment_not_found}` when the environment scope does not exist
+  * `{:error, :environment_disabled}` when the environment is disabled
+  * `{:error, :user_not_found}` when the requested user does not exist
+  * `{:error, :user_disabled}` when the requested user is disabled
+  * `{:error, :membership_not_found}` when the user is not a member of the organization
+  * `{:error, :membership_disabled}` when the user's membership is disabled
+  * `{:error, :service_account_not_found}` when the service account does not exist
+  * `{:error, :service_account_disabled}` when the service account is disabled
+  * `{:error, :service_account_organization_mismatch}` when the service account belongs to another organization
+  * `{:error, :permission_denied}` when no active applicable role grants the permission
+
+  ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{name: "Authorization Example"})
+
+      iex> {:ok, user} =
+      ...>   Leafcutter.Organizations.Users.create(%{email: "authorize@example.com"})
+
+      iex> {:ok, membership} =
+      ...>   Leafcutter.Organizations.Access.add_member(%{
+      ...>     organization_id: organization.id,
+      ...>     user_id: user.id
+      ...>   })
+
+      iex> {:ok, role} =
+      ...>   Leafcutter.Organizations.Roles.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "reader"
+      ...>   })
+
+      iex> {:ok, _permission} =
+      ...>   Leafcutter.Organizations.Roles.grant_permission(role.id, :organization_read)
+
+      iex> {:ok, _assignment} =
+      ...>   Leafcutter.Organizations.Access.assign_role(%{
+      ...>     membership_id: membership.id,
+      ...>     role_id: role.id
+      ...>   })
+
+      iex> Leafcutter.Organizations.Access.authorize(
+      ...>   {:user, user.id},
+      ...>   :organization_read,
+      ...>   {:organization, organization.id}
+      ...> )
+      :ok
+
+  ## Notes
+
+  * Organization-wide assignments also satisfy permission checks in any active
+    environment that belongs to that organization.
+  * Environment-scoped assignments satisfy only checks for that exact environment.
+  * Environment-scoped assignments never satisfy organization-wide checks.
+  * Disabled roles and revoked permissions or assignments do not grant access.
+  * Authorization is a point-in-time read. Domain invariants for privileged
+    operations must still be enforced by the operation that performs the write.
+  """
+  @spec authorize(actor(), Leafcutter.Organizations.Permission.t(), scope()) ::
+          :ok | {:error, authorization_error()}
+  def authorize(actor, permission, scope) do
+    Leafcutter.Organizations.Access.Authorization.authorize(actor, permission, scope)
+  end
+
   @doc """
   Adds a user as a member of an active organization.
 

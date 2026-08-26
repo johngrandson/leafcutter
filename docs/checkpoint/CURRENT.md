@@ -4,13 +4,13 @@
 
 ## Current phase
 
-**Organizations RBAC foundation**
+**Runtime OTP foundation**
 
 A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
-O primeiro recorte de domínio de `Organizations` evoluiu de `Organization` e
-`Environment` para `User`, `ServiceAccount`, `Membership`, `Role`, `Permission`,
-`RoleAssignment` e `ServiceAccountRoleAssignment`.
+A primeira foundation funcional de RBAC de `Organizations` está concluída para
+`User` e `ServiceAccount`, incluindo lifecycle, role assignments, permissions e
+avaliação de autorização em scope de Organization ou Environment.
 
 ## Repository state
 
@@ -35,11 +35,13 @@ Estado atual:
   e `ServiceAccountRoleAssignment`;
 - `Permission` é primitive conhecida em código, sem tabela própria;
 - `Organizations` expõe lifecycle de organizations, environments, users, service accounts e roles;
-- `Organizations.Access` expõe membership e role assignment para usuários;
+- `Organizations.Access` expõe membership, role assignment para usuários e `authorize/3`;
 - `Organizations.Access.ServiceAccounts` expõe role assignment para service accounts;
 - `Organizations.Roles` expõe grant/revoke de permissions;
 - `ServiceAccount` é scoped diretamente por Organization, sem Membership e sem credenciais concretas;
 - User e ServiceAccount possuem modelos de Role assignment separados, ambos com scope organization-wide ou Environment;
+- authorization usa actor tuples (`{:user, id}` / `{:service_account, id}`) e scope tuples (`{:organization, id}` / `{:environment, id}`), sem `Principal` persistido;
+- assignments organization-wide satisfazem checks em Environment; assignments environment-scoped não satisfazem checks organization-wide nem outros Environments;
 - testes de integração usam SQL Sandbox e cobrem constraints, lifecycle,
   concorrência e invariantes de RBAC já materializadas;
 - nenhum Run process, Broadway pipeline ou Registry foi criado.
@@ -421,44 +423,33 @@ Organizations ServiceAccount Identity Foundation
 
 Organizations ServiceAccount RoleAssignment Foundation
 → completed
+
+Organizations Authorization Evaluation Foundation
+→ completed
 ```
 
 ## In progress
 
-Fechar a semântica de avaliação do RBAC de `Organizations`.
-
-Os dois tipos de ator agora possuem representação de Role assignment:
-
-```text
-User
-└── Membership
-    └── RoleAssignment
-
-ServiceAccount
-└── ServiceAccountRoleAssignment
-```
-
-Ambos suportam scope organization-wide e Environment-scoped sem polimorfismo.
+Preparar a infraestrutura OTP mínima de `leafcutter_runtime`.
 
 ## Next concrete task
 
-Definir e ratificar a semântica de avaliação antes de implementar:
+Materializar a supervision tree já ratificada:
 
 ```text
-Organizations.Access.authorize(...)
+LeafcutterRuntime.Application
+├── Registry
+├── Run DynamicSupervisor
+└── NodeHeartbeat
 ```
 
-A decisão deve esclarecer:
+Nesta etapa ainda não criar Run processes, Broadway pipelines ou lógica de ownership/recovery.
 
-- como representar o ator no contrato público sem criar `Principal` persistido;
-- como assignments organization-wide e environment-scoped participam da resolução;
-- se permission organization-wide satisfaz uma checagem em Environment;
-- como lifecycle de Organization, Environment, User/ServiceAccount, Membership e Role afeta autorização;
-- formato de retorno de allow/deny e razões de deny.
+A primeira mudança deve apenas estabelecer os nomes/processos supervisionados mínimos e
+testes de startup/lifecycle que façam sentido.
 
 ## Open warnings
 
-- `Organizations.Access.authorize/…` ainda não foi implementado;
 - autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
 - AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
