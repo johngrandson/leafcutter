@@ -59,21 +59,11 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Examples
 
-      iex> runtime_node_id = Ecto.UUID.generate()
-
-      iex> {:ok, _runtime_node} =
-      ...>   Leafcutter.Executions.Nodes.heartbeat(
-      ...>     runtime_node_id,
-      ...>     "leafcutter@example"
-      ...>   )
-
-      iex> run = Leafcutter.Repo.insert!(%Leafcutter.Executions.Run{})
-
-      iex> {:ok, ownership_token} =
-      ...>   Leafcutter.Executions.Runs.claim(run.id, runtime_node_id)
-
-      iex> ownership_token.generation
-      1
+      iex> Leafcutter.Executions.Runs.claim(
+      ...>   "00000000-0000-0000-0000-000000000000",
+      ...>   Ecto.UUID.generate()
+      ...> )
+      {:error, :run_not_found}
 
   ## Notes
 
@@ -84,6 +74,7 @@ defmodule Leafcutter.Executions.Runs do
   * Another active owner prevents the claim.
   * Runtime liveness and ownership timestamps use the PostgreSQL clock.
   * The Run row is locked while claimability and current ownership are evaluated.
+  * Public Run creation remains deferred until executable definition and RunSnapshot are ratified.
   """
   @spec claim(Run.id(), RuntimeNode.id()) ::
           {:ok, ownership_token()} | {:error, claim_error()}
@@ -113,18 +104,12 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Examples
 
-      iex> runtime_node_id = Ecto.UUID.generate()
-
-      iex> {:ok, _runtime_node} =
-      ...>   Leafcutter.Executions.Nodes.heartbeat(
-      ...>     runtime_node_id,
-      ...>     "leafcutter@example"
-      ...>   )
-
-      iex> run = Leafcutter.Repo.insert!(%Leafcutter.Executions.Run{})
-      iex> {:ok, ownership_token} = Leafcutter.Executions.Runs.claim(run.id, runtime_node_id)
-      iex> Leafcutter.Executions.Runs.release(ownership_token)
-      :ok
+      iex> Leafcutter.Executions.Runs.release(%{
+      ...>   run_id: "00000000-0000-0000-0000-000000000000",
+      ...>   runtime_node_id: Ecto.UUID.generate(),
+      ...>   generation: 1
+      ...> })
+      {:error, :run_not_found}
 
   ## Notes
 
@@ -255,7 +240,8 @@ defmodule Leafcutter.Executions.Runs do
          owner_node_id: runtime_node_id,
          generation: generation
        })
-       when is_binary(run_id) and is_binary(runtime_node_id) and generation > 0 do
+       when is_binary(run_id) and is_binary(runtime_node_id) and
+              is_integer(generation) and generation > 0 do
     %{
       run_id: run_id,
       runtime_node_id: runtime_node_id,
