@@ -59,6 +59,7 @@ defmodule LeafcutterRuntime.Runs do
   * Durable claim always happens before local process startup.
   * Repeating startup for the same local generation is idempotent.
   * A locally registered older generation is terminated before the current token starts.
+  * A failed durable claim removes any local tree that can no longer prove ownership.
   * Failed startup releases the claimed token unless another matching local tree won the race.
   * This workflow does not create Runs or perform automatic recovery scanning.
   """
@@ -71,6 +72,7 @@ defmodule LeafcutterRuntime.Runs do
         ensure_local_tree(ownership_token)
 
       {:error, reason} ->
+        terminate_registered_tree(run_id)
         {:error, reason}
     end
   end
@@ -313,6 +315,17 @@ defmodule LeafcutterRuntime.Runs do
                release_error
              }}
         end
+    end
+  end
+
+  @spec terminate_registered_tree(Run.id()) :: :ok
+  defp terminate_registered_tree(run_id) do
+    case lookup(run_id) do
+      {:ok, %{run_supervisor_pid: run_supervisor_pid}} ->
+        terminate_local_tree(run_supervisor_pid)
+
+      :error ->
+        :ok
     end
   end
 
