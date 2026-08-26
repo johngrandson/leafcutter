@@ -6,6 +6,13 @@ defmodule Leafcutter.Executions.RunsTest do
   alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
   alias Leafcutter.Repo
 
+  @type run_fixture_attrs :: %{
+          optional(:status) => Run.status(),
+          optional(:owner_node_id) => RuntimeNode.id(),
+          optional(:generation) => integer(),
+          optional(:ownership_acquired_at) => DateTime.t()
+        }
+
   setup do
     owner = Sandbox.start_owner!(Repo, shared: false)
     on_exit(fn -> Sandbox.stop_owner(owner) end)
@@ -168,20 +175,19 @@ defmodule Leafcutter.Executions.RunsTest do
 
   describe "database constraints" do
     test "rejects a negative generation" do
-      changeset =
-        %Run{}
-        |> constrained_changeset(%{generation: -1})
+      changeset = constrained_changeset(%Run{}, %{generation: -1})
 
       assert {:error, changeset} = Repo.insert(changeset)
-      assert {:generation, {_message, _options}} = List.keyfind(changeset.errors, :generation, 0)
+
+      assert {:generation, {_message, _options}} =
+               List.keyfind(changeset.errors, :generation, 0)
     end
 
     test "requires ownership identifier and acquisition timestamp to change together" do
       runtime_node = create_active_runtime_node("ownership-constraint")
 
       changeset =
-        %Run{}
-        |> constrained_changeset(%{
+        constrained_changeset(%Run{}, %{
           status: :running,
           owner_node_id: runtime_node.id,
           generation: 1
@@ -195,8 +201,7 @@ defmodule Leafcutter.Executions.RunsTest do
 
     test "maps an owner node foreign key violation to the changeset" do
       changeset =
-        %Run{}
-        |> constrained_changeset(%{
+        constrained_changeset(%Run{}, %{
           status: :running,
           owner_node_id: "00000000-0000-0000-0000-000000000000",
           generation: 1,
@@ -210,7 +215,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
   end
 
-  @spec insert_run(map()) :: Run.t()
+  @spec insert_run(run_fixture_attrs()) :: Run.t()
   defp insert_run(attrs \\ %{}) do
     %Run{}
     |> Changeset.change(attrs)
@@ -231,15 +236,17 @@ defmodule Leafcutter.Executions.RunsTest do
   end
 
   @spec expire_runtime_node(RuntimeNode.t()) :: RuntimeNode.t()
-  defp expire_runtime_node(runtime_node) do
-    expired_at = DateTime.add(runtime_node.last_heartbeat_at, -60, :second)
+  defp expire_runtime_node(
+         %RuntimeNode{last_heartbeat_at: %DateTime{} = last_heartbeat_at} = runtime_node
+       ) do
+    expired_at = DateTime.add(last_heartbeat_at, -60, :second)
 
     runtime_node
     |> Changeset.change(last_heartbeat_at: expired_at)
     |> Repo.update!()
   end
 
-  @spec constrained_changeset(Run.t(), map()) :: Changeset.t()
+  @spec constrained_changeset(Run.t(), run_fixture_attrs()) :: Changeset.t()
   defp constrained_changeset(run, attrs) do
     run
     |> Changeset.change(attrs)
