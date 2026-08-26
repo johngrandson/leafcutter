@@ -1,10 +1,10 @@
 # Contextos e ownership
 
-> **Status: CONTEXT MAP RATIFICADO.** Todos os contexts propostos passaram pela primeira rodada de ratificação individual. O próximo passo é revisar o mapa completo em conjunto antes de definir as boundaries das OTP applications.
+> **Status: RATIFICADO APÓS REVISÃO CONJUNTA.** Este documento descreve o Context Map consolidado do Leafcutter. As boundaries abaixo substituem as dependências propostas durante a primeira rodada individual.
 
 ## Regra estrutural
 
-Cada context possui:
+Cada context pode expor:
 
 ```text
 root facade
@@ -17,10 +17,6 @@ internal modules
 → implementação não consumida por outros contexts
 ```
 
-Schemas e queries pertencem ao context que controla o dado.
-
-Outros contexts utilizam somente APIs públicas.
-
 Ownership conceitual não implica automaticamente:
 
 ```text
@@ -30,9 +26,78 @@ um processo OTP
 um supervisor próprio
 ```
 
-Toda OTP application do Leafcutter deve possuir árvore de supervisão desde sua criação.
+Schemas, queries e regras de negócio pertencem ao context que controla aquele dado.
 
-Um context recebe uma subtree própria quando possuir processos com lifecycle, estado temporal, concorrência, coordenação ou isolamento de falha que justifiquem isso.
+Outros contexts não acessam internals diretamente.
+
+## Regra de dependência entre contexts
+
+Após a revisão conjunta, os sete contexts de domínio possuem **zero dependências diretas entre si**:
+
+```text
+Organizations   → none
+Catalog         → none
+Connections     → none
+Integrations    → none
+Executions      → none
+Notifications   → none
+Audit           → none
+```
+
+Isso não impede entidades de carregarem referências como:
+
+```text
+organization_id
+environment_id
+package_id
+connection_id
+integration_id
+```
+
+Também não decide antecipadamente se haverá foreign keys físicas entre tabelas.
+
+Uma referência por ID não cria dependência de API entre contexts.
+
+## Composição cross-context
+
+Use cases que precisam combinar mais de um context são coordenados por **application workflow modules** dentro da OTP application que possui aquele use case.
+
+Exemplos:
+
+```text
+leafcutter_core workflow
+→ Catalog + Connections + Integrations
+
+leafcutter_runtime workflow
+→ Integrations + Connections + Executions + connector runtime
+
+leafcutter_api
+→ autentica / autoriza / adapta HTTP
+→ chama workflow ou API pública
+```
+
+Não criar por antecipação:
+
+```text
+ApplicationService
+WorkflowEngine
+CommandBus
+CrossContextService
+```
+
+## Autorização
+
+A autorização ocorre na application/API boundary antes de operações privilegiadas.
+
+```text
+request
+→ Organizations.Access.authorize(...)
+→ domain workflow / context API
+```
+
+Jobs e runtime internos podem operar como system execution confiável, mantendo scopes e invariantes explícitos.
+
+Contexts não dependem de `Organizations` apenas para repetir autorização.
 
 ---
 
@@ -41,8 +106,6 @@ Um context recebe uma subtree própria quando possuir processos com lifecycle, e
 > **Status: RATIFICADO**
 
 ## Responsabilidade
-
-`Organizations` é responsável por:
 
 ```text
 tenancy
@@ -63,64 +126,37 @@ authorization
 - `Permission`;
 - access grants e assignments.
 
-## Environment
+`Environment` pertence a `Organizations` e seus nomes não são hardcoded.
 
-`Environment` representa uma subdivisão operacional de uma Organization.
+`User` e `ServiceAccount` são atores do domínio e sujeitos de autorização.
 
-```text
-Organization
-├── development
-├── homologation
-└── production
-```
-
-Os nomes não são necessariamente hardcoded.
-
-Outros contexts podem possuir recursos scoped por Environment sem que esses recursos passem a pertencer a `Organizations`.
-
-## Atores
-
-`User` e `ServiceAccount` pertencem ao context como atores do domínio e sujeitos de autorização.
-
-`Membership` representa a relação entre um ator e uma Organization.
-
-Mecanismos concretos de autenticação ficam fora dessa boundary.
-
-Exemplos:
+Mecanismos concretos de autenticação ficam fora desta boundary inicialmente:
 
 ```text
-password management
-login sessions
-OAuth/OIDC login
+passwords
+sessions
+OIDC / OAuth login
 MFA
-authentication refresh tokens
 login attempts
 ```
 
-Não criar `Authentication` ou `Accounts` como context apenas por antecipação.
+Não criar `Authentication` ou `Accounts` apenas por antecipação.
 
 ## RBAC
 
-RBAC pertence a `Organizations`.
+`Permission` é a primitive fundamental e pode começar como identifiers conhecidos em código, por exemplo:
 
 ```text
-who
-→ User | ServiceAccount
-
-what
-→ Permission
-
-where
-→ Organization + optional Environment
+integration.read
+integration.write
+run.cancel
 ```
-
-`Permission` é a primitive fundamental.
 
 `Role` agrupa permissions.
 
-Grants e assignments associam atores às permissões disponíveis em determinado scope.
+Não assumir que `Permission` precisa de tabela própria.
 
-## Public surface
+## Public surface inicial
 
 ```text
 Organizations
@@ -128,25 +164,17 @@ Organizations
 └── Organizations.Access
 ```
 
-Facade:
+Operações conceituais:
 
 ```elixir
 Organizations.create(...)
 Organizations.get(...)
 Organizations.disable(...)
-```
 
-Environments:
-
-```elixir
 Organizations.Environments.create(...)
 Organizations.Environments.get(...)
 Organizations.Environments.disable(...)
-```
 
-Access:
-
-```elixir
 Organizations.Access.add_member(...)
 Organizations.Access.remove_member(...)
 Organizations.Access.assign_role(...)
@@ -154,38 +182,19 @@ Organizations.Access.revoke_role(...)
 Organizations.Access.authorize(...)
 ```
 
-As assinaturas ainda não estão congeladas.
+As assinaturas concretas ainda não estão congeladas.
 
-## Dependências
+## Dependências de domínio
 
 ```text
-Organizations
-→ nenhuma dependência de domínio
+none
 ```
 
-`Organizations` é uma boundary de fundação.
+## OTP
 
-## OTP e supervisão
+Não possui processos OTP próprios inicialmente.
 
-Não possui necessidade atual de processos OTP próprios.
-
-O app que hospedar `Organizations` será supervisionado desde sua criação.
-
-Não criar um `Organizations.Supervisor` vazio.
-
-## Não pertence aqui
-
-- mecanismos concretos de autenticação;
-- Package;
-- Connection;
-- Secret;
-- Integration;
-- Run;
-- Record;
-- Delivery;
-- Attempt;
-- Notification;
-- AuditEvent.
+Não criar `Organizations.Supervisor` vazio.
 
 ---
 
@@ -195,156 +204,125 @@ Não criar um `Organizations.Supervisor` vazio.
 
 ## Responsabilidade
 
-`Catalog` é responsável por:
+Registrar, versionar, publicar, disponibilizar e permitir descoberta de building blocks reutilizáveis.
 
-```text
-registrar
-+
-versionar
-+
-publicar
-+
-disponibilizar
-+
-permitir descoberta
-```
+Catalog controla identidade, metadata, versões e disponibilidade.
 
-dos building blocks reutilizáveis da plataforma.
-
-Ele controla identidade, metadata, versões e disponibilidade.
-
-Ele não executa os artefatos registrados.
+Ele **não executa** os artefatos registrados.
 
 ## Owns
 
 ### Connectors
 
 - Connector metadata;
+- `ConnectorVersion`;
 - Operation metadata;
-- Connector versions;
-- publication metadata;
-- availability metadata.
+- publication / availability metadata.
 
-A implementação executável permanece fora do Catalog.
+`Operation` pertence a uma `ConnectorVersion`.
 
-```text
-Catalog
-→ identidade e metadata
+Não existe `OperationVersion` inicialmente.
 
-Connector implementation
-→ código executável
-```
+A implementação executável permanece em `leafcutter_connectors`.
 
 ### Contracts
 
 - `Contract`;
 - `ContractVersion`.
 
-O Catalog registra e versiona contratos.
-
-Consumers utilizam versões explícitas e imutáveis.
-
 ### Integration Packages
 
 - `Package`;
 - `PackageVersion`;
-- `PackageDependency`;
-- publication metadata;
-- availability metadata.
+- publication / availability metadata.
 
-O código do Package permanece fora do Catalog, inicialmente em:
+`PackageDependency` foi removido do V1 por YAGNI.
+
+Categorias são apenas metadata de classificação e descoberta. Não existe `CatalogCategory` como entidade inicial.
+
+## Imutabilidade
+
+Versões publicadas são imutáveis:
 
 ```text
-packages/
+PackageVersion
+ConnectorVersion
+ContractVersion
 ```
 
-### Categories
+Antes da publicação o artefato está sendo preparado. Publicar cria a versão canônica imutável.
 
-- `CatalogCategory`.
+Não criar draft-state model antecipadamente.
 
-Categorias são metadata de descoberta e classificação.
+## PackageVersion
 
-Não possuem efeito sobre execução.
+Uma `PackageVersion` fixa a definição executável reutilizável:
+
+```text
+exactly 1 Source
+→ 1..N Destinations
+```
+
+Ela referencia explicitamente:
+
+- `ConnectorVersion` + Operation para source e destinations;
+- `ContractVersion` para source e destinations;
+- regra de `SourceIdentity`;
+- transformations;
+- enrichment definitions;
+- interceptor declarations;
+- topology e config contract.
+
+A regra de `SourceIdentity` pertence à definição de Source da `PackageVersion` e não vira `IdentityRule` entity.
+
+Novas versões de contracts/connectors não alteram uma `PackageVersion` já publicada.
 
 ## Escopo
 
-O Catalog suporta:
+Catalog pode possuir artefatos:
 
 ```text
-platform-wide
-→ artefatos oficiais
-
-organization-scoped
-→ artefatos privados
+platform-wide official
+organization-scoped private
 ```
 
-Não existem dois Catalogs separados.
+`organization_id` neste caso é scope reference, não dependência de `Organizations`.
 
-## Public surface
+## Public surface inicial
 
 ```text
-Catalog
-├── Catalog.Packages
-├── Catalog.Contracts
-└── Catalog.Connectors
+Catalog.Packages
+Catalog.Contracts
+Catalog.Connectors
 ```
 
-Packages:
+Operações conceituais:
 
 ```elixir
 Catalog.Packages.register(...)
 Catalog.Packages.publish_version(...)
 Catalog.Packages.get_version(...)
-```
 
-Contracts:
-
-```elixir
 Catalog.Contracts.register(...)
-Catalog.Contracts.compile(...)
-Catalog.Contracts.validate(...)
-```
+Catalog.Contracts.publish_version(...)
+Catalog.Contracts.get_version(...)
 
-Connectors:
-
-```elixir
 Catalog.Connectors.register(...)
+Catalog.Connectors.publish_version(...)
 Catalog.Connectors.get_operation(...)
 ```
 
-As assinaturas ainda não estão congeladas.
+Compile/validate de JSON Schema não pertence à API pública ratificada de `Catalog.Contracts` neste momento.
 
-## Dependências
+## Dependências de domínio
 
 ```text
-Catalog
-   ↓
-Organizations
+none
 ```
 
-Essa dependência existe para artefatos privados scoped por Organization.
+## OTP
 
-## OTP e supervisão
-
-Não possui necessidade atual de processos OTP próprios.
-
-O app que hospedar Catalog será supervisionado desde sua criação.
-
-Não criar um `Catalog.Supervisor` vazio.
-
-## Não pertence aqui
-
-- Connector implementation;
-- Operation implementation;
-- Transport implementation;
-- Connection;
-- Secret;
-- Integration configuration;
-- Run;
-- Record;
-- Delivery;
-- Attempt;
-- runtime orchestration.
+Não possui processos OTP próprios inicialmente.
 
 ---
 
@@ -354,29 +332,7 @@ Não criar um `Catalog.Supervisor` vazio.
 
 ## Responsabilidade
 
-`Connections` representa e resolve o acesso configurado de uma:
-
-```text
-Organization
-+
-Environment
-```
-
-a sistemas externos.
-
-Ele responde por:
-
-```text
-Como este Environment acessa o sistema?
-
-Qual configuração deve ser usada?
-
-Quais credenciais estão associadas?
-
-Qual SecretVersion deve ser utilizada?
-```
-
-`Connections` não executa integrações.
+Representar, configurar e resolver o acesso de `Organization + Environment` a sistemas externos.
 
 ## Owns
 
@@ -384,59 +340,45 @@ Qual SecretVersion deve ser utilizada?
 - `Secret`;
 - `SecretVersion`;
 - authentication configuration;
-- OAuth token state;
-- OAuth refresh state;
-- secret rotation metadata;
-- Organization/Environment scope da Connection.
+- OAuth token / refresh durable state;
+- secret rotation metadata.
 
 ## Connection
 
-Representa configuração não sensível.
-
-Exemplos:
+`Connection` contém configuração não sensível, por exemplo:
 
 ```text
+connector identity
 base URL
 account identifier
 region
 timeouts
-Connector reference
-authentication scheme configuration
-Secret reference
+auth scheme configuration
+secret reference
 ```
+
+Uma Connection referencia **Connector identity**, não `ConnectorVersion`.
+
+A `PackageVersion` é quem fixa qual `ConnectorVersion + Operation` será executado.
+
+Isso permite atualizar implementação de connector sem recriar credenciais/configuração da Connection.
 
 ## Secret
 
-Representa credenciais sensíveis.
+`SecretVersion` permite versionamento e rotação.
 
-`SecretVersion` permite atualização e rotação.
-
-Secrets não devem aparecer em texto claro em:
+Raw secret values não devem aparecer em:
 
 ```text
-Integration Package
+PackageVersion
 RunSnapshot público
 logs
 ExecutionEvent
 AuditEvent
-API responses
+API response
 ```
 
-## OAuth
-
-Configuração e estado durável de OAuth pertencem a `Connections`.
-
-Podem incluir:
-
-```text
-access token
-refresh token
-expiration state
-refresh metadata
-rotation state
-```
-
-A estratégia concreta de refresh será definida quando houver necessidade operacional real.
+OAuth durable state pertence aqui.
 
 ## Escopo
 
@@ -446,94 +388,40 @@ Organization
     └── Connection
 ```
 
-Connections de ambientes diferentes são independentes.
+Connection persiste scope refs e stable connector identity sem depender das APIs de `Organizations` ou `Catalog`.
 
-Não existe fallback automático de credenciais de homologação para produção.
+A application layer pode resolver/validar descriptors externos antes de criar ou alterar a Connection.
 
-Promoção não copia Secrets.
-
-## Relação com Catalog
-
-Uma Connection referencia um Connector conhecido pelo Catalog.
-
-```text
-Connection
-→ Connector metadata
-→ authentication requirements
-```
-
-Não conhece a implementação executável do Connector.
-
-## Public surface
+## Public surface inicial
 
 ```text
 Connections
 └── Connections.Secrets
 ```
 
-Facade:
+Operações conceituais:
 
 ```elixir
 Connections.create(...)
 Connections.get(...)
 Connections.disable(...)
 Connections.resolve(...)
-```
 
-Secrets:
-
-```elixir
 Connections.Secrets.rotate(...)
 Connections.Secrets.resolve_for_runtime(...)
 ```
 
-Não criar antecipadamente:
+## Dependências de domínio
 
 ```text
-Connections.OAuth
-Connections.Auth
-Connections.SecretServer
+none
 ```
 
-## Dependências
+## OTP
 
-```text
-Connections
-   ├──→ Organizations
-   └──→ Catalog
-```
+Não possui processos OTP próprios inicialmente.
 
-Todas as interações ocorrem por APIs públicas.
-
-## OTP e supervisão
-
-Não possui necessidade atual de processos OTP próprios.
-
-Pode começar principalmente com:
-
-```text
-Ecto
-Repo
-secret resolution
-OAuth state persistence
-rotation rules
-```
-
-Processos supervisionados podem surgir posteriormente se refresh coordenado, cache vivo ou outro lifecycle real os justificar.
-
-## Não pertence aqui
-
-- Connector implementation;
-- Operation implementation;
-- Transport implementation;
-- Package;
-- Integration configuration;
-- Run;
-- Record;
-- Delivery;
-- Attempt;
-- RBAC;
-- execução de integrações.
+Um processo coordenado de OAuth refresh/cache só deve surgir quando houver lifecycle real que o justifique.
 
 ---
 
@@ -543,24 +431,22 @@ Processos supervisionados podem surgir posteriormente se refresh coordenado, cac
 
 ## Responsabilidade
 
-`Integrations` transforma um `PackageVersion` em uma configuração executável dentro de:
-
-```text
-Organization
-+
-Environment
-```
-
-Ele governa a configuração concreta e o lifecycle configurável daquela integração.
+Representar a integração lógica de uma Organization e sua configuração executável em cada Environment.
 
 ## Distinção fundamental
 
 ```text
+Package
+→ identidade reutilizável
+
 PackageVersion
-→ definição reutilizável
+→ definição executável versionada
 
 Integration
-→ configuração concreta
+→ identidade lógica dentro da Organization
+
+EnvironmentDeployment
+→ configuração executável para um Environment
 
 Run
 → execução concreta
@@ -568,157 +454,143 @@ Run
 
 ## Integration
 
-Uma Integration pertence a um único:
+`Integration` pertence a uma `Organization` e possui uma associação estável a um `Package`.
 
-```text
-Organization + Environment
-```
+Ela **não** pertence diretamente a um único Environment.
 
-```text
-Organization
-└── Environment
-    └── Integration
-```
+Mudar para um Package semanticamente diferente implica criar outra Integration.
 
-O mesmo Package pode ser instanciado várias vezes.
-
-## PackageVersion
-
-Cada Integration referencia explicitamente um `PackageVersion`.
-
-```text
-Integration
-→ PackageVersion
-```
-
-Publicar uma nova versão não altera Integrations existentes.
-
-Upgrade é explícito.
-
-## Owns
-
-- `Integration`;
-- Destination configuration;
-- Trigger;
-- Schedule;
-- configuration overrides;
-- `EnvironmentDeployment`;
-- `HomologationRequest`;
-- `Promotion`;
-- Rollback record;
-- `IdentityMapping`;
-- Labels da Integration.
-
-## Destination configuration
-
-Configura como a Integration utiliza seus destinos.
-
-Pode referenciar Connections, mas não possui os Secrets concretos.
-
-```text
-Integration
-├── source configuration
-└── destinations
-    ├── destination A
-    ├── destination B
-    └── destination C
-```
-
-## Configuration overrides
-
-Packages fornecem capacidades, defaults e requisitos.
-
-Integrations fornecem configuração concreta.
-
-```text
-Package
-→ capabilities
-→ defaults
-→ required configuration
-
-Integration
-→ overrides
-→ Connections
-→ scheduling
-→ destinations
-```
-
-## Trigger e Schedule
-
-Definem quando uma Integration deve originar um Run.
-
-```text
-Integration
-└── Trigger / Schedule
-    └── Run
-```
-
-A execução do Run não pertence a `Integrations`.
+Labels pertencem à Integration e são compartilhadas entre seus environments.
 
 ## EnvironmentDeployment
 
-Representa qual configuração/versionamento está ativo em determinado Environment.
+Existe exatamente um deployment lógico corrente por:
 
-## Homologation
+```text
+Integration + Environment
+```
 
-`HomologationRequest` governa validação e aprovação antes de promoção.
+Ele contém a configuração executável environment-specific:
 
-Pode referenciar Runs como evidência, mas não executa esses Runs.
+- Environment reference;
+- `PackageVersion` da mesma Package da Integration;
+- uma Source Connection binding;
+- N Destination Connection bindings;
+- promotable config;
+- environment-local config;
+- Triggers;
+- active/disabled lifecycle.
 
-## Promotion
-
-Promoção leva uma configuração aprovada a outro Environment.
-
-Não copia Secrets.
-
-O target Environment usa suas próprias Connections.
-
-## Rollback
-
-Seleciona explicitamente uma configuração/versionamento anterior.
-
-Runs anteriores continuam associados aos snapshots usados originalmente.
-
-## IdentityMapping
-
-Representa associação de identidades entre sistemas.
+Diferentes environments podem executar diferentes `PackageVersion`s da mesma Integration.
 
 Exemplo:
 
 ```text
-ERP Customer 42
-→ Salesforce 9001
-→ Billing 710
+homologation → PackageVersion 1.5
+production   → PackageVersion 1.4
 ```
+
+## Binding compatibility
+
+A `PackageVersion` declara o Connector esperado para cada slot.
+
+O deployment recebe descriptors resolvidos pela application layer e valida que cada Connection binding pertence ao Connector identity compatível.
+
+`Integrations` não consulta diretamente `Catalog` ou `Connections` para realizar essa validação.
+
+## Configuração
+
+Separação obrigatória:
+
+```text
+promotable config
+→ configuração funcional/business aprovada e promovível
+
+environment-local config
+→ bindings, triggers, endpoints e overrides operacionais locais
+```
+
+Promotion nunca sobrescreve local config do target.
+
+## Triggers
+
+`Schedule` não é uma entidade independente.
+
+`Trigger` pode ter tipos como:
+
+```text
+manual
+schedule / cron
+inbound/event later
+```
+
+Triggers pertencem ao `EnvironmentDeployment` e são environment-local.
+
+## Homologation
+
+`HomologationRequest` aprova uma **state fingerprint imutável** do deployment.
+
+Qualquer mudança relevante após aprovação invalida aquela aprovação para promoção.
+
+Runs podem ser referenciados como evidence por IDs opacos; `Integrations` não consulta `Executions` para interpretá-los.
+
+## Promotion
+
+Promotion carrega para o target somente o estado promovível aprovado:
+
+```text
+PackageVersion
++
+promotable config
++
+homologation fingerprint/reference
+```
+
+Nunca copia:
+
+```text
+Connection bindings
+Secrets
+credentials
+Triggers
+environment-local config
+```
+
+O target usa suas próprias Connections compatíveis.
+
+Promotion pode permanecer como registro histórico.
+
+## Rollback
+
+Rollback é **operação**, não entidade inicial.
+
+Ele seleciona um estado promovido anterior válido do target deployment e preserva local config/connections do próprio target.
+
+Não criaremos `Rollback` record no V1.
+
+## Histórico do deployment
+
+Ainda não foi ratificada uma entidade `DeploymentRevision`.
+
+O requisito, porém, está fechado: mudanças relevantes precisam preservar estado histórico suficiente para reconstruir estados promovidos anteriores e suportar homologation/promotion/rollback.
+
+O mecanismo físico será decidido quando modelarmos persistência.
+
+## IdentityMapping
+
+`IdentityMapping` pertence a `Integrations` porque persiste entre Runs.
 
 Scope conceitual:
 
 ```text
-Organization
-Environment
-Integration
-Destination
+EnvironmentDeployment + Destination
 ```
 
-Distinção:
+Ele representa associação cross-system reutilizável.
 
-```text
-Transformation
-→ transforma payload
+A `Delivery` registra separadamente a destination identity observada naquela execução específica.
 
-IdentityMapping
-→ associa identidades externas
-```
-
-## Labels
-
-Labels são metadata leve de classificação e busca.
-
-Não possuem efeito direto sobre runtime.
-
-Não criar um tagging framework universal.
-
-## Public surface
+## Public surface inicial
 
 ```text
 Integrations
@@ -729,101 +601,38 @@ Integrations
 └── Integrations.IdentityMappings
 ```
 
-Facade:
+Operações conceituais importantes:
 
 ```elixir
 Integrations.create(...)
 Integrations.get(...)
-Integrations.activate(...)
-Integrations.disable(...)
-Integrations.get_execution_definition(...)
-```
 
-Destinations:
-
-```elixir
-Integrations.Destinations.configure(...)
-```
-
-Triggers:
-
-```elixir
-Integrations.Triggers.schedule(...)
-```
-
-Deployments:
-
-```elixir
+Integrations.Deployments.get_execution_definition(...)
+Integrations.Deployments.activate(...)
+Integrations.Deployments.disable(...)
 Integrations.Deployments.promote(...)
 Integrations.Deployments.rollback(...)
-```
 
-Homologations:
-
-```elixir
 Integrations.Homologations.approve(...)
 Integrations.Homologations.reject(...)
-```
 
-Identity mappings:
-
-```elixir
 Integrations.IdentityMappings.resolve(...)
+Integrations.IdentityMappings.upsert(...)
 ```
 
-As assinaturas ainda não estão congeladas.
+Activation/disable pertence ao deployment, não à Integration lógica.
 
-## Execution definition
-
-`Integrations` fornece uma definição resolvível para criação de Run.
-
-```elixir
-Integrations.get_execution_definition(...)
-```
-
-`Integrations` não cria o RunSnapshot e não executa o Run.
-
-## Dependências
+## Dependências de domínio
 
 ```text
-Integrations
-   ├──→ Organizations
-   ├──→ Catalog
-   └──→ Connections
+none
 ```
 
-## OTP e supervisão
+## OTP
 
-Não possui necessidade atual de processos OTP próprios.
+Não possui processos OTP próprios inicialmente.
 
-Pode começar principalmente com:
-
-```text
-Ecto
-Repo
-validation
-configuration rules
-deployment state
-promotion rules
-identity mappings
-```
-
-Scheduling durável pode usar Oban quando apropriado.
-
-## Não pertence aqui
-
-- Run;
-- RunSnapshot;
-- Record;
-- Delivery;
-- Attempt;
-- Checkpoint;
-- processos OTP do Run;
-- Connector implementation;
-- Operation implementation;
-- Transport implementation;
-- Secret concreto;
-- execução do data plane.
+Scheduling durável pode utilizar Oban via infraestrutura compartilhada quando apropriado.
 
 ---
 
@@ -833,291 +642,119 @@ Scheduling durável pode usar Oban quando apropriado.
 
 ## Responsabilidade
 
-`Executions` transforma uma configuração de Integration em uma execução concreta, durável e recuperável.
-
-Ele governa tanto o histórico durável da execução quanto o lifecycle operacional necessário para processá-la.
+Transformar uma definição executável já resolvida em execução concreta, durável e recuperável.
 
 ## Owns
 
-### Execução
-
 - `Run`;
-- `RunSnapshot`.
-
-### Data plane durável
-
+- `RunSnapshot`;
 - `Record`;
 - `Delivery`;
 - `Attempt`;
-- `Enrichment`;
-- `Checkpoint`.
+- Enrichment execution result/status;
+- `Checkpoint`;
+- `ExecutionEvent`;
+- durable ownership/fencing/recovery state como `owner_node` e `generation`.
 
-### Lifecycle
+A **definição** de Enrichment pertence à `PackageVersion`; `Executions` possui apenas estado/resultados da execução.
 
-- `ExecutionEvent`.
+## Run e RunSnapshot
 
-### Ownership e recovery
+Um Run nasce de um `EnvironmentDeployment`.
 
-- runtime node ownership;
-- `owner_node`;
-- `generation`;
-- fencing state;
-- claim/recovery state;
-- node heartbeat relacionado ao ownership de Runs.
-
-### Runtime OTP
-
-- Run supervision tree;
-- `RunCoordinator`;
-- Source Broadway pipeline;
-- optional Enrichment Broadway pipeline;
-- Destination Broadway pipelines;
-- Registry usado pelo runtime;
-- DynamicSupervisor de Runs.
-
-## Run
-
-`Run` representa uma execução concreta de uma Integration.
-
-```text
-Integration
-→ Run
-```
-
-## RunSnapshot
-
-No início do Run, `Executions` resolve a configuração necessária e persiste um snapshot imutável.
-
-```text
-Integration configuration
-+
-PackageVersion
-+
-Contract versions
-+
-effective configuration
-+
-Connection references
-+
-credential/version references
-        ↓
-RunSnapshot
-```
-
-O snapshot não contém Secrets em texto claro.
-
-Mudanças posteriores na Integration não alteram Runs existentes.
-
-## Record, Delivery e Attempt
+A application/runtime layer resolve a definição externa e entrega a `Executions` os dados necessários para criar:
 
 ```text
 Run
-└── Record
-    └── Delivery
-        └── Attempt
-```
-
-`Record` representa um item extraído da origem.
-
-`Delivery` representa uma obrigação durável para um destino.
-
-`Attempt` representa uma tentativa concreta daquela Delivery.
-
-Destinos evoluem independentemente.
-
-## Enrichment
-
-`Enrichment` representa resultado durável de lookup externo realizado durante o processamento.
-
-## Checkpoint
-
-`Checkpoint` representa uma posição segura e durável de progresso.
-
-Conceitualmente:
-
-```text
-fetch source page
-        ↓
-validate
-        ↓
-persist Records + Deliveries
-        ↓
-advance Checkpoint
-```
-
-## ExecutionEvent
-
-Registra fatos significativos do lifecycle.
-
-Exemplos:
-
-```text
-run_started
-source_completed
-checkpoint_advanced
-destination_throttled
-run_paused
-run_resumed
-run_completed
-run_failed
-```
-
-Não é um log genérico do Broadway.
-
-## Ownership de Run
-
-Um Run pertence a um único BEAM node por vez.
-
-PostgreSQL é a autoridade durável.
-
-```text
-owner_node
-generation
-```
-
-`generation` funciona como fencing token.
-
-Heartbeat é por BEAM node, não por Run.
-
-## Recovery
-
-Recovery utiliza:
-
-```text
++
 RunSnapshot
-Checkpoint
-durable Record/Delivery state
-owner_node
-generation
 ```
 
-para reconstruir a execução.
+O snapshot congela referências lógicas relevantes, incluindo:
 
-## At-least-once
+- PackageVersion;
+- ContractVersions;
+- effective config;
+- Connection IDs;
+- applicable SecretVersion IDs/references.
 
-A semântica base é:
+Raw secret values não são congelados no snapshot.
+
+OAuth token refresh continua sendo operacionalmente resolvido por `Connections`.
+
+## Record
+
+`Record` representa uma ocorrência source dentro do Run.
+
+Ele carrega:
+
+```text
+SourceIdentity
+PayloadHash
+```
+
+Nenhum dos dois é o ID do Record e nenhum precisa de entity própria.
+
+## Delivery
+
+Uma `Delivery` é a responsabilidade durável de processar um Record para um destination.
+
+Ela registra a destination identity observada nessa execução.
+
+## Attempt
+
+`Attempt` é uma tentativa concreta de chamada externa.
+
+Semântica base:
 
 ```text
 at-least-once
 ```
 
-O Leafcutter não promete `exactly-once` universal.
+Não existe promessa universal de exactly-once.
 
-## Public surface
+## Checkpoint
 
-```text
-Executions
-├── Executions.Runs
-├── Executions.Records
-├── Executions.Deliveries
-├── Executions.Attempts
-└── Executions.Recovery
-```
+Checkpoint representa progresso durável e seguro do source.
 
-Runs:
+A persistência do checkpoint deve ser coordenada com o durable fan-out para impedir avanço sem representação durável do trabalho produzido.
 
-```elixir
-Executions.Runs.start(...)
-Executions.Runs.pause(...)
-Executions.Runs.resume(...)
-Executions.Runs.cancel(...)
-Executions.Runs.get(...)
-```
+## ExecutionEvent
 
-Records:
+`ExecutionEvent` registra lifecycle da execução.
 
-```elixir
-Executions.Records.list(...)
-```
+Ele **não** é o event bus genérico da plataforma e não deve ser reutilizado como outbox cross-context.
 
-Deliveries:
+## Runtime OTP não pertence ao Context
 
-```elixir
-Executions.Deliveries.retry(...)
-```
-
-Attempts:
-
-```elixir
-Executions.Attempts.list(...)
-```
-
-Recovery:
-
-```elixir
-Executions.Recovery.claim(...)
-```
-
-As assinaturas ainda não estão congeladas.
-
-## Dependências
+A infraestrutura OTP abaixo pertence à application `leafcutter_runtime`, e não ao ownership conceitual de `Executions`:
 
 ```text
-Executions
-├──→ Organizations
-├──→ Catalog
-├──→ Connections
-└──→ Integrations
+Registry
+Run DynamicSupervisor
+NodeHeartbeat
+RunCoordinator
+SourceBroadway
+optional EnrichmentBroadway
+DestinationBroadway x N
 ```
 
-Todas as interações entre contexts ocorrem por APIs públicas.
+Isso separa domínio durável de infraestrutura operacional.
 
-## OTP e supervisão
-
-`Executions` é o primeiro Context ratificado que exige processos OTP próprios desde o início.
-
-Conceitualmente:
+## Dependências de domínio
 
 ```text
-Executions runtime supervision
-│
-├── Registry
-├── Run DynamicSupervisor
-├── node heartbeat
-│
-└── Run supervision tree
-    ├── RunCoordinator
-    ├── Source Broadway
-    ├── optional Enrichment Broadway
-    └── Destination Broadway
-        ├── destination A
-        ├── destination B
-        └── destination C
+none
 ```
 
-A árvore exata será ratificada durante o desenho da OTP application/runtime.
-
-## RunCoordinator
-
-Pertence ao control plane.
-
-Não deve transportar Records nem virar bottleneck do data plane.
-
-## Broadway
-
-Pertence ao data plane.
-
-Fornece:
+A composição para iniciar um Run ocorre no workflow da runtime application:
 
 ```text
-bounded concurrency
-demand
-batching
-backpressure
-processing pipelines
+resolve EnvironmentDeployment
+→ resolve Connections / SecretVersion refs
+→ create Run + RunSnapshot in Executions
+→ start Run supervision subtree
 ```
-
-## Não pertence aqui
-
-- configuração mutável da Integration;
-- ownership de Package;
-- definição de Contract;
-- ownership de Connection;
-- ownership de Secret;
-- Connector implementation;
-- Transport implementation;
-- NotificationRule;
-- AuditEvent.
 
 ---
 
@@ -1127,195 +764,41 @@ processing pipelines
 
 ## Responsabilidade
 
-`Notifications` transforma eventos relevantes da plataforma em entregas de notificação duráveis para recipients configurados.
-
-Ele responde por perguntas como:
-
-```text
-Qual evento deve gerar uma notificação?
-
-Quem deve receber?
-
-Por qual canal?
-
-A entrega foi concluída?
-
-A entrega falhou?
-
-Ela precisa ser tentada novamente?
-```
-
-`Notifications` reage a fatos produzidos por outros contexts.
-
-Ele não controla o estado de `Integration`, `Run` ou outros domínios que originaram esses fatos.
+Transformar fatos duráveis relevantes em entregas de notificação para recipients configurados.
 
 ## Owns
 
 - `NotificationRule`;
-- `NotificationChannel`;
 - `Recipient`;
 - `NotificationDelivery`.
 
-## NotificationRule
+`NotificationChannel` foi removido como entity.
 
-Define quando um fato relevante deve gerar uma notificação.
-
-Conceitualmente:
-
-```text
-event
-+
-filters
-+
-recipients
-+
-channel
-→ notification
-```
-
-As regras podem futuramente utilizar Labels ou scope quando necessário, sem transformar Labels em um sistema de eventos.
-
-## NotificationChannel
-
-Representa como uma notificação é entregue.
-
-Exemplos futuros:
+Channel é parte do tipo/config do Recipient, por exemplo:
 
 ```text
 email
-Slack
+slack
 webhook
 ```
 
-Não criar inicialmente um Context ou capability pública separada para cada canal.
-
-## Recipient
-
-`Recipient` representa quem ou onde recebe a notificação.
-
-Ele pertence a uma Organization, mas é independente de `User`.
-
-```text
-User
-→ ator que acessa o Leafcutter
-
-Recipient
-→ destino de comunicação
-```
-
-Exemplos:
-
-```text
-ana@acme.com
-ops@acme.com
-Slack #integrations
-webhook operacional
-```
-
-Mesmo que um Recipient corresponda à mesma pessoa representada por um User, o sistema não precisa manter essa associação enquanto não houver requisito concreto.
-
-Não criar relacionamento `Recipient -> User` por antecipação.
+`Recipient` é independente de `User` inicialmente.
 
 ## NotificationDelivery
 
-Representa a obrigação e o estado durável de uma entrega concreta de notificação.
-
-Conceitualmente:
+Retry state fica diretamente na delivery:
 
 ```text
-NotificationRule
-        ↓
-Recipient
-        ↓
-NotificationDelivery
+status
+attempt_count
+available_at
+last_error
+delivered_at
 ```
 
-Pode registrar:
+Não criar `NotificationAttempt` inicialmente.
 
-```text
-pending
-processing
-completed
-failed
-retry state
-```
-
-A representação física será definida durante o desenho de persistência.
-
-## Public surface
-
-```text
-Notifications
-├── Notifications.Rules
-└── Notifications.Recipients
-```
-
-Rules:
-
-```elixir
-Notifications.Rules.create(...)
-Notifications.Rules.disable(...)
-```
-
-Recipients:
-
-```elixir
-Notifications.Recipients.create(...)
-Notifications.Recipients.disable(...)
-```
-
-Entrega:
-
-```elixir
-Notifications.deliver_for_event(...)
-```
-
-As assinaturas ainda não estão congeladas.
-
-Não criar inicialmente:
-
-```text
-Notifications.Email
-Notifications.Slack
-Notifications.Webhooks
-```
-
-sem necessidade concreta.
-
-## Dependências
-
-```text
-Notifications
-├──→ Organizations
-├──→ Integrations
-└──→ Executions
-```
-
-### Organizations
-
-Fornece o scope organizacional necessário às regras e recipients.
-
-### Integrations
-
-Fornece fatos e referências relacionados a Integration quando necessários às regras de notificação.
-
-### Executions
-
-Fornece fatos relacionados a Runs, Deliveries, Attempts e lifecycle operacional.
-
-`Notifications` não depende diretamente de:
-
-```text
-Catalog
-Connections
-Audit
-```
-
-## Durabilidade
-
-PubSub sozinho não é suficiente para uma obrigação de notificação.
-
-A estratégia inicial prevista é:
+Durabilidade inicial:
 
 ```text
 NotificationDelivery
@@ -1325,31 +808,29 @@ PostgreSQL
 Oban
 ```
 
-Oban é apropriado para o trabalho futuro/durável de entrega.
+## Consumo de fatos
 
-## OTP e supervisão
+Rules recebem um envelope self-contained de fato durável.
 
-`Notifications` não possui necessidade atual de processos OTP próprios.
+Notifications não deve consultar internals do context produtor para completar o fato.
 
-Não criar inicialmente:
+## Public surface inicial
 
 ```text
-Notifications.Supervisor
-Notifications.Dispatcher
-Notifications.EmailServer
+Notifications.Rules
+Notifications.Recipients
+Notifications.deliver_for_event(...)
 ```
 
-O lifecycle dos jobs duráveis pode ser gerenciado por Oban dentro da árvore supervisionada da OTP application que hospedar o context.
+## Dependências de domínio
 
-## Não pertence aqui
+```text
+none
+```
 
-- `User`;
-- `Role`;
-- `Permission`;
-- estado da Integration;
-- estado do Run;
-- `AuditEvent`;
-- regras de negócio que originam os fatos.
+## OTP
+
+Não possui processos OTP próprios inicialmente.
 
 ---
 
@@ -1359,29 +840,7 @@ O lifecycle dos jobs duráveis pode ser gerenciado por Oban dentro da árvore su
 
 ## Responsabilidade
 
-`Audit` registra, de forma durável e consultável, ações humanas e administrativas relevantes ocorridas na plataforma.
-
-Ele responde por perguntas como:
-
-```text
-Quem realizou a ação?
-
-O que aconteceu?
-
-Sobre qual recurso?
-
-Em qual Organization?
-
-Em qual Environment?
-
-Quando aconteceu?
-
-Quais mudanças relevantes podem ser registradas sem expor dados sensíveis?
-```
-
-`Audit` registra fatos.
-
-Ele não controla a regra de negócio que originou esses fatos.
+Registrar de forma durável e consultável ações humanas e administrativas relevantes.
 
 ## Owns
 
@@ -1389,297 +848,84 @@ Ele não controla a regra de negócio que originou esses fatos.
 - actor metadata;
 - action;
 - target reference;
-- Organization/Environment scope;
+- organization/environment scope refs;
 - redacted change metadata.
 
-## AuditEvent
+## Imutabilidade
 
-`AuditEvent` representa um fato auditável persistido.
+`AuditEvent` é append-only e imutável.
 
-Conceitualmente:
+Correções ou reversões geram um novo event.
 
-```text
-actor
-+
-action
-+
-target
-+
-scope
-+
-metadata
-+
-timestamp
-→ AuditEvent
-```
+Raw secrets não podem ser persistidos no Audit.
 
-## Actor metadata
+## Sink
 
-Registra quem realizou a ação.
+Audit é sink.
 
-Pode representar, conforme o caso:
+Nenhum outro context consulta Audit para tomar decisões de negócio.
 
-```text
-User
-ServiceAccount
-system actor
-```
-
-O AuditEvent deve armazenar informação suficiente para preservar o histórico sem depender de joins frágeis para reconstruir completamente o passado.
-
-A estratégia física será definida posteriormente.
-
-## Action
-
-Representa a ação auditada.
-
-Exemplos:
-
-```text
-integration.promoted
-integration.disabled
-run.cancelled
-delivery.retried
-secret.rotated
-role.assigned
-```
-
-A nomenclatura definitiva será padronizada posteriormente.
-
-## Target reference
-
-Representa o recurso sobre o qual a ação ocorreu.
-
-Conceitualmente:
-
-```text
-target_type
-target_id
-```
-
-`Audit` não precisa conhecer o schema interno do target.
-
-## Scope
-
-AuditEvents podem ser scoped por:
-
-```text
-Organization
-+
-optional Environment
-```
-
-Isso permite consulta e autorização do histórico sem transformar Audit em proprietário desses scopes.
-
-## Redacted change metadata
-
-Metadata de mudanças pode ser persistida quando útil.
-
-Nunca armazenar em texto claro:
-
-```text
-password
-Secret value
-OAuth refresh token
-API key
-credential payload
-```
-
-Dados sensíveis devem ser removidos ou redacted antes da persistência.
-
-## Public surface
-
-A API pública inicial é apenas:
-
-```text
-Audit
-```
-
-Com:
+## Public surface inicial
 
 ```elixir
 Audit.record(...)
 Audit.list(...)
 ```
 
-Não criar inicialmente:
+Não criar capability modules sem necessidade real.
+
+## Dependências de domínio
 
 ```text
-Audit.Events
-Audit.Writer
-Audit.Queries
+none
 ```
 
-sem necessidade concreta.
+## OTP
 
-## Dependências
-
-`Audit` depende apenas de:
-
-```text
-Audit
-   ↓
-Organizations
-```
-
-`Organizations` fornece o scope organizacional necessário.
-
-`Audit` não precisa conhecer como dependência de domínio:
-
-```text
-Catalog
-Connections
-Integrations
-Executions
-Notifications
-```
-
-Esses contexts podem originar fatos auditáveis, mas Audit recebe referências e metadata em vez de depender de seus schemas internos.
-
-O mecanismo concreto pelo qual fatos obrigatórios chegam ao Audit será definido posteriormente, preservando durabilidade e evitando dependências circulares.
-
-## Sink
-
-Audit é um sink de fatos administrativos.
-
-Outros contexts nunca devem consultar Audit para decidir suas próprias regras de negócio.
-
-Evitar:
-
-```text
-"posso promover?"
-→ consultar Audit
-```
-
-Preferir:
-
-```text
-domínio decide
-→ ação acontece
-→ fato auditável é registrado
-```
-
-## OTP e supervisão
-
-`Audit` não possui necessidade atual de processos OTP próprios.
-
-A implementação inicial pode usar:
-
-```text
-AuditEvent
-+
-Ecto
-+
-Repo
-+
-PostgreSQL
-```
-
-Não criar:
-
-```text
-Audit.Supervisor
-Audit.Writer
-Audit.Buffer
-```
-
-sem uma necessidade real.
-
-Se volume ou requisitos futuros exigirem buffering ou processamento assíncrono, essa decisão será revisitada.
-
-## Não pertence aqui
-
-- regras de negócio;
-- estado de Integration;
-- estado de Run;
-- NotificationRule;
-- Secret values;
-- autenticação;
-- autorização.
+Não possui processos OTP próprios inicialmente.
 
 ---
 
-# Dependências conceituais ratificadas
+# Fatos duráveis cross-context
 
-```text
-Organizations
+Notifications e Audit não devem depender de chamadas diretas obrigatórias feitas depois que uma transação de domínio já foi concluída.
+
+Quando entregar um fato a outro context é uma obrigação do sistema, o fato deve ser persistido de forma durável **na mesma transação** que altera o estado causador.
+
+Envelope conceitual:
+
+```json
+{
+  "type": "run.failed",
+  "organization_id": "...",
+  "environment_id": "...",
+  "occurred_at": "...",
+  "actor": {},
+  "target": {"type": "run", "id": "..."},
+  "data": {"integration_id": "...", "run_id": "..."}
+}
 ```
 
-```text
-Catalog
-   ↓
-Organizations
-```
+O envelope deve carregar contexto suficiente para o consumer não consultar o producer.
 
-```text
-Connections
-   ├──→ Catalog
-   └──→ Organizations
-```
+Não criar um context `Events` ou `Outbox`.
 
-```text
-Integrations
-   ├──→ Connections
-   ├──→ Catalog
-   └──→ Organizations
-```
-
-```text
-Executions
-   ├──→ Integrations
-   ├──→ Connections
-   ├──→ Catalog
-   └──→ Organizations
-```
-
-```text
-Notifications
-   ├──→ Executions
-   ├──→ Integrations
-   └──→ Organizations
-```
-
-```text
-Audit
-   └──→ Organizations
-```
-
-## Regras ratificadas
-
-- `Organizations` não depende de outros contexts.
-- `Catalog` depende apenas de `Organizations`.
-- `Connections` depende apenas de `Catalog` e `Organizations`.
-- `Integrations` depende apenas de `Connections`, `Catalog` e `Organizations`.
-- `Executions` depende de `Integrations`, `Connections`, `Catalog` e `Organizations`.
-- `Notifications` depende de `Executions`, `Integrations` e `Organizations`.
-- `Audit` depende apenas de `Organizations`.
-- dependências entre contexts ocorrem através de APIs públicas ou mecanismos explicitamente ratificados;
-- outros contexts não acessam schemas e queries internos;
-- nenhum context utiliza Audit como fonte de regra de negócio;
-- nenhuma dependência circular conhecida foi introduzida nesta primeira rodada.
+Outbox é um mecanismo de infraestrutura/integration concern. A representação física ainda será decidida quando a persistência for modelada.
 
 ---
 
-# Próxima fase
-
-Todos os contexts passaram pela primeira ratificação individual:
+# Context Map final
 
 ```text
-Organizations
-Catalog
-Connections
-Integrations
-Executions
-Notifications
-Audit
+Organizations   → none
+Catalog         → none
+Connections     → none
+Integrations    → none
+Executions      → none
+Notifications   → none
+Audit           → none
 ```
 
-Antes de criar qualquer OTP application:
+As relações entre conceitos continuam existindo por referências explícitas, enquanto workflows cross-context são compostos na application layer.
 
-1. revisar o mapa completo em conjunto;
-2. procurar responsabilidades duplicadas;
-3. procurar dependências desnecessárias;
-4. procurar dependências circulares indiretas;
-5. revisar APIs públicas;
-6. revisar quais contexts realmente precisam conviver na mesma OTP application;
-7. somente então ratificar as boundaries da umbrella.
+Esse isolamento é intencional: reduz acoplamento de domínio sem introduzir microservices, buses ou abstrações genéricas antecipadas.
