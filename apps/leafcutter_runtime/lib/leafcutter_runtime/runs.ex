@@ -27,11 +27,13 @@ defmodule LeafcutterRuntime.Runs do
           required(:ownership_token) => DurableRuns.ownership_token()
         }
 
-  @typedoc "Error returned when a local Run tree cannot be started."
-  @type start_error ::
-          DurableRuns.claim_error()
-          | {:run_supervisor_start_failed, term()}
+  @typedoc "Error returned after ownership exists but local Run startup fails."
+  @type claimed_start_error ::
+          {:run_supervisor_start_failed, term()}
           | {:run_supervisor_start_failed, term(), DurableRuns.release_error()}
+
+  @typedoc "Error returned when a Run cannot be claimed or started locally."
+  @type start_error :: DurableRuns.claim_error() | claimed_start_error()
 
   @doc """
   Claims a Run for the current runtime incarnation and starts its local tree.
@@ -116,7 +118,7 @@ defmodule LeafcutterRuntime.Runs do
   * Startup is serialized with explicit local start and stop operations for the same Run.
   """
   @spec start_claimed(DurableRuns.ownership_token()) ::
-          {:ok, pid()} | {:error, start_error()}
+          {:ok, pid()} | {:error, claimed_start_error()}
   def start_claimed(ownership_token) do
     with_local_run_operation(
       ownership_token.run_id,
@@ -125,7 +127,7 @@ defmodule LeafcutterRuntime.Runs do
   end
 
   @spec start_claimed_locked(DurableRuns.ownership_token()) ::
-          {:ok, pid()} | {:error, start_error()}
+          {:ok, pid()} | {:error, claimed_start_error()}
   defp start_claimed_locked(ownership_token) do
     ensure_local_tree(ownership_token)
   end
@@ -322,7 +324,7 @@ defmodule LeafcutterRuntime.Runs do
   end
 
   @spec ensure_local_tree(DurableRuns.ownership_token()) ::
-          {:ok, pid()} | {:error, start_error()}
+          {:ok, pid()} | {:error, claimed_start_error()}
   defp ensure_local_tree(ownership_token) do
     ensure_local_tree(ownership_token, @max_local_start_attempts)
   end
@@ -330,7 +332,7 @@ defmodule LeafcutterRuntime.Runs do
   @spec ensure_local_tree(
           DurableRuns.ownership_token(),
           non_neg_integer()
-        ) :: {:ok, pid()} | {:error, start_error()}
+        ) :: {:ok, pid()} | {:error, claimed_start_error()}
   defp ensure_local_tree(ownership_token, 0) do
     release_failed_start(
       ownership_token,
@@ -359,7 +361,7 @@ defmodule LeafcutterRuntime.Runs do
   @spec start_local_tree(
           DurableRuns.ownership_token(),
           pos_integer()
-        ) :: {:ok, pid()} | {:error, start_error()}
+        ) :: {:ok, pid()} | {:error, claimed_start_error()}
   defp start_local_tree(ownership_token, attempts_remaining) do
     child_spec = {RunSupervisor, ownership_token}
 
@@ -398,7 +400,7 @@ defmodule LeafcutterRuntime.Runs do
   @spec reconcile_start_failure(
           DurableRuns.ownership_token(),
           term()
-        ) :: {:ok, pid()} | {:error, start_error()}
+        ) :: {:ok, pid()} | {:error, claimed_start_error()}
   defp reconcile_start_failure(ownership_token, reason) do
     case lookup(ownership_token.run_id) do
       {:ok,
@@ -416,7 +418,7 @@ defmodule LeafcutterRuntime.Runs do
   @spec release_failed_start(
           DurableRuns.ownership_token(),
           term()
-        ) :: {:ok, pid()} | {:error, start_error()}
+        ) :: {:ok, pid()} | {:error, claimed_start_error()}
   defp release_failed_start(ownership_token, reason) do
     case lookup(ownership_token.run_id) do
       {:ok,
