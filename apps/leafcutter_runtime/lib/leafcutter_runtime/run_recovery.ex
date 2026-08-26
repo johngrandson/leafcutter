@@ -248,26 +248,33 @@ defmodule LeafcutterRuntime.RunRecovery do
           {:ok, state(), non_neg_integer()}
           | {:error, DurableRuns.recovery_claim_error(), state()}
   defp perform_recovery(state) do
-    excluded_run_ids = active_retry_run_ids(state)
+    owned_tokens =
+      DurableRuns.list_owned_tokens(state.runtime_node_id)
+
+    next_state =
+      owned_tokens
+      |> reconcile_local_trees(state)
+      |> start_owned_tokens(owned_tokens)
+
+    excluded_run_ids = active_retry_run_ids(next_state)
 
     case DurableRuns.claim_recoverable(
-           state.runtime_node_id,
-           state.batch_size,
+           next_state.runtime_node_id,
+           next_state.batch_size,
            excluded_run_ids
          ) do
-      {:ok, claimed_tokens} ->
-        owned_tokens =
-          DurableRuns.list_owned_tokens(state.runtime_node_id)
+      {:ok, ownership_tokens} ->
+        recovered_state =
+          Enum.reduce(
+            ownership_tokens,
+            next_state,
+            &start_recovered_token/2
+          )
 
-        next_state =
-          owned_tokens
-          |> reconcile_local_trees(state)
-          |> start_owned_tokens(owned_tokens)
-
-        {:ok, next_state, length(claimed_tokens)}
+        {:ok, recovered_state, length(ownership_tokens)}
 
       {:error, reason} ->
-        {:error, reason, state}
+        {:error, reason, next_state}
     end
   end
 
