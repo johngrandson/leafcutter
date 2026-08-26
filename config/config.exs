@@ -20,7 +20,7 @@ config :leafcutter_api, LeafcutterApi.Endpoint,
     formats: [json: LeafcutterApi.ErrorJSON],
     layout: false
   ],
-  pubsub_server: LeafcutterApi.PubSub,
+  pubsub_server: Leafcutter.PubSub,
   live_view: [signing_salt: "5tw/tOAb"]
 
 # Sample configuration:
@@ -45,3 +45,19 @@ config :phoenix, :json_library, Jason
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
+
+config :leafcutter_core, Leafcutter.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "leafcutter_dev",
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
+config :leafcutter_core,
+  ecto_repos: [Leafcutter.Repo]
+
+config :leafcutter_core, Oban,
+  repo: Leafcutter.Repo,
+  queues: [default: 10]
