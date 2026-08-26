@@ -36,7 +36,7 @@ defmodule Leafcutter.Executions.Run do
           id: id() | nil,
           status: status(),
           owner_node_id: RuntimeNode.id() | nil,
-          owner_node: RuntimeNode.t() | Ecto.Association.NotLoaded.t(),
+          owner_node: RuntimeNode.t() | Ecto.Association.NotLoaded.t() | nil,
           generation: non_neg_integer(),
           ownership_acquired_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
