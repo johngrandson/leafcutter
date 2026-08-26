@@ -23,18 +23,22 @@ defmodule Leafcutter.Repo.Migrations.CreateRoleAssignments do
       timestamps(type: :utc_datetime_usec)
     end
 
-    create unique_index(
-             :role_assignments,
-             [:membership_id, :role_id],
-             name: :role_assignments_membership_role_organization_scope_index,
-             where: "environment_id IS NULL"
-           )
+    create(
+      unique_index(
+        :role_assignments,
+        [:membership_id, :role_id],
+        name: :role_assignments_membership_role_organization_scope_index,
+        where: "environment_id IS NULL"
+      )
+    )
 
-    create unique_index(
-             :role_assignments,
-             [:membership_id, :role_id, :environment_id],
-             name: :role_assignments_membership_role_environment_scope_index,
-             where: "environment_id IS NOT NULL"
-           )
+    create(
+      unique_index(
+        :role_assignments,
+        [:membership_id, :role_id, :environment_id],
+        name: :role_assignments_membership_role_environment_scope_index,
+        where: "environment_id IS NOT NULL"
+      )
+    )
   end
 end
