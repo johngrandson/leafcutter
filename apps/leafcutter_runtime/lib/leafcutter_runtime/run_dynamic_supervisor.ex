@@ -40,6 +40,7 @@ defmodule LeafcutterRuntime.RunDynamicSupervisor do
   end
 
   @impl true
+  @spec init(:ok) :: {:ok, DynamicSupervisor.sup_flags()}
   def init(:ok) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
