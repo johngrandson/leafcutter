@@ -12,13 +12,14 @@ Broadway data plane
 
 ## Foundation OTP inicial
 
-A infraestrutura mínima do runtime começa com três processos supervisionados:
+A infraestrutura mínima do runtime possui quatro processos supervisionados:
 
 ```text
 LeafcutterRuntime.Application
 ├── LeafcutterRuntime.RunRegistry
 ├── LeafcutterRuntime.RunDynamicSupervisor
-└── LeafcutterRuntime.NodeHeartbeat
+├── LeafcutterRuntime.NodeHeartbeat
+└── LeafcutterRuntime.RunRecovery
 ```
 
 `RunRegistry` é um `Registry` local com chaves `:unique`. Ele fornece identidade
@@ -26,6 +27,10 @@ operacional dentro do node e não representa ownership distribuído.
 
 `RunDynamicSupervisor` recebe somente árvores de Run que já possuem ownership
 durável. Ele não faz claim, recovery distribuído ou decisão de fencing.
+
+`RunRecovery` é iniciado por último. Durante shutdown normal ele é encerrado primeiro,
+permitindo release best effort enquanto Registry, DynamicSupervisor, NodeHeartbeat e
+Repo ainda estão disponíveis.
 
 ## Liveness durável de runtime nodes
 
@@ -107,15 +112,15 @@ failed
 cancelled
 ```
 
-Somente `pending` e `running` são claimable. O primeiro claim muda `pending` para
-`running`. Estados terminais não podem receber ownership novo.
+Somente `pending` e `running` são claimable por operação explícita. O primeiro claim
+muda `pending` para `running`. Estados terminais não podem receber ownership novo.
 
 `owner_node_id` referencia uma incarnação específica em `runtime_nodes`. A
 expiração usa um threshold inicial de 45 segundos e compara
 `runtime_nodes.last_heartbeat_at` com o relógio do PostgreSQL. O relógio local da
 máquina não participa da decisão distribuída de liveness.
 
-Claim é serializado por row lock na própria Run:
+Claim explícito é serializado por row lock na própria Run:
 
 ```text
 transaction
@@ -171,7 +176,7 @@ mutação crítica futura deve incluir `owner_node_id + generation` no mesmo com
 que altera o estado, evitando uma race entre verificação e persistência.
 
 A criação pública de Run continua adiada até que definição executável e RunSnapshot
-estejam ratificadas. Recovery scanning e Broadway permanecem fora deste recorte.
+estejam ratificadas. Broadway permanece fora deste recorte.
 
 ## Foundation de supervisão por Run
 
@@ -192,6 +197,17 @@ Claim sempre acontece antes do startup local. Repetir `start/1` para a mesma
 generation retorna o mesmo `RunSupervisor`. Se uma generation local antiga ainda
 estiver registrada depois de um novo claim, a árvore antiga é encerrada antes que a
 nova seja iniciada.
+
+O recovery usa um segundo ponto de entrada depois que o token já foi persistido:
+
+```text
+Executions.Runs.claim_recoverable(...)
+↓
+LeafcutterRuntime.Runs.start_claimed(ownership_token)
+```
+
+`start_claimed/1` não faz outro claim. Startup explícito, startup por recovery e stop
+local são serializados por Run no Registry local.
 
 O `RunSupervisor` registra:
 
@@ -241,11 +257,130 @@ A comparação usa o token completo. Um evento atrasado de uma generation antiga
 pode encerrar uma árvore local mais nova. O token stale não é liberado porque outro
 owner pode já ser o atual.
 
+## Recovery automático de Runs
+
+`LeafcutterRuntime.RunRecovery` usa polling periódico como mecanismo autoritativo de
+convergência. Notificações futuras podem reduzir latência, mas não substituirão o
+scan durável porque notificações podem ser perdidas.
+
+Configuração inicial:
+
+```text
+enabled          true
+initial_delay    1 segundo
+scan_interval    5 segundos
+batch_size       25
+drain_delay      100 ms
+initial_backoff  1 segundo
+max_backoff      30 segundos
+```
+
+O ambiente de teste mantém o processo global desabilitado. Testes de recovery iniciam
+processos isolados com runtime node durável próprio.
+
+O scan possui duas fases.
+
+### Reconciliação de ownership já local
+
+```text
+Executions.Runs.list_owned_tokens(runtime_node_id)
+↓
+comparar com RunRegistry local
+```
+
+Semântica:
+
+```text
+token durável + árvore local ausente
+→ reconstruir árvore com a mesma generation
+
+token durável == token local
+→ no-op
+
+token local diferente ou ausente no estado durável
+→ sinalizar stale ownership
+→ encerrar somente a generation local correspondente
+```
+
+Reconstruir uma árvore já owned não incrementa generation. Isso cobre restart do
+`RunDynamicSupervisor` ou de árvores locais sem exigir novo claim.
+
+### Claim de Runs recuperáveis
+
+O recovery automático considera somente:
+
+```text
+status == running
+AND (
+  owner_node_id IS NULL
+  OR owner heartbeat expirado
+)
+```
+
+Runs `pending` não são iniciadas automaticamente enquanto RunSnapshot e criação
+pública não estiverem ratificados. Assim, uma linha mínima de Run não é tratada como
+definição executável.
+
+Cada lote usa uma única transação:
+
+```text
+validar claimant RuntimeNode ativo
+↓
+calcular stale cutoff com relógio do PostgreSQL
+↓
+SELECT running recoverable Runs
+ORDER BY updated_at ASC, id ASC
+FOR UPDATE SKIP LOCKED
+LIMIT 25
+↓
+owner_node_id = claimant
+generation = generation + 1
+ownership_acquired_at = database_now
+↓
+commit
+↓
+iniciar árvores locais
+```
+
+`SKIP LOCKED` distribui lotes concorrentes sem leader election:
+
+```text
+node A bloqueia lote A
+node B ignora lote A e bloqueia lote B
+node C ignora ambos e bloqueia lote C
+```
+
+Locks permanecem apenas durante a transação de claim. Startup local acontece depois
+do commit.
+
+Quando um lote completo é retornado, o próximo scan acontece após `drain_delay` para
+esvaziar backlog rapidamente. Lotes menores retornam ao intervalo normal.
+
+Falhas globais de scan usam backoff exponencial até 30 segundos sem colocar o processo
+em crash loop. Falhas de startup de uma Run usam backoff operacional em memória e
+excluem temporariamente somente aquela Run; outras Runs continuam sendo recuperadas.
+Esse estado é reconstruível e não adiciona campos de retry à tabela `runs`.
+
+Durante shutdown normal, `RunRecovery` para novos scans e tenta:
+
+```text
+release durable ownership
+→ terminate local tree
+```
+
+O release é best effort. Se PostgreSQL estiver indisponível, os processos locais ainda
+são encerrados; depois que o heartbeat expira, outro node pode reclaimar com uma nova
+generation. Um crash isolado de `RunRecovery` não libera ownership nem encerra as
+árvores locais.
+
 Este recorte ainda não adiciona:
 
 ```text
-recovery scanner
 RunSnapshot
+public Run creation
+pending Run automatic startup
+LISTEN/NOTIFY
+PubSub wake-up
 pause/resume
 terminalização coordenada
 SourceBroadway

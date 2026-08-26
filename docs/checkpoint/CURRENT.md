@@ -4,13 +4,14 @@
 
 ## Current phase
 
-**Per-Run control-plane foundation**
+**Run definition and snapshot foundation**
 
 A primeira foundation funcional de RBAC de `Organizations` está concluída para
 `User` e `ServiceAccount`.
 
 A infraestrutura OTP mínima de `leafcutter_runtime`, liveness por incarnação,
-Run ownership/fencing e a primeira árvore local por Run estão materializadas.
+Run ownership/fencing, a primeira árvore local por Run e recovery automático de Runs
+`running` estão materializados.
 
 ## Repository state
 
@@ -29,7 +30,8 @@ Estado atual:
 - `leafcutter_core` supervisiona `Leafcutter.Repo`, `Leafcutter.PubSub` e Oban;
 - `leafcutter_connectors` possui supervision tree vazia;
 - `leafcutter_runtime` supervisiona `LeafcutterRuntime.RunRegistry`,
-  `LeafcutterRuntime.RunDynamicSupervisor` e `LeafcutterRuntime.NodeHeartbeat`;
+  `LeafcutterRuntime.RunDynamicSupervisor`, `LeafcutterRuntime.NodeHeartbeat` e
+  `LeafcutterRuntime.RunRecovery`;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
 - `Organizations` possui Organization, Environment, User, ServiceAccount,
   Membership, Role, Permission e assignments organization/environment-scoped;
@@ -37,28 +39,39 @@ Estado atual:
   `Principal` persistido;
 - assignments organization-wide satisfazem checks em Environment;
 - assignments environment-scoped não satisfazem Organization nem outro Environment;
-- `Executions` possui `RuntimeNode`, `Run`, `Nodes.heartbeat/2`, `Runs.claim/2` e
-  `Runs.release/1`;
+- `Executions` possui `RuntimeNode`, `Run`, `Nodes.heartbeat/2`, `Runs.claim/2`,
+  `Runs.release/1`, `Runs.list_owned_tokens/1` e `Runs.claim_recoverable/3`;
 - `RuntimeNode.id` identifica uma incarnação específica da application runtime;
 - `node_name` é metadata reutilizável e deliberadamente não possui unicidade;
 - heartbeat, expiração e ownership usam o relógio do PostgreSQL;
 - reiniciar apenas `NodeHeartbeat` preserva o `runtime_node_id`;
 - reiniciar a application/BEAM gera outro `runtime_node_id`;
-- Runs começam em `pending`, mudam para `running` no primeiro claim e possuem
-  estados terminais `completed`, `failed` e `cancelled`;
+- Runs começam em `pending`, mudam para `running` no primeiro claim explícito e
+  possuem estados terminais `completed`, `failed` e `cancelled`;
 - `owner_node_id` referencia uma incarnação e `generation` é o fencing token
   monotônico;
 - runtime nodes expiram após 45 segundos sem heartbeat;
-- claim/reclaim é serializado por row lock na Run;
+- claim/reclaim explícito é serializado por row lock na Run;
 - release aplica `run_id + owner_node_id + generation` no mesmo UPDATE;
 - `LeafcutterRuntime.Runs.start/1` faz claim antes do startup local;
+- `LeafcutterRuntime.Runs.start_claimed/1` inicia a árvore usando token já committed;
+- `LeafcutterRuntime.Runs.list_local/0` expõe somente árvores locais vivas;
 - `LeafcutterRuntime.Runs.stop/1` tenta release e encerra a árvore local;
 - `LeafcutterRuntime.Runs.stale_ownership/1` encerra somente a generation local
   correspondente ao token rejeitado;
 - `RunSupervisor` e `RunCoordinator` estão materializados sem Broadway;
+- `RunRecovery` usa polling autoritativo a cada 5 segundos;
+- recovery reconstrói árvores já owned pela incarnação local sem incrementar generation;
+- recovery reivindica somente Runs `running` sem owner ou com owner expirado;
+- recovery usa lotes de 25 ordenados por `updated_at + id` e
+  `FOR UPDATE SKIP LOCKED` para distribuir concorrência entre nodes;
+- Runs `pending` continuam exigindo start explícito até existir RunSnapshot;
+- falhas globais de scan e falhas locais de startup possuem backoff em memória;
+- shutdown normal tenta release best effort antes de encerrar árvores locais;
+- crash isolado de `RunRecovery` não libera ownership nem remove árvores locais;
 - testes cobrem constraints, lifecycle, concorrência, RBAC, heartbeat,
-  ownership/fencing e supervisão local por Run;
-- recovery scanner, RunSnapshot e data plane ainda não foram criados.
+  ownership/fencing, supervisão local e recovery automático;
+- RunSnapshot, criação pública de Run e data plane ainda não foram criados.
 
 ## Ratified Context Map
 
@@ -258,6 +271,7 @@ runtime application workflows
 RunRegistry
 RunDynamicSupervisor
 NodeHeartbeat
+RunRecovery
 per-Run supervision trees
 Broadway data plane
 ```
@@ -314,7 +328,8 @@ Supervision tree da application:
 LeafcutterRuntime.Application
 ├── LeafcutterRuntime.RunRegistry
 ├── LeafcutterRuntime.RunDynamicSupervisor
-└── LeafcutterRuntime.NodeHeartbeat
+├── LeafcutterRuntime.NodeHeartbeat
+└── LeafcutterRuntime.RunRecovery
 ```
 
 `RunRegistry` é local e possui keys `:unique`.
@@ -332,7 +347,7 @@ Run
 └── ownership_acquired_at
 ```
 
-Semântica de claim:
+Semântica de claim explícito:
 
 ```text
 sem owner
@@ -358,12 +373,22 @@ no mesmo comando SQL que altera o estado.
 
 ## Per-Run supervision baseline
 
-Workflow de startup:
+Workflow explícito de startup:
 
 ```text
 LeafcutterRuntime.Runs.start(run_id)
 ↓
 Executions.Runs.claim(run_id, runtime_node_id)
+↓
+RunDynamicSupervisor
+└── RunSupervisor <run_id>
+    └── RunCoordinator
+```
+
+Workflow depois de claim já committed:
+
+```text
+LeafcutterRuntime.Runs.start_claimed(ownership_token)
 ↓
 RunDynamicSupervisor
 └── RunSupervisor <run_id>
@@ -402,8 +427,69 @@ RunCoordinator recebe stale token correspondente
 `RunSupervisor` é transient sob o DynamicSupervisor. `RunCoordinator` é transient e
 significant, permitindo restart em crash e shutdown completo em stale ownership.
 
+Start explícito, start por token e stop local são serializados por Run no Registry.
+
 Stop explícito tenta release durável antes de remover a árvore. Um release stale não
 mantém processos locais vivos.
+
+## Automatic recovery baseline
+
+```text
+RunRecovery
+↓ polling
+list durable tokens owned by this runtime node
+↓
+reconcile local Registry
+↓
+claim running recoverable Runs
+FOR UPDATE SKIP LOCKED
+↓
+start_claimed(token)
+```
+
+Reconciliação de Runs já owned:
+
+```text
+token durável + árvore ausente
+→ reconstruir sem incrementar generation
+
+token durável == token local
+→ no-op
+
+token local diferente ou sem ownership durável correspondente
+→ encerrar generation local como stale
+```
+
+Claim automático:
+
+```text
+status == running
+AND owner is nil or expired
+→ bounded claim batch
+→ generation + 1
+→ commit
+→ local startup
+```
+
+Configuração inicial:
+
+```text
+scan interval     5 segundos
+batch size        25
+drain delay       100 ms
+global backoff    1s até 30s
+per-Run backoff   em memória
+```
+
+`FOR UPDATE SKIP LOCKED` evita que nodes concorrentes aguardem o mesmo lote. O
+PostgreSQL continua sendo authority; não existe leader election para recovery.
+
+Runs `pending` permanecem fora do scanner até existir uma definição executável
+imutável.
+
+Durante shutdown normal, recovery para scans e tenta release best effort das árvores
+locais. Em indisponibilidade do banco, a expiração do heartbeat continua garantindo
+reclaim posterior com nova generation.
 
 Uma Run tree permanece em um único node inicialmente.
 
@@ -522,44 +608,46 @@ Durable Run Ownership + Fencing Foundation
 
 Per-Run Supervisor + Coordinator Foundation
 → completed
+
+Automatic Run Recovery Bootstrap Foundation
+→ completed
 ```
 
 ## In progress
 
-Definir como Runs duráveis são descobertas e iniciadas automaticamente sem violar
-ownership/fencing.
+Definir a representação executável e imutável que torna uma Run `pending` segura para
+startup e recovery automáticos.
 
 ## Next concrete task
 
-Ratificar o primeiro recovery/bootstrap workflow:
+Ratificar o primeiro `RunSnapshot` e o workflow público de criação de Run:
 
 ```text
-local runtime incarnation
+validated executable definition
+↓ transaction
+Run + immutable RunSnapshot
 ↓
-find claimable Runs
-↓
-claim atomically
-↓
-start idempotent local trees
+pending Run becomes eligible for explicit or automatic startup
 ```
 
 A decisão deve fechar:
 
-- se recovery usa polling periódico, notificação ou ambos;
-- batch size e ordenação de claim;
-- prevenção de thundering herd entre nodes;
-- tratamento de Run já local;
-- backoff após falhas de claim/startup;
-- comportamento durante application shutdown;
-- relação com RunSnapshot e criação pública de Run.
+- quais identidades estáveis de Integration, EnvironmentDeployment, PackageVersion e
+  Connections são copiadas ou referenciadas;
+- quais configurações precisam ser congeladas no snapshot;
+- como secrets permanecem fora do payload imutável;
+- relação 1:1 entre Run e RunSnapshot;
+- atomicidade de criação;
+- quando uma Run `pending` passa a ser elegível para o scanner;
+- contrato de criação e erros públicos;
+- quais mudanças futuras exigem nova Run em vez de mutação do snapshot.
 
 Ainda não adicionar Broadway, Record/Delivery processing ou transitions completas de
-pause/resume antes desse bootstrap estar definido.
+pause/resume antes dessa definição executável estar fechada.
 
 ## Open warnings
 
 - criação pública de Run, definição executável e RunSnapshot ainda não foram fechadas;
-- recovery scanner automático ainda não foi materializado;
 - transitions completas de lifecycle, pause/resume e terminalização ainda não foram fechadas;
 - política de retenção/cleanup de runtime node incarnations ainda não foi fechada;
 - autenticação concreta de ServiceAccount ainda não foi modelada;
