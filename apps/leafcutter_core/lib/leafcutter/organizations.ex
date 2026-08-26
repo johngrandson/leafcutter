@@ -5,6 +5,7 @@ defmodule Leafcutter.Organizations do
   This module exposes operations related to the primary organization
   lifecycle while specialized capabilities live in dedicated modules.
   """
+
   import Ecto.Query
 
   alias Leafcutter.Organizations.Organization

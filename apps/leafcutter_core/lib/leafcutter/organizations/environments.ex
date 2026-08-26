@@ -2,6 +2,7 @@ defmodule Leafcutter.Organizations.Environments do
   @moduledoc """
   Public capability module for managing organization environments.
   """
+
   import Ecto.Query
 
   alias Leafcutter.Organizations.Environment
