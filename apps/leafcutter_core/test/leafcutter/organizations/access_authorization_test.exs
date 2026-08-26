@@ -16,7 +16,7 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
     test "organization-wide roles authorize both organization and environment scopes" do
       scope = create_user_scope()
 
-      assert :ok = Roles.grant_permission(scope.role.id, :organization_read)
+      assert {:ok, _permission} = Roles.grant_permission(scope.role.id, :organization_read)
 
       assert {:ok, _assignment} =
                Access.assign_role(%{
@@ -108,6 +108,18 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
                  {:organization, scope.organization.id}
                )
     end
+
+    test "returns user_disabled for a disabled user" do
+      scope = create_user_scope()
+      assert {:ok, _user} = Users.disable(scope.user.id)
+
+      assert {:error, :user_disabled} =
+               Access.authorize(
+                 {:user, scope.user.id},
+                 :organization_read,
+                 {:organization, scope.organization.id}
+               )
+    end
   end
 
   describe "authorize/3 for service accounts" do
@@ -164,11 +176,45 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
                  {:organization, other_organization.id}
                )
     end
+
+    test "returns service account lifecycle errors" do
+      scope = create_service_account_scope()
+
+      assert {:error, :service_account_not_found} =
+               Access.authorize(
+                 {:service_account, "00000000-0000-0000-0000-000000000000"},
+                 :organization_read,
+                 {:organization, scope.organization.id}
+               )
+
+      assert {:ok, _service_account} = ServiceAccounts.disable(scope.service_account.id)
+
+      assert {:error, :service_account_disabled} =
+               Access.authorize(
+                 {:service_account, scope.service_account.id},
+                 :organization_read,
+                 {:organization, scope.organization.id}
+               )
+    end
   end
 
   describe "authorization lifecycle" do
-    test "disabled scopes and actors deny before role evaluation" do
+    test "missing and disabled scopes deny before actor evaluation" do
       scope = create_user_scope()
+
+      assert {:error, :environment_not_found} =
+               Access.authorize(
+                 {:user, scope.user.id},
+                 :environment_read,
+                 {:environment, "00000000-0000-0000-0000-000000000000"}
+               )
+
+      assert {:error, :organization_not_found} =
+               Access.authorize(
+                 {:user, scope.user.id},
+                 :organization_read,
+                 {:organization, "00000000-0000-0000-0000-000000000000"}
+               )
 
       assert {:ok, _environment} = Environments.disable(scope.environment.id)
 
