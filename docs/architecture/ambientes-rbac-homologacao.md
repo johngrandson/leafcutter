@@ -98,6 +98,46 @@ environment.manage
 
 Acesso a status pode ser separado de acesso a payloads sensíveis.
 
+### Service accounts
+
+`ServiceAccount` representa um ator não humano scoped diretamente por uma Organization:
+
+```text
+Organization
+└── ServiceAccount
+    ├── id
+    ├── name
+    └── disabled_at
+```
+
+Diferente de `User`, um `ServiceAccount` não participa de `Membership`.
+
+```text
+User
+└── Membership
+
+ServiceAccount
+└── Organization direta
+```
+
+Essa separação mantém FKs e tipos explícitos e evita introduzir antecipadamente um
+`Principal` polimórfico ou transformar `Membership` em uma abstração genérica de ator.
+
+Credenciais concretas não pertencem ao schema de `ServiceAccount` inicialmente:
+
+```text
+API key
+token
+client secret
+authentication mechanism
+```
+
+Esses mecanismos serão modelados apenas quando a autenticação concreta de service
+accounts for implementada.
+
+Criação de `ServiceAccount` exige Organization existente e ativa. Disable é idempotente
+e permanece permitido mesmo se a Organization já estiver desabilitada.
+
 ### Role assignments
 
 A atribuição inicial de Role para usuários acontece através de `Membership`:
@@ -144,6 +184,9 @@ Invariantes para criação de assignment:
 
 Revogação é idempotente e pode reduzir acesso mesmo quando recursos relacionados já
 estão desabilitados.
+
+A atribuição equivalente de Roles para `ServiceAccount` será materializada separadamente,
+sem reutilizar `Membership` nem introduzir polimorfismo.
 
 ## Autorização
 
