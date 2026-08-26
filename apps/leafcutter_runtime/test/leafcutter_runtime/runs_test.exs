@@ -8,6 +8,7 @@ defmodule LeafcutterRuntime.RunsTest do
 
   alias LeafcutterRuntime.{
     NodeHeartbeat,
+    RunDynamicSupervisor,
     RunRegistry,
     Runs
   }
@@ -43,11 +44,12 @@ defmodule LeafcutterRuntime.RunsTest do
       assert {:ok,
               %{
                 run_supervisor_pid: ^first_supervisor_pid,
-                ownership_token: %{
-                  run_id: ^run_id,
-                  runtime_node_id: ^runtime_node_id,
-                  generation: 1
-                } = ownership_token
+                ownership_token:
+                  %{
+                    run_id: ^run_id,
+                    runtime_node_id: ^runtime_node_id,
+                    generation: 1
+                  } = ownership_token
               }} = Runs.lookup(run.id)
 
       assert [{^first_supervisor_pid, ^ownership_token}] =
@@ -102,6 +104,57 @@ defmodule LeafcutterRuntime.RunsTest do
       assert persisted_run.owner_node_id == other_token.runtime_node_id
       assert persisted_run.generation == other_token.generation
     end
+
+    test "serializes local lifecycle operations for the same Run" do
+      run = insert_run()
+      register_cleanup(run.id)
+      operation_lock_key = {:run_operation, run.id}
+
+      assert {:ok, _owner} =
+               Registry.register(
+                 RunRegistry,
+                 operation_lock_key,
+                 :test_lock
+               )
+
+      start_task = Task.async(fn -> Runs.start(run.id) end)
+      yielded_result = Task.yield(start_task, 200)
+
+      Registry.unregister(RunRegistry, operation_lock_key)
+
+      start_result =
+        case yielded_result do
+          nil -> Task.await(start_task, 500)
+          {:ok, result} -> result
+        end
+
+      assert yielded_result == nil
+      assert {:ok, run_supervisor_pid} = start_result
+      assert Process.alive?(run_supervisor_pid)
+    end
+
+    test "releases durable ownership when the dynamic supervisor is unavailable" do
+      run = insert_run()
+      register_cleanup(run.id)
+
+      assert :ok =
+               Supervisor.terminate_child(
+                 LeafcutterRuntime.Supervisor,
+                 RunDynamicSupervisor
+               )
+
+      on_exit(&restart_run_dynamic_supervisor/0)
+
+      assert {:error, {:run_supervisor_start_failed, _reason}} =
+               Runs.start(run.id)
+
+      persisted_run = Repo.get!(Run, run.id)
+
+      assert persisted_run.status == :running
+      assert persisted_run.owner_node_id == nil
+      assert persisted_run.ownership_acquired_at == nil
+      assert persisted_run.generation == 1
+    end
   end
 
   describe "stop/1" do
@@ -124,6 +177,28 @@ defmodule LeafcutterRuntime.RunsTest do
       assert persisted_run.generation == ownership_token.generation
 
       assert :ok = Runs.stop(run.id)
+    end
+
+    test "terminates the local tree when durable release reports stale ownership" do
+      run = insert_run()
+      register_cleanup(run.id)
+
+      assert {:ok, run_supervisor_pid} = Runs.start(run.id)
+      assert {:ok, %{ownership_token: local_token}} = Runs.lookup(run.id)
+      assert :ok = DurableRuns.release(local_token)
+
+      other_runtime_node = create_runtime_node("stop-stale-owner")
+
+      assert {:ok, current_token} =
+               DurableRuns.claim(run.id, other_runtime_node.id)
+
+      assert {:error, :stale_ownership} = Runs.stop(run.id)
+      assert :ok = wait_until_not_running(run.id, 50)
+      refute Process.alive?(run_supervisor_pid)
+
+      persisted_run = Repo.get!(Run, run.id)
+      assert persisted_run.owner_node_id == current_token.runtime_node_id
+      assert persisted_run.generation == current_token.generation
     end
   end
 
@@ -305,6 +380,18 @@ defmodule LeafcutterRuntime.RunsTest do
   @spec register_cleanup(Run.id()) :: :ok
   defp register_cleanup(run_id) do
     on_exit(fn -> Runs.stop(run_id) end)
+  end
+
+  @spec restart_run_dynamic_supervisor() :: :ok
+  defp restart_run_dynamic_supervisor do
+    case Supervisor.restart_child(
+           LeafcutterRuntime.Supervisor,
+           RunDynamicSupervisor
+         ) do
+      {:ok, _pid} -> :ok
+      {:ok, _pid, _info} -> :ok
+      {:error, :running} -> :ok
+    end
   end
 
   @spec unique_node_name(String.t()) :: String.t()

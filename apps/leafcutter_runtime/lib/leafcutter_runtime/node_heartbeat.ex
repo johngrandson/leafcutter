@@ -119,7 +119,8 @@ defmodule LeafcutterRuntime.NodeHeartbeat do
         |> validate_mode!()
     }
 
-    send(self(), :heartbeat)
+    record_heartbeat(state)
+    schedule_heartbeat(state.interval)
 
     {:ok, state}
   end

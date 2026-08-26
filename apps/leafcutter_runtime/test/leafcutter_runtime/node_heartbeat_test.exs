@@ -7,12 +7,63 @@ defmodule LeafcutterRuntime.NodeHeartbeatTest do
   alias LeafcutterRuntime.NodeHeartbeat
 
   @heartbeat_event [:leafcutter, :runtime, :node, :heartbeat]
+  @repo_query_event [:leafcutter, :repo, :query]
 
   setup do
     owner = Sandbox.start_owner!(Repo, shared: true)
     on_exit(fn -> Sandbox.stop_owner(owner) end)
 
     :ok
+  end
+
+  test "persists the initial durable heartbeat before start_link returns" do
+    runtime_node_id = Ecto.UUID.generate()
+    node_name = "initial-heartbeat@example"
+    handler_id = {__MODULE__, make_ref()}
+    test_process = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        @repo_query_event,
+        fn _event, _measurements, metadata, {test_process, node_name} ->
+          if String.contains?(metadata.query, ~s(INSERT INTO "runtime_nodes")) and
+               node_name in metadata.params do
+            send(test_process, {:initial_heartbeat_persisting, self()})
+
+            receive do
+              :continue_initial_heartbeat -> :ok
+            after
+              1_000 -> raise "timed out while persisting the initial heartbeat"
+            end
+          end
+        end,
+        {test_process, node_name}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    start_task =
+      Task.async(fn ->
+        NodeHeartbeat.start_link(%{
+          runtime_node_id: runtime_node_id,
+          node_name: node_name,
+          interval: 60_000,
+          mode: :durable,
+          name: nil
+        })
+      end)
+
+    assert_receive {:initial_heartbeat_persisting, heartbeat_pid}, 500
+
+    start_result = Task.yield(start_task, 0)
+    send(heartbeat_pid, :continue_initial_heartbeat)
+
+    assert start_result == nil
+    assert {:ok, heartbeat_process} = Task.await(start_task, 500)
+    assert %RuntimeNode{id: ^runtime_node_id} = Repo.get(RuntimeNode, runtime_node_id)
+
+    GenServer.stop(heartbeat_process)
   end
 
   test "persists and emits periodic heartbeats for one runtime incarnation" do

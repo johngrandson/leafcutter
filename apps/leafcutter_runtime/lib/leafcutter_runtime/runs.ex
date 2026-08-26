@@ -19,6 +19,7 @@ defmodule LeafcutterRuntime.Runs do
   }
 
   @max_local_start_attempts 3
+  @local_operation_lock_retry_ms 10
 
   @typedoc "A local Run supervisor and the durable token retained by its tree."
   @type local_run :: %{
@@ -61,10 +62,16 @@ defmodule LeafcutterRuntime.Runs do
   * A locally registered older generation is terminated before the current token starts.
   * A failed durable claim removes any local tree that can no longer prove ownership.
   * Failed startup releases the claimed token unless another matching local tree won the race.
+  * Local start and stop operations are serialized per Run identifier.
   * This workflow does not create Runs or perform automatic recovery scanning.
   """
   @spec start(Run.id()) :: {:ok, pid()} | {:error, start_error()}
   def start(run_id) do
+    with_local_run_operation(run_id, fn -> start_locked(run_id) end)
+  end
+
+  @spec start_locked(Run.id()) :: {:ok, pid()} | {:error, start_error()}
+  defp start_locked(run_id) do
     runtime_node_id = NodeHeartbeat.runtime_node_id()
 
     case DurableRuns.claim(run_id, runtime_node_id) do
@@ -156,10 +163,16 @@ defmodule LeafcutterRuntime.Runs do
   * Durable release is attempted before local termination.
   * The local tree is terminated even when release reports stale ownership.
   * Release preserves Run status and generation.
+  * Local start and stop operations are serialized per Run identifier.
   * A later start must perform a fresh durable claim.
   """
   @spec stop(Run.id()) :: :ok | {:error, DurableRuns.release_error()}
   def stop(run_id) do
+    with_local_run_operation(run_id, fn -> stop_locked(run_id) end)
+  end
+
+  @spec stop_locked(Run.id()) :: :ok | {:error, DurableRuns.release_error()}
+  defp stop_locked(run_id) do
     case lookup(run_id) do
       {:ok,
        %{
@@ -256,10 +269,7 @@ defmodule LeafcutterRuntime.Runs do
   defp start_local_tree(ownership_token, attempts_remaining) do
     child_spec = {RunSupervisor, ownership_token}
 
-    case DynamicSupervisor.start_child(
-           RunDynamicSupervisor,
-           child_spec
-         ) do
+    case start_dynamic_child(child_spec) do
       {:ok, run_supervisor_pid} ->
         {:ok, run_supervisor_pid}
 
@@ -272,9 +282,23 @@ defmodule LeafcutterRuntime.Runs do
       {:error, {:already_started, _run_supervisor_pid}} ->
         ensure_local_tree(ownership_token, attempts_remaining - 1)
 
+      {:exit, reason} ->
+        reconcile_start_failure(ownership_token, {:exit, reason})
+
       {:error, reason} ->
         reconcile_start_failure(ownership_token, reason)
     end
+  end
+
+  @spec start_dynamic_child({module(), DurableRuns.ownership_token()}) ::
+          DynamicSupervisor.on_start_child() | {:exit, term()}
+  defp start_dynamic_child(child_spec) do
+    DynamicSupervisor.start_child(
+      RunDynamicSupervisor,
+      child_spec
+    )
+  catch
+    :exit, reason -> {:exit, reason}
   end
 
   @spec reconcile_start_failure(
@@ -346,6 +370,34 @@ defmodule LeafcutterRuntime.Runs do
 
       {:error, :not_found} ->
         :ok
+    end
+  end
+
+  @spec with_local_run_operation(Run.id(), (-> result)) :: result when result: term()
+  defp with_local_run_operation(run_id, operation) do
+    operation_lock_key = {:run_operation, run_id}
+
+    case Registry.register(
+           LeafcutterRuntime.RunRegistry,
+           operation_lock_key,
+           :local_operation
+         ) do
+      {:ok, _owner} ->
+        try do
+          operation.()
+        after
+          Registry.unregister(
+            LeafcutterRuntime.RunRegistry,
+            operation_lock_key
+          )
+        end
+
+      {:error, {:already_registered, _owner}} ->
+        receive do
+        after
+          @local_operation_lock_retry_ms ->
+            with_local_run_operation(run_id, operation)
+        end
     end
   end
 end

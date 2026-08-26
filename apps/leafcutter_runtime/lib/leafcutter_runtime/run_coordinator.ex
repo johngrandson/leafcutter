@@ -135,8 +135,7 @@ defmodule LeafcutterRuntime.RunCoordinator do
   end
 
   @spec via_name(Runs.ownership_token()) ::
-          {:via, Registry,
-           {atom(), {:coordinator, Run.id()}, Runs.ownership_token()}}
+          {:via, Registry, {atom(), {:coordinator, Run.id()}, Runs.ownership_token()}}
   defp via_name(ownership_token) do
     {:via, Registry,
      {
