@@ -98,11 +98,11 @@ defmodule Leafcutter.Organizations.ServiceAccountRoleAssignment do
     |> foreign_key_constraint(:environment_id)
     |> unique_constraint(
       [:service_account_id, :role_id],
-      name: :service_account_role_assignments_account_role_organization_scope_index
+      name: :sa_role_assignments_account_role_org_scope_index
     )
     |> unique_constraint(
       [:service_account_id, :role_id, :environment_id],
-      name: :service_account_role_assignments_account_role_environment_scope_index
+      name: :sa_role_assignments_account_role_env_scope_index
     )
   end
 end
