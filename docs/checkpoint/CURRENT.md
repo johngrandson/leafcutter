@@ -4,14 +4,13 @@
 
 ## Current phase
 
-**Runtime ownership foundation**
+**Run supervision foundation**
 
 A primeira foundation funcional de RBAC de `Organizations` está concluída para
 `User` e `ServiceAccount`.
 
-A infraestrutura OTP mínima de `leafcutter_runtime` está materializada e o
-heartbeat por incarnação de runtime agora possui representação durável em
-PostgreSQL.
+A infraestrutura OTP mínima de `leafcutter_runtime`, o heartbeat durável por
+incarnação e a authority PostgreSQL de Run ownership/fencing estão materializados.
 
 ## Repository state
 
@@ -43,16 +42,29 @@ Estado atual:
   scope tuples (`{:organization, id}` / `{:environment, id}`), sem `Principal` persistido;
 - assignments organization-wide satisfazem checks em Environment; assignments
   environment-scoped não satisfazem checks organization-wide nem outros Environments;
-- `Executions` possui `RuntimeNode` e `Executions.Nodes.heartbeat/2` para liveness durável;
+- `Executions` possui `RuntimeNode`, `Run`, `Executions.Nodes.heartbeat/2`,
+  `Executions.Runs.claim/2` e `Executions.Runs.release/1`;
 - `RuntimeNode.id` identifica uma incarnação específica da application runtime;
 - `node_name` é metadata reutilizável e deliberadamente não possui unicidade;
+- heartbeat e decisões de expiração usam o relógio do PostgreSQL;
 - reiniciar apenas `NodeHeartbeat` preserva o `runtime_node_id`; reiniciar a
   application/BEAM gera outro identificador;
 - `NodeHeartbeat` persiste liveness antes de emitir Telemetry e continua tentando
   após falhas temporárias de banco sem entrar em crash loop;
+- Runs começam em `pending`, mudam para `running` no primeiro claim e possuem estados
+  terminais `completed`, `failed` e `cancelled`;
+- `owner_node_id` referencia uma incarnação de `RuntimeNode` e `generation` é o
+  fencing token monotônico;
+- runtime nodes são considerados expirados após 45 segundos sem heartbeat;
+- claim/reclaim é serializado por row lock na Run; outro owner ativo bloqueia claim;
+- claim repetido pelo mesmo owner é idempotente; reclaim e claim após release
+  incrementam `generation`;
+- release aplica `run_id + owner_node_id + generation` na mesma atualização SQL e
+  rejeita tokens superseded;
 - testes usam SQL Sandbox e cobrem constraints, lifecycle, concorrência, RBAC,
-  supervision e heartbeat durável já materializados;
-- nenhum Run process, Run ownership claim, generation/fencing ou Broadway pipeline foi criado.
+  supervision, heartbeat durável e ownership/fencing já materializados;
+- nenhum Run process, RunSupervisor, RunCoordinator, recovery scanner ou Broadway
+  pipeline foi criado.
 
 ## Ratified Context Map
 
@@ -306,7 +318,7 @@ apps/leafcutter_core/priv/repo/migrations/
 ```
 
 Isso inclui tabelas owned por `Executions` em `leafcutter_runtime`, como
-`runtime_nodes`.
+`runtime_nodes` e `runs`.
 
 ## Runtime baseline
 
@@ -321,7 +333,7 @@ LeafcutterRuntime.Application
 
 `RunRegistry` é local e possui keys `:unique`.
 
-`RunDynamicSupervisor` permanece vazio até existir ownership durável de Run.
+`RunDynamicSupervisor` permanece vazio até a primeira per-Run supervision tree.
 
 `NodeHeartbeat` usa um UUID por incarnação e atualiza:
 
@@ -331,6 +343,39 @@ runtime_nodes.last_heartbeat_at
 
 A mesma application identity sobrevive a restart isolado do heartbeat. Uma nova
 application identity é criada após restart da application ou do BEAM.
+
+Authority durável de Run:
+
+```text
+Run
+├── status
+├── owner_node_id
+├── generation
+└── ownership_acquired_at
+```
+
+Semântica de claim:
+
+```text
+sem owner
+→ claim + generation incrementada
+
+owner expirado
+→ reclaim + generation incrementada
+
+mesmo owner ativo
+→ token atual, sem incremento
+
+outro owner ativo
+→ claim rejeitado
+```
+
+Release preserva status e generation. Toda escrita crítica futura deve aplicar o
+fencing token no mesmo comando SQL que altera o estado:
+
+```text
+run_id + runtime_node_id + generation
+```
 
 Runtime supervision conceitual futura por Run:
 
@@ -455,41 +500,43 @@ Runtime OTP Supervision Foundation
 
 Durable Runtime Node Liveness Foundation
 → completed
+
+Durable Run Ownership + Fencing Foundation
+→ completed
 ```
 
 ## In progress
 
-Preparar o modelo durável mínimo de Run ownership e fencing.
+Definir a primeira per-Run supervision tree sobre a authority durável já existente.
 
 ## Next concrete task
 
-Ratificar e materializar o primeiro schema de `Run` com os campos mínimos necessários
-para ownership:
+Ratificar o contrato mínimo de startup de:
 
 ```text
-owner_node_id
-→ runtime_nodes.id | nil
-
-generation
-→ monotonic fencing token
+LeafcutterRuntime.RunDynamicSupervisor
+└── RunSupervisor <run_id>
+    └── RunCoordinator
 ```
 
-A próxima decisão deve fechar:
+A decisão deve fechar:
 
-- estado mínimo de lifecycle de Run necessário para claim;
-- timeout que torna um `RuntimeNode` expirado;
-- operação atômica de claim/reclaim;
-- incremento de `generation` durante cada nova posse;
-- contrato usado para rejeitar escritas de stale owners;
-- quando ownership pode ser liberado explicitamente.
+- workflow que faz claim antes de iniciar a árvore;
+- passagem e retenção do ownership token pela árvore;
+- registro local por `run_id` no `RunRegistry`;
+- comportamento quando a mesma Run já está localmente iniciada;
+- encerramento gracioso e release de ownership;
+- reação do processo quando uma escrita indica `:stale_ownership`;
+- separação entre lifecycle durável e lifecycle OTP.
 
-Ainda não criar `RunSupervisor`, `RunCoordinator` ou Broadway antes dessa authority
-durável existir.
+Ainda não adicionar Broadway, Record/Delivery processing ou recovery scanner nessa etapa.
 
 ## Open warnings
 
-- Run schema, ownership claim e generation/fencing ainda não foram materializados;
-- timeout de expiração de runtime node ainda não foi fechado;
+- criação pública de Run, definição executável e RunSnapshot ainda não foram fechadas;
+- RunSupervisor, RunCoordinator e registro local de Runs ainda não foram materializados;
+- recovery scanner automático para Runs sem owner ou com owner expirado ainda não foi fechado;
+- transitions completas de lifecycle, pause/resume e terminalização ainda não foram fechadas;
 - política de retenção/cleanup de incarnações antigas ainda não foi fechada;
 - autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
 - AuditEvent para histórico de permission/role assignment ainda não foi materializado;
