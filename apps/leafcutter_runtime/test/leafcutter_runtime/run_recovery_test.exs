@@ -13,6 +13,15 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     Runs
   }
 
+  @typep run_attrs :: %{
+           optional(:status) => Run.status()
+         }
+
+  @typep recovery_overrides :: %{
+           optional(:initial_backoff) => pos_integer(),
+           optional(:max_backoff) => pos_integer()
+         }
+
   setup do
     owner = Sandbox.start_owner!(Repo, shared: true)
     on_exit(fn -> Sandbox.stop_owner(owner) end)
@@ -175,7 +184,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     assert Process.alive?(recovery_pid)
   end
 
-  @spec start_recovery(RuntimeNode.id(), map()) :: pid()
+  @spec start_recovery(RuntimeNode.id(), recovery_overrides()) :: pid()
   defp start_recovery(runtime_node_id, overrides \\ %{}) do
     options =
       Map.merge(
@@ -196,7 +205,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     start_supervised!({RunRecovery, options})
   end
 
-  @spec insert_run(map()) :: Run.t()
+  @spec insert_run(run_attrs()) :: Run.t()
   defp insert_run(attrs \\ %{}) do
     %Run{}
     |> Changeset.change(attrs)
