@@ -24,8 +24,8 @@ LeafcutterRuntime.Application
 `RunRegistry` é um `Registry` local com chaves `:unique`. Ele fornece identidade
 operacional dentro do node e não representa ownership distribuído.
 
-`RunDynamicSupervisor` começa vazio e somente receberá árvores de Run depois que
-ownership, generation/fencing e lifecycle durável estiverem materializados.
+`RunDynamicSupervisor` recebe somente árvores de Run que já possuem ownership
+durável. Ele não faz claim, recovery distribuído ou decisão de fencing.
 
 ## Liveness durável de runtime nodes
 
@@ -171,10 +171,99 @@ mutação crítica futura deve incluir `owner_node_id + generation` no mesmo com
 que altera o estado, evitando uma race entre verificação e persistência.
 
 A criação pública de Run continua adiada até que definição executável e RunSnapshot
-estejam ratificadas. `RunSupervisor`, `RunCoordinator`, recovery scanning e Broadway
-permanecem fora deste recorte.
+estejam ratificadas. Recovery scanning e Broadway permanecem fora deste recorte.
+
+## Foundation de supervisão por Run
+
+O primeiro workflow operacional é:
+
+```text
+LeafcutterRuntime.Runs.start(run_id)
+↓
+Executions.Runs.claim(run_id, runtime_node_id)
+↓
+RunDynamicSupervisor.start_child(...)
+↓
+RunSupervisor <run_id>
+└── RunCoordinator
+```
+
+Claim sempre acontece antes do startup local. Repetir `start/1` para a mesma
+generation retorna o mesmo `RunSupervisor`. Se uma generation local antiga ainda
+estiver registrada depois de um novo claim, a árvore antiga é encerrada antes que a
+nova seja iniciada.
+
+O `RunSupervisor` registra:
+
+```text
+RunRegistry key
+→ run_id
+
+RunRegistry value
+→ ownership_token
+```
+
+O `RunCoordinator` usa uma chave local separada:
+
+```text
+{:coordinator, run_id}
+```
+
+O token completo permanece disponível como Registry metadata. O Registry é apenas
+uma visão local e nunca substitui o estado em PostgreSQL.
+
+O `RunSupervisor` é um child `:transient` do `RunDynamicSupervisor`. Seu
+`RunCoordinator` também é `:transient`, mas é marcado como significativo. A
+supervision tree usa automatic shutdown:
+
+```text
+RunCoordinator crash anormal
+→ coordinator reiniciado
+→ RunSupervisor permanece
+
+RunCoordinator exit normal por stale ownership
+→ RunSupervisor encerra toda a árvore
+→ DynamicSupervisor não reinicia a generation stale
+```
+
+`LeafcutterRuntime.Runs.stop/1` tenta release durável e depois encerra a árvore
+local. Mesmo quando release informa `:stale_ownership`, o processo local é removido
+para convergir com a authority atual.
+
+Quando uma escrita crítica futura retornar `:stale_ownership`, o caller deve enviar
+o token rejeitado para:
+
+```text
+LeafcutterRuntime.Runs.stale_ownership(ownership_token)
+```
+
+A comparação usa o token completo. Um evento atrasado de uma generation antiga não
+pode encerrar uma árvore local mais nova. O token stale não é liberado porque outro
+owner pode já ser o atual.
+
+Este recorte ainda não adiciona:
+
+```text
+recovery scanner
+RunSnapshot
+pause/resume
+terminalização coordenada
+SourceBroadway
+DestinationBroadway
+Record/Delivery processing
+```
 
 ## Run supervision tree
+
+Forma atual:
+
+```text
+RunDynamicSupervisor
+└── RunSupervisor <run_id>
+    └── RunCoordinator
+```
+
+Forma futura:
 
 ```text
 RunDynamicSupervisor
@@ -187,13 +276,15 @@ RunDynamicSupervisor
         └── Destination C
 ```
 
-Broadway já é uma supervision tree. Não duplicar SourceRuntime/DestinationRuntime se a própria pipeline representa corretamente lifecycle e estado.
+Broadway já é uma supervision tree. Não duplicar SourceRuntime/DestinationRuntime se
+a própria pipeline representa corretamente lifecycle e estado.
 
 ## RunCoordinator
 
 Deve permanecer fora do data path.
 
-Recebe apenas comandos e eventos grossos:
+A responsabilidade atual é reter o ownership token e convergir a árvore quando o
+token é rejeitado como stale. Comandos e eventos grossos futuros incluem:
 
 ```text
 start
@@ -246,17 +337,20 @@ Write Operation
 Attempt + Delivery outcome
 ```
 
-Um destination lento não bloqueia os demais. Seu backlog cresce de forma independente até atingir limites de storage/operacionais.
+Um destination lento não bloqueia os demais. Seu backlog cresce de forma independente
+até atingir limites de storage/operacionais.
 
 ## Claim de Deliveries
 
-O Producer usa transações curtas e claim atômico, por exemplo com `FOR UPDATE SKIP LOCKED` ou mecanismo equivalente.
+O Producer usa transações curtas e claim atômico, por exemplo com
+`FOR UPDATE SKIP LOCKED` ou mecanismo equivalente.
 
 Locks não permanecem abertos durante requests externas.
 
 ## Acknowledger
 
-O Acknowledger do Broadway pode fechar o ciclo de sucesso/falha da mensagem. A persistência de Attempt/Delivery deve continuar explícita e testável.
+O Acknowledger do Broadway pode fechar o ciclo de sucesso/falha da mensagem. A
+persistência de Attempt/Delivery deve continuar explícita e testável.
 
 ## Retry
 
@@ -270,8 +364,11 @@ attempt_count += 1
 
 O Producer só busca itens disponíveis.
 
-Oban não precisa representar cada Delivery. Continua voltado a schedules, notifications, maintenance e trabalhos duráveis de menor cardinalidade.
+Oban não precisa representar cada Delivery. Continua voltado a schedules,
+notifications, maintenance e trabalhos duráveis de menor cardinalidade.
 
 ## Pausa e cancelamento
 
-O desenho concreto de pause/resume/cancel será definido na implementação do runtime. A regra é persistir a intenção e fazer a árvore convergir, sem depender somente de mensagens efêmeras.
+O desenho concreto de pause/resume/cancel será definido na implementação do runtime.
+A regra é persistir a intenção e fazer a árvore convergir, sem depender somente de
+mensagens efêmeras.
