@@ -39,6 +39,12 @@ defmodule Leafcutter.Executions.Runs do
   @typedoc "Error returned when Run ownership cannot be released."
   @type release_error :: :run_not_found | :stale_ownership
 
+  @typedoc "Error returned when a recovery batch cannot be claimed."
+  @type recovery_claim_error ::
+          :runtime_node_not_found
+          | :runtime_node_expired
+          | Ecto.Changeset.t()
+
   @doc """
   Claims or reclaims a Run for an active runtime node incarnation.
 
@@ -143,6 +149,151 @@ defmodule Leafcutter.Executions.Runs do
       {:ok, :ok} -> :ok
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  @doc """
+  Lists running Runs currently owned by one runtime node incarnation.
+
+  ## Parameters
+
+  * `runtime_node_id` - The runtime incarnation whose durable ownership tokens will be listed
+
+  ## Returns
+
+  * A list of current ownership tokens ordered by Run identifier
+  * An empty list when the runtime incarnation owns no running Runs
+
+  ## Examples
+
+      iex> Leafcutter.Executions.Runs.list_owned_tokens(
+      ...>   Ecto.UUID.generate()
+      ...> )
+      []
+
+  ## Notes
+
+  * Only Runs in the `:running` state are returned.
+  * The operation does not validate runtime node liveness.
+  * The result is a durable snapshot and may change immediately after the query.
+  * Local Registry state does not participate in this lookup.
+  """
+  @spec list_owned_tokens(RuntimeNode.id()) :: [ownership_token()]
+  def list_owned_tokens(runtime_node_id) do
+    Run
+    |> where(
+      [run],
+      run.status == :running and
+        run.owner_node_id == ^runtime_node_id and
+        run.generation > 0
+    )
+    |> order_by([run], asc: run.id)
+    |> select([run], %{
+      run_id: run.id,
+      runtime_node_id: run.owner_node_id,
+      generation: run.generation
+    })
+    |> Repo.all()
+  end
+
+  @doc """
+  Claims a bounded batch of running Runs that require recovery.
+
+  ## Parameters
+
+  * `runtime_node_id` - The active runtime incarnation that will acquire the recovered Runs
+  * `batch_size` - The maximum number of Runs claimed in one transaction
+  * `excluded_run_ids` - Runs temporarily excluded by local startup backoff
+
+  ## Returns
+
+  * `{:ok, ownership_tokens}` after claiming zero or more recoverable Runs
+  * `{:error, :runtime_node_not_found}` when the claimant incarnation does not exist
+  * `{:error, :runtime_node_expired}` when the claimant incarnation is stale
+  * `{:error, changeset}` when an ownership transition violates a database constraint
+
+  ## Examples
+
+      iex> Leafcutter.Executions.Runs.claim_recoverable(
+      ...>   Ecto.UUID.generate(),
+      ...>   25,
+      ...>   []
+      ...> )
+      {:error, :runtime_node_not_found}
+
+  ## Notes
+
+  * Only Runs already in the `:running` state participate in automatic recovery.
+  * Pending Runs continue to require an explicit start until RunSnapshot is ratified.
+  * Unowned Runs and Runs whose owner heartbeat is older than the stale threshold are eligible.
+  * Rows are ordered by oldest `updated_at` and then identifier.
+  * `FOR UPDATE SKIP LOCKED` distributes concurrent recovery batches across runtime nodes.
+  * Every claimed Run receives a greater fencing generation.
+  * Claim and generation updates commit before any local process is started.
+  """
+  @spec claim_recoverable(
+          RuntimeNode.id(),
+          pos_integer(),
+          [Run.id()]
+        ) :: {:ok, [ownership_token()]} | {:error, recovery_claim_error()}
+  def claim_recoverable(runtime_node_id, batch_size, excluded_run_ids)
+      when is_integer(batch_size) and batch_size > 0 and
+             is_list(excluded_run_ids) do
+    Repo.transaction(fn ->
+      database_now = DatabaseClock.now()
+      ensure_active_runtime_node(runtime_node_id, database_now)
+
+      stale_cutoff =
+        DateTime.add(
+          database_now,
+          -runtime_node_stale_after_ms(),
+          :millisecond
+        )
+
+      stale_cutoff
+      |> recoverable_runs_query(batch_size, excluded_run_ids)
+      |> Repo.all()
+      |> Enum.map(fn run ->
+        persist_claim(run, runtime_node_id, database_now)
+      end)
+    end)
+  end
+
+  @spec recoverable_runs_query(
+          DateTime.t(),
+          pos_integer(),
+          [Run.id()]
+        ) :: Ecto.Query.t()
+  defp recoverable_runs_query(stale_cutoff, batch_size, excluded_run_ids) do
+    stale_owner_ids =
+      RuntimeNode
+      |> where(
+        [runtime_node],
+        runtime_node.last_heartbeat_at < ^stale_cutoff
+      )
+      |> select([runtime_node], runtime_node.id)
+
+    Run
+    |> where([run], run.status == :running)
+    |> where(
+      [run],
+      is_nil(run.owner_node_id) or
+        run.owner_node_id in subquery(stale_owner_ids)
+    )
+    |> exclude_recovery_runs(excluded_run_ids)
+    |> order_by([run], asc: run.updated_at, asc: run.id)
+    |> limit(^batch_size)
+    |> lock("FOR UPDATE SKIP LOCKED")
+  end
+
+  @spec exclude_recovery_runs(Ecto.Query.t(), [Run.id()]) :: Ecto.Query.t()
+  defp exclude_recovery_runs(query, []), do: query
+
+  defp exclude_recovery_runs(query, excluded_run_ids) do
+    where(
+      query,
+      [run],
+      not (run.id in ^excluded_run_ids)
+    )
   end
 
   @spec lock_claimable_run(Run.id()) :: Run.t()
