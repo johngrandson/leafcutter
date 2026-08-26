@@ -9,7 +9,8 @@
 A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
 O primeiro recorte de domínio de `Organizations` evoluiu de `Organization` e
-`Environment` para `User`, `Membership`, `Role`, `Permission` e `RoleAssignment`.
+`Environment` para `User`, `ServiceAccount`, `Membership`, `Role`, `Permission` e
+`RoleAssignment`.
 
 ## Repository state
 
@@ -30,11 +31,12 @@ Estado atual:
 - `leafcutter_runtime` possui supervision tree vazia;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
 - `Organizations` possui schemas/migrations para `Organization`, `Environment`,
-  `User`, `Membership`, `Role`, `RolePermission` e `RoleAssignment`;
+  `User`, `ServiceAccount`, `Membership`, `Role`, `RolePermission` e `RoleAssignment`;
 - `Permission` é primitive conhecida em código, sem tabela própria;
-- `Organizations` expõe lifecycle de organizations, environments, users e roles;
-- `Organizations.Access` expõe membership e role assignment;
+- `Organizations` expõe lifecycle de organizations, environments, users, service accounts e roles;
+- `Organizations.Access` expõe membership e role assignment para usuários;
 - `Organizations.Roles` expõe grant/revoke de permissions;
+- `ServiceAccount` é scoped diretamente por Organization, sem Membership e sem credenciais concretas;
 - testes de integração usam SQL Sandbox e cobrem constraints, lifecycle,
   concorrência e invariantes de RBAC já materializadas;
 - nenhum Run process, Broadway pipeline ou Registry foi criado.
@@ -407,31 +409,48 @@ Organizations User + Membership Foundation
 
 Organizations Role + Permission Foundation
 → completed
+
+Organizations User RoleAssignment Foundation
+→ completed
+
+Organizations ServiceAccount Identity Foundation
+→ completed
 ```
 
 ## In progress
 
-Completar a primeira foundation de RBAC de `Organizations`.
+Completar a primeira foundation de RBAC de `Organizations` para ambos os tipos de ator.
 
-O modelo de `RoleAssignment` organization-wide/environment-scoped está sendo
-materializado e testado.
+`User` já recebe Roles por `Membership -> RoleAssignment`.
+
+`ServiceAccount` agora possui identidade e lifecycle próprios, scoped diretamente por Organization,
+mas sua atribuição de Roles ainda não foi materializada.
 
 ## Next concrete task
 
-Depois do merge de `RoleAssignment`, definir a semântica de avaliação antes de
-implementar:
+Materializar a atribuição equivalente de Roles para `ServiceAccount` sem reutilizar
+`Membership` e sem introduzir um `Principal` polimórfico.
+
+Modelo ratificado:
+
+```text
+ServiceAccount
+└── ServiceAccountRoleAssignment
+    ├── role_id
+    └── environment_id | nil
+```
+
+Depois desse passo, definir a semântica de avaliação antes de implementar:
 
 ```text
 Organizations.Access.authorize(...)
 ```
 
-A decisão deve esclarecer como assignments organization-wide e environment-scoped
-participam da resolução de Permission e como lifecycle afeta a autorização.
-
 ## Open warnings
 
+- `ServiceAccountRoleAssignment` ainda não foi materializado;
 - `Organizations.Access.authorize/…` ainda não foi implementado;
-- `ServiceAccount` ainda não foi materializado;
+- autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
 - AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
 - JSON Schema definitivo de `manifest.json` ainda não foi fechado;
