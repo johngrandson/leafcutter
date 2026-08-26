@@ -4,12 +4,12 @@
 
 ## Current phase
 
-**Runtime OTP foundation**
+**Organizations RBAC foundation**
 
 A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
-O primeiro recorte de domínio de `Organizations` foi concluído com
-`Organization` e `Environment` persistidos e lifecycle inicial completo.
+O primeiro recorte de domínio de `Organizations` evoluiu de `Organization` e
+`Environment` para `User`, `Membership`, `Role`, `Permission` e `RoleAssignment`.
 
 ## Repository state
 
@@ -29,10 +29,14 @@ Estado atual:
 - `leafcutter_connectors` possui supervision tree vazia;
 - `leafcutter_runtime` possui supervision tree vazia;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
-- `Organizations` possui schemas e migrations para `Organization` e `Environment`;
-- `Organizations` expõe create/get/disable para organizations e environments;
-- testes de integração usam SQL Sandbox e cobrem constraints, concorrência entre
-  disable de organization e criação de environment e disables concorrentes de environment;
+- `Organizations` possui schemas/migrations para `Organization`, `Environment`,
+  `User`, `Membership`, `Role`, `RolePermission` e `RoleAssignment`;
+- `Permission` é primitive conhecida em código, sem tabela própria;
+- `Organizations` expõe lifecycle de organizations, environments, users e roles;
+- `Organizations.Access` expõe membership e role assignment;
+- `Organizations.Roles` expõe grant/revoke de permissions;
+- testes de integração usam SQL Sandbox e cobrem constraints, lifecycle,
+  concorrência e invariantes de RBAC já materializadas;
 - nenhum Run process, Broadway pipeline ou Registry foi criado.
 
 ## Ratified Context Map
@@ -397,36 +401,45 @@ Shared Repo + PubSub + Oban Foundation
 
 Organizations Organization + Environment Foundation
 → completed
+
+Organizations User + Membership Foundation
+→ completed
+
+Organizations Role + Permission Foundation
+→ completed
 ```
 
 ## In progress
 
-Preparar a infraestrutura OTP mínima de `leafcutter_runtime`.
+Completar a primeira foundation de RBAC de `Organizations`.
+
+O modelo de `RoleAssignment` organization-wide/environment-scoped está sendo
+materializado e testado.
 
 ## Next concrete task
 
-Materializar a supervision tree ratificada:
+Depois do merge de `RoleAssignment`, definir a semântica de avaliação antes de
+implementar:
 
 ```text
-LeafcutterRuntime.Application
-├── Registry
-├── Run DynamicSupervisor
-└── NodeHeartbeat
+Organizations.Access.authorize(...)
 ```
 
-Ainda não criar Run processes ou pipelines Broadway nessa etapa.
-
-Cada mudança deve permanecer pequena e revisável em PR própria quando fizer sentido.
+A decisão deve esclarecer como assignments organization-wide e environment-scoped
+participam da resolução de Permission e como lifecycle afeta a autorização.
 
 ## Open warnings
 
+- `Organizations.Access.authorize/…` ainda não foi implementado;
+- `ServiceAccount` ainda não foi materializado;
+- AuditEvent para histórico de permission/role assignment ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
 - JSON Schema definitivo de `manifest.json` ainda não foi fechado;
 - mecanismo físico de durable cross-context facts/outbox ainda não foi fechado;
 - mecanismo concreto de historical deployment state ainda não foi fechado;
 - cliente HTTP e pool strategy ainda não foram escolhidos;
 - configuração concreta de Oban queues/plugins ainda não foi escolhida;
-- endpoints, schemas, tabelas, campos e índices de domínio ainda não estão congelados.
+- endpoints, schemas, tabelas, campos e índices de outros contexts ainda não estão congelados.
 
 ## Relevant documents
 
@@ -437,3 +450,4 @@ Cada mudança deve permanecer pequena e revisável em PR própria quando fizer s
 - `docs/architecture/runtime-otp-broadway.md`
 - `docs/architecture/ambientes-rbac-homologacao.md`
 - `docs/architecture/observabilidade-e-auditoria.md`
+- `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
