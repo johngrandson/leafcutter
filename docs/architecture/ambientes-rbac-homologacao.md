@@ -138,7 +138,7 @@ accounts for implementada.
 Criação de `ServiceAccount` exige Organization existente e ativa. Disable é idempotente
 e permanece permitido mesmo se a Organization já estiver desabilitada.
 
-### Role assignments
+### Role assignments para User
 
 A atribuição inicial de Role para usuários acontece através de `Membership`:
 
@@ -162,6 +162,50 @@ environment_id != nil
 `RoleAssignment` representa estado corrente de autorização e não possui identidade
 de domínio própria nem lifecycle separado.
 
+Invariantes para criação de assignment:
+
+- Organization do Membership deve existir e estar ativa;
+- Membership deve existir e estar ativo;
+- Role deve existir, estar ativo e pertencer à mesma Organization;
+- Environment, quando informado, deve existir, estar ativo e pertencer à mesma Organization;
+- o mesmo Role pode coexistir em scope organization-wide e em scopes de Environment;
+- o mesmo Role não pode ser duplicado dentro do mesmo scope para o mesmo Membership.
+
+### Role assignments para ServiceAccount
+
+`ServiceAccount` recebe Roles sem passar por `Membership`:
+
+```text
+ServiceAccount
+└── ServiceAccountRoleAssignment
+    ├── role_id
+    └── environment_id | nil
+```
+
+A semântica de scope é a mesma do usuário:
+
+```text
+environment_id == nil
+→ Role vale para toda a Organization do ServiceAccount
+
+environment_id != nil
+→ Role vale somente naquele Environment
+```
+
+`ServiceAccountRoleAssignment` representa estado corrente de autorização, não possui
+identidade de domínio própria e permanece separado de `RoleAssignment`.
+
+Invariantes para criação:
+
+- Organization do ServiceAccount deve existir e estar ativa;
+- ServiceAccount deve existir e estar ativo;
+- Role deve existir, estar ativo e pertencer à mesma Organization;
+- Environment, quando informado, deve existir, estar ativo e pertencer à mesma Organization;
+- o mesmo Role pode coexistir em scope organization-wide e em scopes de Environment;
+- o mesmo Role não pode ser duplicado dentro do mesmo scope para o mesmo ServiceAccount.
+
+Para ambos os tipos de assignment:
+
 ```text
 assign_role
 → INSERT
@@ -173,20 +217,11 @@ histórico
 → AuditEvent
 ```
 
-Invariantes para criação de assignment:
-
-- Organization do Membership deve existir e estar ativa;
-- Membership deve existir e estar ativo;
-- Role deve existir, estar ativo e pertencer à mesma Organization;
-- Environment, quando informado, deve existir, estar ativo e pertencer à mesma Organization;
-- o mesmo Role pode coexistir em scope organization-wide e em scopes de Environment;
-- o mesmo Role não pode ser duplicado dentro do mesmo scope para o mesmo Membership.
-
 Revogação é idempotente e pode reduzir acesso mesmo quando recursos relacionados já
 estão desabilitados.
 
-A atribuição equivalente de Roles para `ServiceAccount` será materializada separadamente,
-sem reutilizar `Membership` nem introduzir polimorfismo.
+A separação física entre `RoleAssignment` e `ServiceAccountRoleAssignment` é
+intencional: preserva FKs e tipos explícitos sem introduzir um `Principal` polimórfico.
 
 ## Autorização
 
