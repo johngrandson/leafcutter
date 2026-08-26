@@ -165,6 +165,9 @@ defmodule Leafcutter.Organizations.Access.Authorization do
           %{organization_id: Organization.id(), environment_id: Environment.id() | nil}
         ) :: Ecto.Query.t()
   defp membership_permission_query(membership_id, permission_identifier, scope) do
+    organization_id = scope.organization_id
+    environment_id = scope.environment_id
+
     RoleAssignment
     |> join(:inner, [assignment], role in Role, on: role.id == assignment.role_id)
     |> join(:inner, [_assignment, role], permission in RolePermission,
@@ -173,11 +176,11 @@ defmodule Leafcutter.Organizations.Access.Authorization do
     |> where(
       [assignment, role, permission],
       assignment.membership_id == ^membership_id and
-        role.organization_id == ^scope.organization_id and
+        role.organization_id == ^organization_id and
         is_nil(role.disabled_at) and
         permission.permission == ^permission_identifier
     )
-    |> apply_assignment_scope(scope.environment_id)
+    |> apply_assignment_scope(environment_id)
   end
 
   @spec service_account_permission_query(
@@ -186,6 +189,9 @@ defmodule Leafcutter.Organizations.Access.Authorization do
           %{organization_id: Organization.id(), environment_id: Environment.id() | nil}
         ) :: Ecto.Query.t()
   defp service_account_permission_query(service_account_id, permission_identifier, scope) do
+    organization_id = scope.organization_id
+    environment_id = scope.environment_id
+
     ServiceAccountRoleAssignment
     |> join(:inner, [assignment], role in Role, on: role.id == assignment.role_id)
     |> join(:inner, [_assignment, role], permission in RolePermission,
@@ -194,11 +200,11 @@ defmodule Leafcutter.Organizations.Access.Authorization do
     |> where(
       [assignment, role, permission],
       assignment.service_account_id == ^service_account_id and
-        role.organization_id == ^scope.organization_id and
+        role.organization_id == ^organization_id and
         is_nil(role.disabled_at) and
         permission.permission == ^permission_identifier
     )
-    |> apply_assignment_scope(scope.environment_id)
+    |> apply_assignment_scope(environment_id)
   end
 
   @spec apply_assignment_scope(Ecto.Query.t(), Environment.id() | nil) :: Ecto.Query.t()
