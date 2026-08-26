@@ -4,61 +4,67 @@
 
 ## Current phase
 
-**Architecture consolidation - full Context Map review**
+**Infrastructure foundation - shared core services**
+
+A consolidação arquitetural do Context Map e das OTP application boundaries foi concluída.
+
+O projeto pode agora iniciar infraestrutura compartilhada, ainda sem implementar schemas ou regras de domínio.
 
 ## Repository state
 
-- Projeto criado como umbrella vazia com `mix new leafcutter --umbrella`.
-- Nenhuma application de domínio foi criada.
-- `Organizations` ratificado.
-- `Catalog` ratificado.
-- `Connections` ratificado.
-- `Integrations` ratificado.
-- `Executions` ratificado.
-- `Notifications` ratificado.
-- `Audit` ratificado.
-- Primeira rodada individual do Context Map concluída.
-
-## Accepted architecture baseline
-
-- Umbrella com poucas OTP applications.
-- Toda OTP application possui árvore de supervisão desde sua criação.
-- Contexts recebem subtrees próprias somente quando processos reais justificarem isso.
-- Phoenix Contexts maduros com facade raiz pequena, capability modules e implementação interna.
-- Contexts não acessam schemas ou queries internos de outros contexts.
-- Comunicação entre contexts utiliza APIs públicas ou mecanismos explicitamente ratificados.
-- PostgreSQL é a autoridade durável.
-- OTP representa estado operacional reconstruível.
-- PubSub propaga fatos efêmeros.
-- Trabalho que não pode ser perdido possui representação durável.
-- Oban é usado quando adequado a jobs duráveis, scheduling, notificações, manutenção ou trabalho futuro.
-- Broadway é o data plane para source, enrichment e destinations.
-- JSON Schema Draft 2020-12 é o contrato canônico de payload, inicialmente validado com JSV.
-- Integration Packages são versionados e declarados por `manifest.json`.
-- Connector -> Operation -> Transport.
-- Transformation é pura.
-- Enrichment representa side effects externos controlados.
-- Interceptor atua na adaptação de transporte.
-- Fan-out durável utiliza `Record + N Deliveries`.
-- Sem fila externa inicialmente.
-- Semântica base `at-least-once`.
-- API-first com OpenAPI canônico.
-- Código e documentação in-code em inglês.
-- Arquitetura externa em português brasileiro.
-
-## Ratified Contexts
-
-### Organizations
-
-Responsabilidade:
+A umbrella contém quatro OTP applications materializadas:
 
 ```text
-tenancy
-+
-operational scope
-+
-authorization
+apps/
+├── leafcutter_core/
+├── leafcutter_connectors/
+├── leafcutter_runtime/
+└── leafcutter_api/
 ```
+
+Estado atual:
+
+- `leafcutter_core` possui supervision tree vazia;
+- `leafcutter_connectors` possui supervision tree vazia;
+- `leafcutter_runtime` possui supervision tree vazia;
+- `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
+- nenhuma schema de domínio foi criada;
+- nenhuma migration de domínio foi criada;
+- nenhum Run process, Broadway pipeline ou Registry foi criado.
+
+## Ratified Context Map
+
+Contexts:
+
+```text
+Organizations
+Catalog
+Connections
+Integrations
+Executions
+Notifications
+Audit
+```
+
+Após a revisão conjunta, todos possuem zero dependências diretas de domínio entre si:
+
+```text
+Organizations   → none
+Catalog         → none
+Connections     → none
+Integrations    → none
+Executions      → none
+Notifications   → none
+Audit           → none
+```
+
+Cross-context use cases são compostos por application workflow modules na OTP application que possui o use case.
+
+Uma referência por ID não cria dependência de API entre contexts.
+
+## Context ownership consolidado
+
+### Organizations
 
 Owns:
 
@@ -73,83 +79,32 @@ Permission
 access grants / assignments
 ```
 
-Dependências:
-
-```text
-nenhuma
-```
-
-OTP próprio:
-
-```text
-não inicialmente
-```
-
----
+Autorização é aplicada na application/API boundary.
 
 ### Catalog
-
-Responsabilidade:
-
-```text
-registro
-+
-versionamento
-+
-publicação
-+
-disponibilidade
-+
-descoberta
-```
 
 Owns:
 
 ```text
 Connector metadata
+ConnectorVersion
 Operation metadata
-Connector versions
-
 Contract
 ContractVersion
-
 Package
 PackageVersion
-PackageDependency
-
-CatalogCategory
 publication / availability metadata
 ```
 
-Dependências:
+Ratificações importantes:
 
-```text
-Catalog
-   ↓
-Organizations
-```
-
-OTP próprio:
-
-```text
-não inicialmente
-```
-
----
+- `Operation` pertence a `ConnectorVersion`; não existe `OperationVersion` inicialmente;
+- published `PackageVersion`, `ConnectorVersion` e `ContractVersion` são imutáveis;
+- `PackageDependency` removido do V1;
+- categorias são metadata, não entidade;
+- PackageVersion topológica inicial: exatamente 1 Source -> 1..N Destinations.
 
 ### Connections
-
-Responsabilidade:
-
-```text
-representar
-+
-configurar
-+
-resolver
-```
-
-o acesso de `Organization + Environment` a sistemas externos.
 
 Owns:
 
@@ -157,317 +112,322 @@ Owns:
 Connection
 Secret
 SecretVersion
-authentication configuration
-OAuth token / refresh state
-secret rotation metadata
+auth configuration
+OAuth token / refresh durable state
+rotation metadata
 ```
 
-Dependências:
-
-```text
-Connections
-   ├──→ Organizations
-   └──→ Catalog
-```
-
-OTP próprio:
-
-```text
-não inicialmente
-```
-
----
+`Connection` referencia Connector identity, não ConnectorVersion.
 
 ### Integrations
 
-Responsabilidade:
+`Integration` é identidade lógica dentro de uma Organization e possui Package estável.
+
+A configuração executável environment-specific pertence a:
 
 ```text
-transformar um PackageVersion
-em configuração executável
-dentro de Organization + Environment
-```
-
-Owns:
-
-```text
-Integration
-Destination configuration
-Trigger
-Schedule
-configuration overrides
 EnvironmentDeployment
-HomologationRequest
-Promotion
-Rollback
-IdentityMapping
-Integration Labels
 ```
 
-Dependências:
+Existe um deployment lógico corrente por `Integration + Environment`.
 
-```text
-Integrations
-   ├──→ Organizations
-   ├──→ Catalog
-   └──→ Connections
-```
+Ratificações importantes:
 
-OTP próprio:
-
-```text
-não inicialmente
-```
-
----
+- EnvironmentDeployment seleciona PackageVersion;
+- source/destination Connection bindings são environment-local;
+- Triggers são environment-local;
+- promotable config é separado de environment-local config;
+- HomologationRequest aprova state fingerprint específico;
+- Promotion não copia secrets, connections ou triggers;
+- Rollback é operação, não entidade inicial;
+- IdentityMapping pertence a Integrations e é scoped por EnvironmentDeployment + Destination.
 
 ### Executions
-
-Responsabilidade:
-
-```text
-transformar uma Integration configurada
-em execução concreta
-+
-durável
-+
-recuperável
-```
 
 Owns:
 
 ```text
 Run
 RunSnapshot
-
 Record
 Delivery
 Attempt
-Enrichment
+Enrichment execution result/status
 Checkpoint
-
 ExecutionEvent
-
-ownership / fencing / recovery state
-node heartbeat relacionado a Run ownership
-
-RunCoordinator
-Run supervision tree
-Broadway pipelines
-runtime Registry
-Run DynamicSupervisor
+durable ownership/fencing/recovery state
 ```
 
-Dependências:
-
-```text
-Executions
-├──→ Organizations
-├──→ Catalog
-├──→ Connections
-└──→ Integrations
-```
-
-OTP próprio:
-
-```text
-sim
-```
-
-`Executions` é o primeiro context ratificado com processos OTP próprios desde o início.
-
----
+Runtime OTP infrastructure não pertence ao Context ownership.
 
 ### Notifications
-
-Responsabilidade:
-
-```text
-transformar eventos relevantes
-em notificações duráveis
-para recipients configurados
-```
 
 Owns:
 
 ```text
 NotificationRule
-NotificationChannel
 Recipient
 NotificationDelivery
 ```
 
-`Recipient` é independente de `User`.
-
-Dependências:
-
-```text
-Notifications
-├──→ Organizations
-├──→ Integrations
-└──→ Executions
-```
-
-Durabilidade inicial:
-
-```text
-NotificationDelivery
-+
-PostgreSQL
-+
-Oban
-```
-
-OTP próprio:
-
-```text
-não inicialmente
-```
-
----
+`NotificationChannel` e `NotificationAttempt` não são entidades iniciais.
 
 ### Audit
 
-Responsabilidade:
+Owns `AuditEvent`, que é append-only e imutável.
+
+Audit é sink e não participa de decisões de negócio de outros contexts.
+
+## Cross-context durable facts
+
+Notifications e Audit consomem fatos duráveis self-contained.
+
+Quando a emissão do fato é obrigação do sistema, ele deve ser persistido atomicamente com a mudança de domínio que o originou.
+
+Não criar um Context `Events` ou `Outbox`.
+
+A implementação física do mecanismo ainda está aberta.
+
+`ExecutionEvent` continua restrito ao lifecycle de execução e não é event bus genérico.
+
+## Ratified OTP application boundaries
+
+### `leafcutter_core`
+
+Hosts:
 
 ```text
-registrar ações humanas
-e administrativas relevantes
-de forma durável e consultável
-```
-
-Owns:
-
-```text
-AuditEvent
-actor metadata
-action
-target reference
-Organization / Environment scope
-redacted change metadata
-```
-
-Dependências:
-
-```text
-Audit
-   ↓
 Organizations
-```
-
-Audit é um sink.
-
-Outros contexts não utilizam Audit para decidir regras de negócio.
-
-OTP próprio:
-
-```text
-não inicialmente
-```
-
-## Ratified dependency graph
-
-```text
 Catalog
-   ↓
-Organizations
-```
-
-```text
 Connections
-   ├──→ Catalog
-   └──→ Organizations
+Integrations
+Notifications
+Audit
+Leafcutter.Repo
+Leafcutter.PubSub
+Oban
 ```
 
+### `leafcutter_connectors`
+
+Hosts:
+
 ```text
-Integrations
-   ├──→ Connections
-   ├──→ Catalog
-   └──→ Organizations
+Connector behaviours
+Operation behaviours
+Transport behaviours
+HTTP Transport
+Generic HTTP connector
+connector implementations
+shared transport infrastructure when needed
 ```
+
+### `leafcutter_runtime`
+
+Hosts:
 
 ```text
 Executions
-   ├──→ Integrations
-   ├──→ Connections
-   ├──→ Catalog
-   └──→ Organizations
+runtime application workflows
+Registry
+Run DynamicSupervisor
+NodeHeartbeat
+per-Run supervision trees
+Broadway data plane
 ```
+
+### `leafcutter_api`
+
+Hosts:
 
 ```text
-Notifications
-   ├──→ Executions
-   ├──→ Integrations
-   └──→ Organizations
+Phoenix Endpoint
+controllers / plugs
+API authentication
+authorization boundary
+OpenAPI
+health / readiness
+future inbound HTTP endpoints
 ```
+
+## Ratified app dependency graph
 
 ```text
-Audit
-   └──→ Organizations
+leafcutter_core       → none
+leafcutter_connectors → none
+leafcutter_runtime    → leafcutter_core + leafcutter_connectors
+leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
 
-Nenhuma dependência circular conhecida foi introduzida na primeira rodada.
+Esse grafo já está materializado nos `mix.exs`.
 
-## Completed milestone
+## Shared infrastructure decisions
+
+Ratificado:
+
+```text
+one Leafcutter.Repo
+→ leafcutter_core
+
+one Leafcutter.PubSub
+→ leafcutter_core
+
+one Oban infrastructure
+→ leafcutter_core
+```
+
+Migrations serão centralizadas em:
+
+```text
+apps/leafcutter_core/priv/repo/migrations/
+```
+
+Mesmo tabelas owned por `Executions` usarão essa migration stream compartilhada.
+
+## Runtime baseline
+
+Runtime supervision conceitual:
+
+```text
+LeafcutterRuntime.Application
+├── Registry
+├── Run DynamicSupervisor
+└── NodeHeartbeat
+```
+
+Cada Run:
+
+```text
+Run Supervisor
+├── RunCoordinator
+├── SourceBroadway
+├── optional EnrichmentBroadway
+└── DestinationBroadway x N
+```
+
+Uma Run tree permanece em um único node inicialmente.
+
+PostgreSQL é autoridade durável para ownership/fencing.
+
+Sem `:global`, Horde ou fila externa inicialmente.
+
+## Data-plane baseline
+
+```text
+SourceBroadway
+→ fetch/decode/validate
+→ Record + N Delivery intents
+→ persist durable fan-out + checkpoint atomically
+
+DestinationBroadway
+→ claim pending Deliveries from PostgreSQL
+→ transform
+→ validate
+→ batch
+→ Connector/Operation/Transport
+→ persist Delivery + Attempt outcome
+```
+
+`Delivery` é a representação durável do trabalho.
+
+Não usar Oban ou external queue por Delivery inicialmente.
+
+Semântica base: at-least-once.
+
+## Integration Packages
+
+Ratificado:
+
+```text
+packages/<package>/
+├── mix.exs
+├── manifest.json
+├── lib/
+└── test/
+```
+
+Cada Package é um Mix project independente fora de `apps/`.
+
+Packages instalados serão compilados na mesma release inicial.
+
+O mecanismo físico para incluí-los no build ainda está aberto.
+
+## Release
+
+Uma única release inicial:
+
+```text
+:leafcutter
+```
+
+Todos os nodes executam a mesma release completa inicialmente:
+
+```text
+core + connectors + runtime + api + installed packages
+```
+
+Sem classes especializadas de node no V1.
+
+## Completed milestones
 
 ```text
 Individual Context Ratification
-```
+→ completed
 
-Concluído para:
+Full Context Map Review
+→ completed
 
-```text
-Organizations
-Catalog
-Connections
-Integrations
-Executions
-Notifications
-Audit
+OTP Application Boundary Ratification
+→ completed
+
+OTP Application Materialization
+→ completed
+
+Application Dependency Graph
+→ completed
+
+Initial Release Shape
+→ completed
 ```
 
 ## In progress
 
-Revisar o Context Map como sistema completo.
-
-A revisão deve procurar:
-
-1. responsabilidades duplicadas;
-2. boundaries excessivamente grandes;
-3. contexts desnecessariamente pequenos;
-4. dependências redundantes;
-5. dependências circulares indiretas;
-6. APIs públicas excessivas;
-7. concepts posicionados no context errado;
-8. responsabilidades de infraestrutura misturadas com domínio.
+Materializar a infraestrutura shared mínima em `leafcutter_core`.
 
 ## Next concrete task
 
-Executar uma revisão conjunta de:
+Adicionar primeiro a foundation de persistência:
 
 ```text
-Organizations
-Catalog
-Connections
-Integrations
-Executions
-Notifications
-Audit
+Ecto SQL + Postgrex
+→ Leafcutter.Repo
+→ core supervision child
+→ repo configuration
+→ central migrations directory
 ```
 
-Nenhuma OTP application deve ser criada durante essa revisão.
+Ainda **não** criar schemas ou migrations de domínio nessa etapa.
 
-Depois da aprovação do mapa completo:
+Após o Repo estar funcional e testado:
 
 ```text
-Context Map
-        ↓
-OTP application boundaries
-        ↓
-dependency graph between apps
-        ↓
-create apps/
+Leafcutter.PubSub
+→ Oban
+→ runtime OTP foundation
+→ first vertical domain slice
 ```
+
+Cada mudança deve permanecer pequena e revisável em PR própria quando fizer sentido.
+
+## Open warnings
+
+- mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
+- JSON Schema definitivo de `manifest.json` ainda não foi fechado;
+- mecanismo físico de durable cross-context facts/outbox ainda não foi fechado;
+- mecanismo concreto de historical deployment state ainda não foi fechado;
+- cliente HTTP e pool strategy ainda não foram escolhidos;
+- configuração concreta de Oban queues/plugins ainda não foi escolhida;
+- endpoints, schemas, tabelas, campos e índices de domínio ainda não estão congelados.
 
 ## Relevant documents
 
@@ -478,14 +438,3 @@ create apps/
 - `docs/architecture/runtime-otp-broadway.md`
 - `docs/architecture/ambientes-rbac-homologacao.md`
 - `docs/architecture/observabilidade-e-auditoria.md`
-- `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
-
-## Open warnings
-
-- O Context Map foi ratificado individualmente, mas ainda precisa passar pela revisão conjunta.
-- A divisão das OTP applications ainda não foi ratificada.
-- Nenhuma application de domínio deve ser criada ainda.
-- O grafo de dependências entre OTP applications ainda não foi congelado.
-- O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
-- O JSON Schema definitivo do `manifest.json` ainda não foi fechado.
-- Endpoints, tabelas, campos e índices concretos ainda não foram congelados.
