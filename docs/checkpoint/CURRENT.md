@@ -4,17 +4,17 @@
 
 ## Current phase
 
-**Run supervision foundation**
+**Per-Run control-plane foundation**
 
 A primeira foundation funcional de RBAC de `Organizations` está concluída para
 `User` e `ServiceAccount`.
 
-A infraestrutura OTP mínima de `leafcutter_runtime`, o heartbeat durável por
-incarnação e a authority PostgreSQL de Run ownership/fencing estão materializados.
+A infraestrutura OTP mínima de `leafcutter_runtime`, liveness por incarnação,
+Run ownership/fencing e a primeira árvore local por Run estão materializadas.
 
 ## Repository state
 
-A umbrella contém quatro OTP applications materializadas:
+A umbrella contém quatro OTP applications:
 
 ```text
 apps/
@@ -31,40 +31,34 @@ Estado atual:
 - `leafcutter_runtime` supervisiona `LeafcutterRuntime.RunRegistry`,
   `LeafcutterRuntime.RunDynamicSupervisor` e `LeafcutterRuntime.NodeHeartbeat`;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
-- `Organizations` possui schemas/migrations para `Organization`, `Environment`,
-  `User`, `ServiceAccount`, `Membership`, `Role`, `RolePermission`, `RoleAssignment`
-  e `ServiceAccountRoleAssignment`;
-- `Permission` é primitive conhecida em código, sem tabela própria;
-- `Organizations.Access` expõe membership, role assignment para usuários e `authorize/3`;
-- `Organizations.Access.ServiceAccounts` expõe role assignment para service accounts;
-- `Organizations.Roles` expõe grant/revoke de permissions;
-- authorization usa actor tuples (`{:user, id}` / `{:service_account, id}`) e
-  scope tuples (`{:organization, id}` / `{:environment, id}`), sem `Principal` persistido;
-- assignments organization-wide satisfazem checks em Environment; assignments
-  environment-scoped não satisfazem checks organization-wide nem outros Environments;
-- `Executions` possui `RuntimeNode`, `Run`, `Executions.Nodes.heartbeat/2`,
-  `Executions.Runs.claim/2` e `Executions.Runs.release/1`;
+- `Organizations` possui Organization, Environment, User, ServiceAccount,
+  Membership, Role, Permission e assignments organization/environment-scoped;
+- `Organizations.Access.authorize/3` resolve User ou ServiceAccount sem
+  `Principal` persistido;
+- assignments organization-wide satisfazem checks em Environment;
+- assignments environment-scoped não satisfazem Organization nem outro Environment;
+- `Executions` possui `RuntimeNode`, `Run`, `Nodes.heartbeat/2`, `Runs.claim/2` e
+  `Runs.release/1`;
 - `RuntimeNode.id` identifica uma incarnação específica da application runtime;
 - `node_name` é metadata reutilizável e deliberadamente não possui unicidade;
-- heartbeat e decisões de expiração usam o relógio do PostgreSQL;
-- reiniciar apenas `NodeHeartbeat` preserva o `runtime_node_id`; reiniciar a
-  application/BEAM gera outro identificador;
-- `NodeHeartbeat` persiste liveness antes de emitir Telemetry e continua tentando
-  após falhas temporárias de banco sem entrar em crash loop;
-- Runs começam em `pending`, mudam para `running` no primeiro claim e possuem estados
-  terminais `completed`, `failed` e `cancelled`;
-- `owner_node_id` referencia uma incarnação de `RuntimeNode` e `generation` é o
-  fencing token monotônico;
-- runtime nodes são considerados expirados após 45 segundos sem heartbeat;
-- claim/reclaim é serializado por row lock na Run; outro owner ativo bloqueia claim;
-- claim repetido pelo mesmo owner é idempotente; reclaim e claim após release
-  incrementam `generation`;
-- release aplica `run_id + owner_node_id + generation` na mesma atualização SQL e
-  rejeita tokens superseded;
-- testes usam SQL Sandbox e cobrem constraints, lifecycle, concorrência, RBAC,
-  supervision, heartbeat durável e ownership/fencing já materializados;
-- nenhum Run process, RunSupervisor, RunCoordinator, recovery scanner ou Broadway
-  pipeline foi criado.
+- heartbeat, expiração e ownership usam o relógio do PostgreSQL;
+- reiniciar apenas `NodeHeartbeat` preserva o `runtime_node_id`;
+- reiniciar a application/BEAM gera outro `runtime_node_id`;
+- Runs começam em `pending`, mudam para `running` no primeiro claim e possuem
+  estados terminais `completed`, `failed` e `cancelled`;
+- `owner_node_id` referencia uma incarnação e `generation` é o fencing token
+  monotônico;
+- runtime nodes expiram após 45 segundos sem heartbeat;
+- claim/reclaim é serializado por row lock na Run;
+- release aplica `run_id + owner_node_id + generation` no mesmo UPDATE;
+- `LeafcutterRuntime.Runs.start/1` faz claim antes do startup local;
+- `LeafcutterRuntime.Runs.stop/1` tenta release e encerra a árvore local;
+- `LeafcutterRuntime.Runs.stale_ownership/1` encerra somente a generation local
+  correspondente ao token rejeitado;
+- `RunSupervisor` e `RunCoordinator` estão materializados sem Broadway;
+- testes cobrem constraints, lifecycle, concorrência, RBAC, heartbeat,
+  ownership/fencing e supervisão local por Run;
+- recovery scanner, RunSnapshot e data plane ainda não foram criados.
 
 ## Ratified Context Map
 
@@ -80,7 +74,7 @@ Notifications
 Audit
 ```
 
-Após a revisão conjunta, todos possuem zero dependências diretas de domínio entre si:
+Todos possuem zero dependências diretas de domínio entre si:
 
 ```text
 Organizations   → none
@@ -92,7 +86,8 @@ Notifications   → none
 Audit           → none
 ```
 
-Cross-context use cases são compostos por application workflow modules na OTP application que possui o use case.
+Cross-context use cases são compostos por application workflow modules na OTP
+application que possui o use case.
 
 Uma referência por ID não cria dependência de API entre contexts.
 
@@ -130,13 +125,14 @@ PackageVersion
 publication / availability metadata
 ```
 
-Ratificações importantes:
+Ratificações:
 
-- `Operation` pertence a `ConnectorVersion`; não existe `OperationVersion` inicialmente;
-- published `PackageVersion`, `ConnectorVersion` e `ContractVersion` são imutáveis;
-- `PackageDependency` removido do V1;
-- categorias são metadata, não entidade;
-- PackageVersion topológica inicial: exatamente 1 Source -> 1..N Destinations.
+- `Operation` pertence a `ConnectorVersion`;
+- não existe `OperationVersion` inicialmente;
+- versões publicadas de Package, Connector e Contract são imutáveis;
+- `PackageDependency` foi removido do V1;
+- categorias são metadata;
+- PackageVersion inicial possui exatamente 1 Source e 1..N Destinations.
 
 ### Connections
 
@@ -147,7 +143,7 @@ Connection
 Secret
 SecretVersion
 auth configuration
-OAuth token / refresh durable state
+OAuth durable state
 rotation metadata
 ```
 
@@ -155,26 +151,22 @@ rotation metadata
 
 ### Integrations
 
-`Integration` é identidade lógica dentro de uma Organization e possui Package estável.
-
-A configuração executável environment-specific pertence a:
+Owns Integration e sua configuração executável por Environment.
 
 ```text
-EnvironmentDeployment
+Integration
+└── EnvironmentDeployment
 ```
 
-Existe um deployment lógico corrente por `Integration + Environment`.
-
-Ratificações importantes:
+Ratificações:
 
 - EnvironmentDeployment seleciona PackageVersion;
-- source/destination Connection bindings são environment-local;
-- Triggers são environment-local;
+- Connection bindings e Triggers são environment-local;
 - promotable config é separado de environment-local config;
-- HomologationRequest aprova state fingerprint específico;
+- HomologationRequest aprova um state fingerprint específico;
 - Promotion não copia secrets, connections ou triggers;
 - Rollback é operação, não entidade inicial;
-- IdentityMapping pertence a Integrations e é scoped por EnvironmentDeployment + Destination.
+- IdentityMapping pertence a Integrations e é scoped por deployment/destination.
 
 ### Executions
 
@@ -209,7 +201,7 @@ NotificationDelivery
 
 ### Audit
 
-Owns `AuditEvent`, que é append-only e imutável.
+Owns `AuditEvent`, append-only e imutável.
 
 Audit é sink e não participa de decisões de negócio de outros contexts.
 
@@ -217,13 +209,12 @@ Audit é sink e não participa de decisões de negócio de outros contexts.
 
 Notifications e Audit consomem fatos duráveis self-contained.
 
-Quando a emissão do fato é obrigação do sistema, ele deve ser persistido atomicamente com a mudança de domínio que o originou.
+Quando a emissão do fato é obrigação do sistema, ele deve ser persistido
+atomicamente com a mudança de domínio que o originou.
 
 Não criar um Context `Events` ou `Outbox`.
 
-A implementação física do mecanismo ainda está aberta.
-
-`ExecutionEvent` continua restrito ao lifecycle de execução e não é event bus genérico.
+`ExecutionEvent` permanece restrito ao lifecycle de execução.
 
 ## Ratified OTP application boundaries
 
@@ -254,7 +245,7 @@ Transport behaviours
 HTTP Transport
 Generic HTTP connector
 connector implementations
-shared transport infrastructure when needed
+shared transport infrastructure
 ```
 
 ### `leafcutter_runtime`
@@ -264,8 +255,8 @@ Hosts:
 ```text
 Executions
 runtime application workflows
-Registry
-Run DynamicSupervisor
+RunRegistry
+RunDynamicSupervisor
 NodeHeartbeat
 per-Run supervision trees
 Broadway data plane
@@ -294,11 +285,7 @@ leafcutter_runtime    → leafcutter_core + leafcutter_connectors
 leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
 
-Esse grafo já está materializado nos `mix.exs`.
-
 ## Shared infrastructure decisions
-
-Ratificado:
 
 ```text
 one Leafcutter.Repo
@@ -317,12 +304,11 @@ Migrations são centralizadas em:
 apps/leafcutter_core/priv/repo/migrations/
 ```
 
-Isso inclui tabelas owned por `Executions` em `leafcutter_runtime`, como
-`runtime_nodes` e `runs`.
+Isso inclui tabelas owned por `Executions`, como `runtime_nodes` e `runs`.
 
 ## Runtime baseline
 
-Supervision tree materializada:
+Supervision tree da application:
 
 ```text
 LeafcutterRuntime.Application
@@ -333,20 +319,12 @@ LeafcutterRuntime.Application
 
 `RunRegistry` é local e possui keys `:unique`.
 
-`RunDynamicSupervisor` permanece vazio até a primeira per-Run supervision tree.
-
-`NodeHeartbeat` usa um UUID por incarnação e atualiza:
+Authority durável:
 
 ```text
-runtime_nodes.last_heartbeat_at
-```
+RuntimeNode
+└── last_heartbeat_at
 
-A mesma application identity sobrevive a restart isolado do heartbeat. Uma nova
-application identity é criada após restart da application ou do BEAM.
-
-Authority durável de Run:
-
-```text
 Run
 ├── status
 ├── owner_node_id
@@ -364,34 +342,74 @@ owner expirado
 → reclaim + generation incrementada
 
 mesmo owner ativo
-→ token atual, sem incremento
+→ token atual sem incremento
 
 outro owner ativo
 → claim rejeitado
 ```
 
-Release preserva status e generation. Toda escrita crítica futura deve aplicar o
-fencing token no mesmo comando SQL que altera o estado:
+Toda escrita crítica futura deve aplicar:
 
 ```text
 run_id + runtime_node_id + generation
 ```
 
-Runtime supervision conceitual futura por Run:
+no mesmo comando SQL que altera o estado.
+
+## Per-Run supervision baseline
+
+Workflow de startup:
 
 ```text
-Run Supervisor
-├── RunCoordinator
-├── SourceBroadway
-├── optional EnrichmentBroadway
-└── DestinationBroadway x N
+LeafcutterRuntime.Runs.start(run_id)
+↓
+Executions.Runs.claim(run_id, runtime_node_id)
+↓
+RunDynamicSupervisor
+└── RunSupervisor <run_id>
+    └── RunCoordinator
 ```
+
+Registry local:
+
+```text
+run_id
+→ RunSupervisor PID + ownership_token
+
+{:coordinator, run_id}
+→ RunCoordinator PID + ownership_token
+```
+
+Semântica:
+
+```text
+mesma generation já local
+→ retorna o mesmo supervisor
+
+generation local antiga
+→ encerra árvore antiga
+→ inicia árvore com token atual
+
+RunCoordinator crash anormal
+→ coordinator reiniciado
+
+RunCoordinator recebe stale token correspondente
+→ exit normal
+→ RunSupervisor auto-shutdown
+→ generation stale não reiniciada
+```
+
+`RunSupervisor` é transient sob o DynamicSupervisor. `RunCoordinator` é transient e
+significant, permitindo restart em crash e shutdown completo em stale ownership.
+
+Stop explícito tenta release durável antes de remover a árvore. Um release stale não
+mantém processos locais vivos.
 
 Uma Run tree permanece em um único node inicialmente.
 
-PostgreSQL é autoridade durável para liveness, ownership e fencing.
+PostgreSQL é autoridade para liveness, ownership e fencing.
 
-Sem `:global`, Horde ou fila externa inicialmente.
+Sem `:global`, `:pg`, Horde ou lock distribuído customizado.
 
 ## Data-plane baseline
 
@@ -418,8 +436,6 @@ Semântica base: at-least-once.
 
 ## Integration Packages
 
-Ratificado:
-
 ```text
 packages/<package>/
 ├── mix.exs
@@ -442,7 +458,7 @@ Uma única release inicial:
 :leafcutter
 ```
 
-Todos os nodes executam a mesma release completa inicialmente:
+Todos os nodes executam inicialmente:
 
 ```text
 core + connectors + runtime + api + installed packages
@@ -503,50 +519,58 @@ Durable Runtime Node Liveness Foundation
 
 Durable Run Ownership + Fencing Foundation
 → completed
+
+Per-Run Supervisor + Coordinator Foundation
+→ completed
 ```
 
 ## In progress
 
-Definir a primeira per-Run supervision tree sobre a authority durável já existente.
+Definir como Runs duráveis são descobertas e iniciadas automaticamente sem violar
+ownership/fencing.
 
 ## Next concrete task
 
-Ratificar o contrato mínimo de startup de:
+Ratificar o primeiro recovery/bootstrap workflow:
 
 ```text
-LeafcutterRuntime.RunDynamicSupervisor
-└── RunSupervisor <run_id>
-    └── RunCoordinator
+local runtime incarnation
+↓
+find claimable Runs
+↓
+claim atomically
+↓
+start idempotent local trees
 ```
 
 A decisão deve fechar:
 
-- workflow que faz claim antes de iniciar a árvore;
-- passagem e retenção do ownership token pela árvore;
-- registro local por `run_id` no `RunRegistry`;
-- comportamento quando a mesma Run já está localmente iniciada;
-- encerramento gracioso e release de ownership;
-- reação do processo quando uma escrita indica `:stale_ownership`;
-- separação entre lifecycle durável e lifecycle OTP.
+- se recovery usa polling periódico, notificação ou ambos;
+- batch size e ordenação de claim;
+- prevenção de thundering herd entre nodes;
+- tratamento de Run já local;
+- backoff após falhas de claim/startup;
+- comportamento durante application shutdown;
+- relação com RunSnapshot e criação pública de Run.
 
-Ainda não adicionar Broadway, Record/Delivery processing ou recovery scanner nessa etapa.
+Ainda não adicionar Broadway, Record/Delivery processing ou transitions completas de
+pause/resume antes desse bootstrap estar definido.
 
 ## Open warnings
 
 - criação pública de Run, definição executável e RunSnapshot ainda não foram fechadas;
-- RunSupervisor, RunCoordinator e registro local de Runs ainda não foram materializados;
-- recovery scanner automático para Runs sem owner ou com owner expirado ainda não foi fechado;
+- recovery scanner automático ainda não foi materializado;
 - transitions completas de lifecycle, pause/resume e terminalização ainda não foram fechadas;
-- política de retenção/cleanup de incarnações antigas ainda não foi fechada;
-- autenticação concreta/credenciais de `ServiceAccount` ainda não foram modeladas;
-- AuditEvent para histórico de permission/role assignment ainda não foi materializado;
+- política de retenção/cleanup de runtime node incarnations ainda não foi fechada;
+- autenticação concreta de ServiceAccount ainda não foi modelada;
+- AuditEvent para histórico de RBAC ainda não foi materializado;
 - mecanismo físico de inclusão de `packages/` no build ainda não foi ratificado;
 - JSON Schema definitivo de `manifest.json` ainda não foi fechado;
 - mecanismo físico de durable cross-context facts/outbox ainda não foi fechado;
 - mecanismo concreto de historical deployment state ainda não foi fechado;
 - cliente HTTP e pool strategy ainda não foram escolhidos;
 - configuração concreta de Oban queues/plugins ainda não foi escolhida;
-- endpoints, schemas, tabelas, campos e índices de outros contexts ainda não estão congelados.
+- endpoints e schemas dos demais contexts ainda não estão congelados.
 
 ## Relevant documents
 
