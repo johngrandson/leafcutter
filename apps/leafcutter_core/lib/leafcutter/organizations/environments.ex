@@ -160,4 +160,76 @@ defmodule Leafcutter.Organizations.Environments do
         {:error, :not_found}
     end
   end
+
+  @doc """
+  Disables an environment.
+
+  ## Parameters
+
+  * `id` - The identifier of the environment to disable
+
+  ## Returns
+
+  * `{:ok, environment}` when the environment is disabled
+  * `{:ok, environment}` when the environment was already disabled
+  * `{:error, :not_found}` when the environment does not exist
+  * `{:error, changeset}` when the lifecycle change cannot be persisted
+
+  ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Environment Disable Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, disabled} =
+      ...>   Leafcutter.Organizations.Environments.disable(environment.id)
+
+      iex> is_struct(disabled.disabled_at, DateTime)
+      true
+
+  ## Notes
+
+  * The operation is idempotent.
+  * An existing `disabled_at` timestamp is preserved.
+  * The environment row is locked while the lifecycle transition is evaluated
+    and persisted, keeping concurrent disable operations consistent.
+  * An environment may be disabled even when its organization is already disabled.
+  """
+  @spec disable(Environment.id()) ::
+          {:ok, Environment.t()}
+          | {:error, :not_found}
+          | {:error, Ecto.Changeset.t()}
+  def disable(id) do
+    Repo.transaction(fn ->
+      Environment
+      |> where([environment], environment.id == ^id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+      |> persist_disable()
+    end)
+  end
+
+  defp persist_disable(nil) do
+    Repo.rollback(:not_found)
+  end
+
+  defp persist_disable(%Environment{} = environment) do
+    environment
+    |> Environment.disable_changeset()
+    |> Repo.update()
+    |> case do
+      {:ok, environment} ->
+        environment
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
 end

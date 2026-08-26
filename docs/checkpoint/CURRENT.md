@@ -4,12 +4,12 @@
 
 ## Current phase
 
-**First vertical domain slice - Organizations foundation**
+**Runtime OTP foundation**
 
 A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
-O primeiro recorte de domínio de `Organizations` está em andamento com
-`Organization` e `Environment` persistidos.
+O primeiro recorte de domínio de `Organizations` foi concluído com
+`Organization` e `Environment` persistidos e lifecycle inicial completo.
 
 ## Repository state
 
@@ -30,9 +30,9 @@ Estado atual:
 - `leafcutter_runtime` possui supervision tree vazia;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
 - `Organizations` possui schemas e migrations para `Organization` e `Environment`;
-- `Organizations` expõe create/get/disable para organizations e create/get para environments;
-- testes de integração usam SQL Sandbox e cobrem constraints e concorrência entre
-  disable de organization e criação de environment;
+- `Organizations` expõe create/get/disable para organizations e environments;
+- testes de integração usam SQL Sandbox e cobrem constraints, concorrência entre
+  disable de organization e criação de environment e disables concorrentes de environment;
 - nenhum Run process, Broadway pipeline ou Registry foi criado.
 
 ## Ratified Context Map
@@ -395,31 +395,26 @@ Initial Release Shape
 Shared Repo + PubSub + Oban Foundation
 → completed
 
-Organizations Organization Foundation
+Organizations Organization + Environment Foundation
 → completed
 ```
 
 ## In progress
 
-Completar o lifecycle inicial de `Environment` no Context `Organizations`.
+Preparar a infraestrutura OTP mínima de `leafcutter_runtime`.
 
 ## Next concrete task
 
-Adicionar a operação pública idempotente:
+Materializar a supervision tree ratificada:
 
 ```text
-Organizations.Environments.disable/1
+LeafcutterRuntime.Application
+├── Registry
+├── Run DynamicSupervisor
+└── NodeHeartbeat
 ```
 
-Ela deve preservar o timestamp original em chamadas repetidas e retornar erro
-nomeado quando o environment não existir.
-
-Após fechar o recorte inicial de `Organizations`:
-
-```text
-runtime OTP foundation
-→ next ratified domain slice
-```
+Ainda não criar Run processes ou pipelines Broadway nessa etapa.
 
 Cada mudança deve permanecer pequena e revisável em PR própria quando fizer sentido.
 
