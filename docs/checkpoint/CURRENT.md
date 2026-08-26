@@ -4,11 +4,12 @@
 
 ## Current phase
 
-**Infrastructure foundation - shared core services**
+**First vertical domain slice - Organizations foundation**
 
-A consolidação arquitetural do Context Map e das OTP application boundaries foi concluída.
+A infraestrutura compartilhada mínima de `leafcutter_core` foi materializada.
 
-O projeto pode agora iniciar infraestrutura compartilhada, ainda sem implementar schemas ou regras de domínio.
+O primeiro recorte de domínio de `Organizations` está em andamento com
+`Organization` e `Environment` persistidos.
 
 ## Repository state
 
@@ -24,12 +25,14 @@ apps/
 
 Estado atual:
 
-- `leafcutter_core` possui supervision tree vazia;
+- `leafcutter_core` supervisiona `Leafcutter.Repo`, `Leafcutter.PubSub` e Oban;
 - `leafcutter_connectors` possui supervision tree vazia;
 - `leafcutter_runtime` possui supervision tree vazia;
 - `leafcutter_api` é Phoenix API-only com Endpoint e Telemetry;
-- nenhuma schema de domínio foi criada;
-- nenhuma migration de domínio foi criada;
+- `Organizations` possui schemas e migrations para `Organization` e `Environment`;
+- `Organizations` expõe create/get/disable para organizations e create/get para environments;
+- testes de integração usam SQL Sandbox e cobrem constraints e concorrência entre
+  disable de organization e criação de environment;
 - nenhum Run process, Broadway pipeline ou Registry foi criado.
 
 ## Ratified Context Map
@@ -388,33 +391,34 @@ Application Dependency Graph
 
 Initial Release Shape
 → completed
+
+Shared Repo + PubSub + Oban Foundation
+→ completed
+
+Organizations Organization Foundation
+→ completed
 ```
 
 ## In progress
 
-Materializar a infraestrutura shared mínima em `leafcutter_core`.
+Completar o lifecycle inicial de `Environment` no Context `Organizations`.
 
 ## Next concrete task
 
-Adicionar primeiro a foundation de persistência:
+Adicionar a operação pública idempotente:
 
 ```text
-Ecto SQL + Postgrex
-→ Leafcutter.Repo
-→ core supervision child
-→ repo configuration
-→ central migrations directory
+Organizations.Environments.disable/1
 ```
 
-Ainda **não** criar schemas ou migrations de domínio nessa etapa.
+Ela deve preservar o timestamp original em chamadas repetidas e retornar erro
+nomeado quando o environment não existir.
 
-Após o Repo estar funcional e testado:
+Após fechar o recorte inicial de `Organizations`:
 
 ```text
-Leafcutter.PubSub
-→ Oban
-→ runtime OTP foundation
-→ first vertical domain slice
+runtime OTP foundation
+→ next ratified domain slice
 ```
 
 Cada mudança deve permanecer pequena e revisável em PR própria quando fizer sentido.

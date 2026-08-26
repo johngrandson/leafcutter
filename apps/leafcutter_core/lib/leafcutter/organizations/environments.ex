@@ -1,0 +1,163 @@
+defmodule Leafcutter.Organizations.Environments do
+  @moduledoc """
+  Public capability module for managing organization environments.
+  """
+  import Ecto.Query
+
+  alias Leafcutter.Organizations.Environment
+  alias Leafcutter.Organizations.Organization
+  alias Leafcutter.Repo
+
+  @doc """
+  Creates an environment within an active organization.
+
+  ## Parameters
+
+  * `attrs` - The attributes used to create the environment, including the
+    organization identifier and environment name
+
+  ## Returns
+
+  * `{:ok, environment}` when the environment is persisted
+  * `{:error, :organization_not_found}` when the referenced organization does not exist
+  * `{:error, :organization_disabled}` when the referenced organization is disabled
+  * `{:error, changeset}` when the attributes or database constraints are invalid
+
+  ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Environment Example Organization"
+      ...>   })
+
+      iex> match?(
+      ...>   {:ok, %{name: "production"}},
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+      ...> )
+      true
+
+      iex> match?(
+      ...>   {:error, %{valid?: false}},
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: ""
+      ...>   })
+      ...> )
+      true
+
+  ## Notes
+
+  * The referenced organization must exist and be active.
+  * The environment name is required and may contain at most 255 characters.
+  * Environment names must be unique within their organization.
+  * Different organizations may use the same environment name.
+  * `disabled_at` is not accepted during creation and defaults to `nil`.
+  * The organization row is locked while its lifecycle state is checked and the
+    environment is persisted, preventing concurrent disable operations from
+    violating the active-organization invariant.
+  """
+  @spec create(Environment.create_attrs()) ::
+          {:ok, Environment.t()}
+          | {:error, :organization_not_found}
+          | {:error, :organization_disabled}
+          | {:error, Ecto.Changeset.t()}
+  def create(attrs) do
+    changeset = Environment.create_changeset(%Environment{}, attrs)
+
+    if changeset.valid? do
+      create_with_active_organization(changeset)
+    else
+      {:error, changeset}
+    end
+  end
+
+  # Expects a valid environment creation changeset with an organization_id.
+  # The organization row is locked for the duration of the transaction so its
+  # lifecycle state cannot change between validation and persistence.
+  @spec create_with_active_organization(Ecto.Changeset.t()) ::
+          {:ok, Environment.t()}
+          | {:error, :organization_not_found}
+          | {:error, :organization_disabled}
+          | {:error, Ecto.Changeset.t()}
+  defp create_with_active_organization(changeset) do
+    organization_id =
+      Ecto.Changeset.fetch_field!(changeset, :organization_id)
+
+    Repo.transaction(fn ->
+      Organization
+      |> where([organization], organization.id == ^organization_id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+      |> persist_environment(changeset)
+    end)
+  end
+
+  defp persist_environment(nil, _changeset) do
+    Repo.rollback(:organization_not_found)
+  end
+
+  defp persist_environment(%Organization{disabled_at: nil}, changeset) do
+    case Repo.insert(changeset) do
+      {:ok, environment} ->
+        environment
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
+  defp persist_environment(%Organization{}, _changeset) do
+    Repo.rollback(:organization_disabled)
+  end
+
+  @doc """
+  Fetches an environment by its identifier.
+
+  ## Parameters
+
+  * `id` - The identifier of the environment to fetch
+
+  ## Returns
+
+  * `{:ok, environment}` when the environment exists
+  * `{:error, :not_found}` when no environment exists with the given identifier
+
+  ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Environment Lookup Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Organizations.Environments.get(environment.id)
+
+      iex> fetched.id == environment.id
+      true
+
+  ## Notes
+
+  * Disabled environments are returned normally.
+  * Lifecycle state does not affect lookup semantics.
+  """
+  @spec get(Environment.id()) ::
+          {:ok, Environment.t()} | {:error, :not_found}
+  def get(id) do
+    case Repo.get(Environment, id) do
+      %Environment{} = environment ->
+        {:ok, environment}
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+end
