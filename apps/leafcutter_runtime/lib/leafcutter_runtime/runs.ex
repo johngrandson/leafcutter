@@ -63,7 +63,7 @@ defmodule LeafcutterRuntime.Runs do
   * A failed durable claim removes any local tree that can no longer prove ownership.
   * Failed startup releases the claimed token unless another matching local tree won the race.
   * Local start and stop operations are serialized per Run identifier.
-  * This workflow does not create Runs or perform automatic recovery scanning.
+  * This workflow does not create Runs or perform automatic recovery scanning itself.
   """
   @spec start(Run.id()) :: {:ok, pid()} | {:error, start_error()}
   def start(run_id) do
@@ -76,12 +76,106 @@ defmodule LeafcutterRuntime.Runs do
 
     case DurableRuns.claim(run_id, runtime_node_id) do
       {:ok, ownership_token} ->
-        ensure_local_tree(ownership_token)
+        start_claimed_locked(ownership_token)
 
       {:error, reason} ->
         terminate_registered_tree(run_id)
         {:error, reason}
     end
+  end
+
+  @doc """
+  Starts or reconciles a local Run tree from an ownership token already acquired.
+
+  ## Parameters
+
+  * `ownership_token` - The durable token committed before local startup
+
+  ## Returns
+
+  * `{:ok, run_supervisor_pid}` when a new local Run tree starts
+  * `{:ok, run_supervisor_pid}` when the same token is already represented locally
+  * `{:error, {:run_supervisor_start_failed, reason}}` when local startup fails and ownership is released
+  * `{:error, {:run_supervisor_start_failed, reason, release_error}}` when startup and ownership cleanup both fail
+
+  ## Examples
+
+      iex> function_exported?(
+      ...>   LeafcutterRuntime.Runs,
+      ...>   :start_claimed,
+      ...>   1
+      ...> )
+      true
+
+  ## Notes
+
+  * This operation does not perform another durable claim.
+  * Recovery uses it only after a token has committed in PostgreSQL.
+  * A locally registered older generation is terminated before the supplied token starts.
+  * Failed startup releases the supplied token unless another matching local tree won the race.
+  * Startup is serialized with explicit local start and stop operations for the same Run.
+  """
+  @spec start_claimed(DurableRuns.ownership_token()) ::
+          {:ok, pid()} | {:error, start_error()}
+  def start_claimed(ownership_token) do
+    with_local_run_operation(
+      ownership_token.run_id,
+      fn -> start_claimed_locked(ownership_token) end
+    )
+  end
+
+  @spec start_claimed_locked(DurableRuns.ownership_token()) ::
+          {:ok, pid()} | {:error, start_error()}
+  defp start_claimed_locked(ownership_token) do
+    ensure_local_tree(ownership_token)
+  end
+
+  @doc """
+  Lists all live per-Run supervision trees registered on the local node.
+
+  ## Returns
+
+  * A list containing each local Run supervisor and its retained ownership token
+  * An empty list when no Run tree is active locally
+
+  ## Examples
+
+      iex> is_list(LeafcutterRuntime.Runs.list_local())
+      true
+
+  ## Notes
+
+  * The result is derived from the local DynamicSupervisor and Registry.
+  * Non-Run children and dead processes observed during a race are omitted.
+  * PostgreSQL remains authoritative even when a local tree is listed.
+  """
+  @spec list_local() :: [local_run()]
+  def list_local do
+    RunDynamicSupervisor
+    |> DynamicSupervisor.which_children()
+    |> Enum.flat_map(fn
+      {_child_id, run_supervisor_pid, :supervisor, _modules}
+      when is_pid(run_supervisor_pid) ->
+        case Registry.keys(
+               LeafcutterRuntime.RunRegistry,
+               run_supervisor_pid
+             ) do
+          [run_id] when is_binary(run_id) ->
+            case lookup(run_id) do
+              {:ok, local_run} -> [local_run]
+              :error -> []
+            end
+
+          _other_keys ->
+            []
+        end
+
+      _other_child ->
+        []
+    end)
+    |> Enum.sort_by(fn local_run ->
+      local_run.ownership_token.run_id
+    end)
   end
 
   @doc """
