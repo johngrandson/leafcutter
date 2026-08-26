@@ -8,8 +8,8 @@ defmodule LeafcutterRuntime.RunsTest do
 
   alias LeafcutterRuntime.{
     NodeHeartbeat,
-    Runs,
-    RunRegistry
+    RunRegistry,
+    Runs
   }
 
   setup do
@@ -82,21 +82,32 @@ defmodule LeafcutterRuntime.RunsTest do
       assert Process.alive?(second_supervisor_pid)
     end
 
-    test "returns the durable ownership error when another active node owns the Run" do
+    test "removes a local stale tree when another active node owns the Run" do
       run = insert_run()
+      register_cleanup(run.id)
+
+      assert {:ok, _run_supervisor_pid} = Runs.start(run.id)
+      assert {:ok, %{ownership_token: local_token}} = Runs.lookup(run.id)
+      assert :ok = DurableRuns.release(local_token)
+
       other_runtime_node = create_runtime_node("other-owner")
 
-      assert {:ok, _ownership_token} =
+      assert {:ok, other_token} =
                DurableRuns.claim(run.id, other_runtime_node.id)
 
       assert {:error, :owned_by_active_node} = Runs.start(run.id)
-      assert :error = Runs.lookup(run.id)
+      assert :ok = wait_until_not_running(run.id, 50)
+
+      persisted_run = Repo.get!(Run, run.id)
+      assert persisted_run.owner_node_id == other_token.runtime_node_id
+      assert persisted_run.generation == other_token.generation
     end
   end
 
   describe "stop/1" do
     test "releases ownership and terminates the complete local tree" do
       run = insert_run()
+      register_cleanup(run.id)
 
       assert {:ok, run_supervisor_pid} = Runs.start(run.id)
       assert {:ok, %{ownership_token: ownership_token}} = Runs.lookup(run.id)
@@ -159,6 +170,7 @@ defmodule LeafcutterRuntime.RunsTest do
 
     test "stale ownership shuts down the matching local tree without releasing a newer owner" do
       run = insert_run()
+      register_cleanup(run.id)
 
       assert {:ok, _run_supervisor_pid} = Runs.start(run.id)
       assert {:ok, %{ownership_token: first_token}} = Runs.lookup(run.id)
