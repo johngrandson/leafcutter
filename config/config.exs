@@ -43,7 +43,8 @@ config :logger, :default_formatter,
 config :phoenix, :json_library, Jason
 
 config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
-  interval: 15_000
+  interval: 15_000,
+  mode: :durable
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
