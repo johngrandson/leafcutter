@@ -4,30 +4,34 @@
 
 ## Current phase
 
-**Architecture consolidation - Context Map and umbrella application boundaries**
+**Architecture consolidation - full Context Map review**
 
 ## Repository state
 
 - Projeto criado como umbrella vazia com `mix new leafcutter --umbrella`.
-- Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e do grafo de apps.
+- Nenhuma application de domínio foi criada.
 - `Organizations` ratificado.
 - `Catalog` ratificado.
 - `Connections` ratificado.
 - `Integrations` ratificado.
 - `Executions` ratificado.
+- `Notifications` ratificado.
+- `Audit` ratificado.
+- Primeira rodada individual do Context Map concluída.
 
 ## Accepted architecture baseline
 
 - Umbrella com poucas OTP applications.
 - Toda OTP application possui árvore de supervisão desde sua criação.
-- Contexts recebem subtrees próprias quando processos reais justificarem isso.
+- Contexts recebem subtrees próprias somente quando processos reais justificarem isso.
 - Phoenix Contexts maduros com facade raiz pequena, capability modules e implementação interna.
-- Contexts se comunicam somente através de APIs públicas.
+- Contexts não acessam schemas ou queries internos de outros contexts.
+- Comunicação entre contexts utiliza APIs públicas ou mecanismos explicitamente ratificados.
 - PostgreSQL é a autoridade durável.
 - OTP representa estado operacional reconstruível.
 - PubSub propaga fatos efêmeros.
 - Trabalho que não pode ser perdido possui representação durável.
-- Oban é utilizado quando adequado a jobs duráveis, scheduling, notificações, manutenção ou trabalho futuro.
+- Oban é usado quando adequado a jobs duráveis, scheduling, notificações, manutenção ou trabalho futuro.
 - Broadway é o data plane para source, enrichment e destinations.
 - JSON Schema Draft 2020-12 é o contrato canônico de payload, inicialmente validado com JSV.
 - Integration Packages são versionados e declarados por `manifest.json`.
@@ -69,18 +73,16 @@ Permission
 access grants / assignments
 ```
 
-API:
-
-```text
-Organizations
-├── Organizations.Environments
-└── Organizations.Access
-```
-
 Dependências:
 
 ```text
 nenhuma
+```
+
+OTP próprio:
+
+```text
+não inicialmente
 ```
 
 ---
@@ -119,21 +121,18 @@ CatalogCategory
 publication / availability metadata
 ```
 
-API:
-
-```text
-Catalog
-├── Catalog.Packages
-├── Catalog.Contracts
-└── Catalog.Connectors
-```
-
 Dependências:
 
 ```text
 Catalog
    ↓
 Organizations
+```
+
+OTP próprio:
+
+```text
+não inicialmente
 ```
 
 ---
@@ -158,17 +157,9 @@ Owns:
 Connection
 Secret
 SecretVersion
-
 authentication configuration
 OAuth token / refresh state
 secret rotation metadata
-```
-
-API:
-
-```text
-Connections
-└── Connections.Secrets
 ```
 
 Dependências:
@@ -177,6 +168,12 @@ Dependências:
 Connections
    ├──→ Organizations
    └──→ Catalog
+```
+
+OTP próprio:
+
+```text
+não inicialmente
 ```
 
 ---
@@ -189,19 +186,6 @@ Responsabilidade:
 transformar um PackageVersion
 em configuração executável
 dentro de Organization + Environment
-```
-
-Distinção:
-
-```text
-PackageVersion
-→ definição reutilizável
-
-Integration
-→ configuração concreta
-
-Run
-→ execução concreta
 ```
 
 Owns:
@@ -220,17 +204,6 @@ IdentityMapping
 Integration Labels
 ```
 
-API:
-
-```text
-Integrations
-├── Integrations.Destinations
-├── Integrations.Triggers
-├── Integrations.Deployments
-├── Integrations.Homologations
-└── Integrations.IdentityMappings
-```
-
 Dependências:
 
 ```text
@@ -238,6 +211,12 @@ Integrations
    ├──→ Organizations
    ├──→ Catalog
    └──→ Connections
+```
+
+OTP próprio:
+
+```text
+não inicialmente
 ```
 
 ---
@@ -248,7 +227,7 @@ Responsabilidade:
 
 ```text
 transformar uma Integration configurada
-em uma execução concreta
+em execução concreta
 +
 durável
 +
@@ -269,46 +248,14 @@ Checkpoint
 
 ExecutionEvent
 
-owner_node
-generation / fencing
-recovery / claim state
-node heartbeat relacionado ao ownership
+ownership / fencing / recovery state
+node heartbeat relacionado a Run ownership
 
 RunCoordinator
 Run supervision tree
 Broadway pipelines
 runtime Registry
 Run DynamicSupervisor
-```
-
-Modelo principal:
-
-```text
-Run
-└── Record
-    └── Delivery
-        └── Attempt
-```
-
-Estado adicional:
-
-```text
-Run
-├── RunSnapshot
-├── Checkpoint
-├── ExecutionEvent
-└── ownership / recovery state
-```
-
-API:
-
-```text
-Executions
-├── Executions.Runs
-├── Executions.Records
-├── Executions.Deliveries
-├── Executions.Attempts
-└── Executions.Recovery
 ```
 
 Dependências:
@@ -321,30 +268,104 @@ Executions
 └──→ Integrations
 ```
 
-Decisões importantes:
-
-- `RunSnapshot` é imutável.
-- mudanças posteriores na Integration não alteram Runs já iniciados.
-- `Record` representa um item extraído da origem.
-- `Delivery` representa uma obrigação durável por destino.
-- `Attempt` representa uma tentativa concreta de Delivery.
-- `Enrichment` e `Checkpoint` fazem parte do estado durável da execução.
-- `ExecutionEvent` registra fatos significativos do lifecycle.
-- ownership de Run utiliza `owner_node + generation`.
-- `generation` funciona como fencing token.
-- heartbeat é por BEAM node, não por Run.
-- PostgreSQL é a autoridade do ownership.
-- semântica base é `at-least-once`.
-- `Executions` é o primeiro Context ratificado com processos OTP próprios.
-- cada Run possuirá subtree supervisionada.
-- Broadway compõe o data plane.
-- `RunCoordinator` compõe o control plane e não deve carregar Records.
-
-## Ratified dependency graph
+OTP próprio:
 
 ```text
+sim
+```
+
+`Executions` é o primeiro context ratificado com processos OTP próprios desde o início.
+
+---
+
+### Notifications
+
+Responsabilidade:
+
+```text
+transformar eventos relevantes
+em notificações duráveis
+para recipients configurados
+```
+
+Owns:
+
+```text
+NotificationRule
+NotificationChannel
+Recipient
+NotificationDelivery
+```
+
+`Recipient` é independente de `User`.
+
+Dependências:
+
+```text
+Notifications
+├──→ Organizations
+├──→ Integrations
+└──→ Executions
+```
+
+Durabilidade inicial:
+
+```text
+NotificationDelivery
++
+PostgreSQL
++
+Oban
+```
+
+OTP próprio:
+
+```text
+não inicialmente
+```
+
+---
+
+### Audit
+
+Responsabilidade:
+
+```text
+registrar ações humanas
+e administrativas relevantes
+de forma durável e consultável
+```
+
+Owns:
+
+```text
+AuditEvent
+actor metadata
+action
+target reference
+Organization / Environment scope
+redacted change metadata
+```
+
+Dependências:
+
+```text
+Audit
+   ↓
 Organizations
 ```
+
+Audit é um sink.
+
+Outros contexts não utilizam Audit para decidir regras de negócio.
+
+OTP próprio:
+
+```text
+não inicialmente
+```
+
+## Ratified dependency graph
 
 ```text
 Catalog
@@ -373,50 +394,98 @@ Executions
    └──→ Organizations
 ```
 
-Nenhuma dependência circular foi introduzida.
+```text
+Notifications
+   ├──→ Executions
+   ├──→ Integrations
+   └──→ Organizations
+```
+
+```text
+Audit
+   └──→ Organizations
+```
+
+Nenhuma dependência circular conhecida foi introduzida na primeira rodada.
+
+## Completed milestone
+
+```text
+Individual Context Ratification
+```
+
+Concluído para:
+
+```text
+Organizations
+Catalog
+Connections
+Integrations
+Executions
+Notifications
+Audit
+```
 
 ## In progress
 
-Ratificar os contexts restantes:
+Revisar o Context Map como sistema completo.
 
-1. `Notifications`
-2. `Audit`
+A revisão deve procurar:
 
-Depois:
-
-1. revisar o Context Map completo;
-2. revisar ownership conjunto;
-3. revisar APIs públicas;
-4. revisar dependências entre contexts;
-5. ratificar boundaries das OTP applications;
-6. ratificar grafo de dependências entre apps;
-7. criar as primeiras applications da umbrella.
+1. responsabilidades duplicadas;
+2. boundaries excessivamente grandes;
+3. contexts desnecessariamente pequenos;
+4. dependências redundantes;
+5. dependências circulares indiretas;
+6. APIs públicas excessivas;
+7. concepts posicionados no context errado;
+8. responsabilidades de infraestrutura misturadas com domínio.
 
 ## Next concrete task
 
-Revisar o context proposto `Notifications`.
-
-Primeira decisão:
+Executar uma revisão conjunta de:
 
 ```text
-Qual é exatamente a responsabilidade de domínio de Notifications?
+Organizations
+Catalog
+Connections
+Integrations
+Executions
+Notifications
+Audit
 ```
 
-Nenhum app, schema ou migration deve ser criado durante essa decisão.
+Nenhuma OTP application deve ser criada durante essa revisão.
+
+Depois da aprovação do mapa completo:
+
+```text
+Context Map
+        ↓
+OTP application boundaries
+        ↓
+dependency graph between apps
+        ↓
+create apps/
+```
 
 ## Relevant documents
 
 - `docs/architecture/contextos-e-ownership.md`
-- `docs/architecture/observabilidade-e-auditoria.md`
+- `docs/architecture/umbrella-e-dependencias.md`
 - `docs/architecture/principios-e-restricoes.md`
+- `docs/architecture/modelo-conceitual.md`
+- `docs/architecture/runtime-otp-broadway.md`
+- `docs/architecture/ambientes-rbac-homologacao.md`
+- `docs/architecture/observabilidade-e-auditoria.md`
 - `docs/decisions/ADR-0002-phoenix-contexts-maduros.md`
 
 ## Open warnings
 
-- `Notifications` e `Audit` ainda são propostas.
-- O Context Map completo ainda não passou pela revisão conjunta final.
+- O Context Map foi ratificado individualmente, mas ainda precisa passar pela revisão conjunta.
 - A divisão das OTP applications ainda não foi ratificada.
 - Nenhuma application de domínio deve ser criada ainda.
+- O grafo de dependências entre OTP applications ainda não foi congelado.
 - O mecanismo físico para compilar `packages/` junto da release ainda não foi ratificado.
 - O JSON Schema definitivo do `manifest.json` ainda não foi fechado.
 - Endpoints, tabelas, campos e índices concretos ainda não foram congelados.

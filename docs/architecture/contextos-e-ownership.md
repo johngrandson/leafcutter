@@ -1,6 +1,6 @@
 # Contextos e ownership
 
-> **Status: RATIFICAÇÃO EM ANDAMENTO.** `Organizations`, `Catalog`, `Connections`, `Integrations` e `Executions` estão ratificados. `Notifications` e `Audit` permanecem como propostas.
+> **Status: CONTEXT MAP RATIFICADO.** Todos os contexts propostos passaram pela primeira rodada de ratificação individual. O próximo passo é revisar o mapa completo em conjunto antes de definir as boundaries das OTP applications.
 
 ## Regra estrutural
 
@@ -837,24 +837,6 @@ Scheduling durável pode usar Oban quando apropriado.
 
 Ele governa tanto o histórico durável da execução quanto o lifecycle operacional necessário para processá-la.
 
-Responde por questões como:
-
-```text
-Qual configuração exata este Run executou?
-
-Quais Records foram extraídos?
-
-Quais Deliveries foram criadas?
-
-Quais Attempts ocorreram?
-
-Onde o processamento parou?
-
-Qual node possui o Run?
-
-Como o Run é retomado após falha?
-```
-
 ## Owns
 
 ### Execução
@@ -881,7 +863,7 @@ Como o Run é retomado após falha?
 - `generation`;
 - fencing state;
 - claim/recovery state;
-- node heartbeat necessário ao ownership de Runs.
+- node heartbeat relacionado ao ownership de Runs.
 
 ### Runtime OTP
 
@@ -893,8 +875,6 @@ Como o Run é retomado após falha?
 - Registry usado pelo runtime;
 - DynamicSupervisor de Runs.
 
-Os nomes físicos dos módulos poderão ser refinados durante a implementação, mas essas responsabilidades pertencem a `Executions`.
-
 ## Run
 
 `Run` representa uma execução concreta de uma Integration.
@@ -903,8 +883,6 @@ Os nomes físicos dos módulos poderão ser refinados durante a implementação,
 Integration
 → Run
 ```
-
-Um Run possui lifecycle próprio e estado operacional reconstruível.
 
 ## RunSnapshot
 
@@ -926,56 +904,11 @@ credential/version references
 RunSnapshot
 ```
 
-O snapshot não deve conter Secrets em texto claro.
+O snapshot não contém Secrets em texto claro.
 
-Depois da criação do snapshot, o Run não deve depender de reler continuamente configuração mutável da Integration.
+Mudanças posteriores na Integration não alteram Runs existentes.
 
-Mudanças futuras na Integration não alteram Runs existentes.
-
-## Record
-
-`Record` representa um item extraído da origem durante um Run.
-
-```text
-Run
-└── Record
-```
-
-O Record mantém a ocorrência interna da execução e sua relação com a identidade externa da origem.
-
-## Delivery
-
-`Delivery` representa a obrigação durável de enviar o resultado relacionado a um Record para um destino específico.
-
-```text
-Record
-├── Delivery → Destination A
-├── Delivery → Destination B
-└── Delivery → Destination C
-```
-
-Cada destino evolui independentemente.
-
-Uma Destination lenta ou indisponível não deve bloquear as demais.
-
-Delivery é também uma representação durável de trabalho.
-
-Ela não precisa ser duplicada automaticamente como Oban Job.
-
-## Attempt
-
-`Attempt` representa uma tentativa concreta de executar uma Delivery.
-
-```text
-Delivery
-├── Attempt #1
-├── Attempt #2
-└── Attempt #3
-```
-
-Attempts preservam histórico de execução externa, incluindo sucesso, falha e informações normalizadas de erro.
-
-## Relação principal
+## Record, Delivery e Attempt
 
 ```text
 Run
@@ -984,27 +917,21 @@ Run
         └── Attempt
 ```
 
+`Record` representa um item extraído da origem.
+
+`Delivery` representa uma obrigação durável para um destino.
+
+`Attempt` representa uma tentativa concreta daquela Delivery.
+
+Destinos evoluem independentemente.
+
 ## Enrichment
 
 `Enrichment` representa resultado durável de lookup externo realizado durante o processamento.
 
-```text
-Record
-└── Enrichment
-```
-
-Pode armazenar resultado, status e informações necessárias para retry/reuse conforme a política futura.
-
 ## Checkpoint
 
-`Checkpoint` representa uma posição segura e durável de progresso da origem.
-
-```text
-Run
-└── Checkpoint
-```
-
-Checkpoint só avança quando o trabalho anterior necessário já foi persistido duravelmente.
+`Checkpoint` representa uma posição segura e durável de progresso.
 
 Conceitualmente:
 
@@ -1018,11 +945,9 @@ persist Records + Deliveries
 advance Checkpoint
 ```
 
-A persistência do fan-out e o avanço seguro do checkpoint devem respeitar atomicidade apropriada.
-
 ## ExecutionEvent
 
-`ExecutionEvent` registra fatos significativos do lifecycle.
+Registra fatos significativos do lifecycle.
 
 Exemplos:
 
@@ -1037,15 +962,13 @@ run_completed
 run_failed
 ```
 
-Não deve virar um log genérico de todos os detalhes internos do Broadway.
+Não é um log genérico do Broadway.
 
 ## Ownership de Run
 
 Um Run pertence a um único BEAM node por vez.
 
-PostgreSQL é a autoridade durável de ownership.
-
-O modelo conceitual utiliza:
+PostgreSQL é a autoridade durável.
 
 ```text
 owner_node
@@ -1054,13 +977,7 @@ generation
 
 `generation` funciona como fencing token.
 
-Distributed Erlang pode ajudar na detecção rápida de falhas, mas não é autoridade de ownership.
-
-## Node heartbeat
-
-Existe heartbeat por BEAM node, não um heartbeat independente por Run.
-
-Quando o heartbeat de um node expira, Runs pertencentes a ele podem ser reclamados por outro node através de operação durável e fenced.
+Heartbeat é por BEAM node, não por Run.
 
 ## Recovery
 
@@ -1074,11 +991,7 @@ owner_node
 generation
 ```
 
-para reconstruir a subtree do Run em outro node.
-
-OTP recupera falhas locais através de supervisão.
-
-PostgreSQL + fencing permitem recuperação após perda de node.
+para reconstruir a execução.
 
 ## At-least-once
 
@@ -1088,15 +1001,9 @@ A semântica base é:
 at-least-once
 ```
 
-Se o resultado externo for incerto, o trabalho pode ser tentado novamente.
-
-Idempotência, Source Identity, IdentityMapping e operações de destino apropriadas reduzem efeitos de replay.
-
 O Leafcutter não promete `exactly-once` universal.
 
 ## Public surface
-
-A API pública inicial é:
 
 ```text
 Executions
@@ -1145,8 +1052,6 @@ As assinaturas ainda não estão congeladas.
 
 ## Dependências
 
-`Executions` depende de:
-
 ```text
 Executions
 ├──→ Organizations
@@ -1154,22 +1059,6 @@ Executions
 ├──→ Connections
 └──→ Integrations
 ```
-
-### Organizations
-
-Usado para scope e autorização.
-
-### Integrations
-
-Fornece a definição configurada que origina a execução.
-
-### Catalog
-
-Fornece PackageVersion, ContractVersion e metadata imutável necessária à resolução do snapshot.
-
-### Connections
-
-Fornece configuração e referências de credenciais necessárias ao runtime.
 
 Todas as interações entre contexts ocorrem por APIs públicas.
 
@@ -1198,31 +1087,17 @@ Executions runtime supervision
 
 A árvore exata será ratificada durante o desenho da OTP application/runtime.
 
-Não espalhar inicialmente uma única Run subtree entre múltiplos nodes.
-
 ## RunCoordinator
 
-`RunCoordinator` pertence ao control plane da execução.
+Pertence ao control plane.
 
-Deve tratar lifecycle de alto nível, como:
-
-```text
-start
-pause
-resume
-cancel
-source_done
-destination_done
-run_done
-```
-
-Não deve transportar Records ou se tornar bottleneck do data plane.
+Não deve transportar Records nem virar bottleneck do data plane.
 
 ## Broadway
 
-Broadway pertence ao data plane.
+Pertence ao data plane.
 
-É responsável por primitives como:
+Fornece:
 
 ```text
 bounded concurrency
@@ -1231,8 +1106,6 @@ batching
 backpressure
 processing pipelines
 ```
-
-Não reimplementar manualmente essas capacidades sem necessidade concreta.
 
 ## Não pertence aqui
 
@@ -1250,41 +1123,267 @@ Não reimplementar manualmente essas capacidades sem necessidade concreta.
 
 # 6. Notifications
 
-> **Status: PROPOSTA PARA RATIFICAÇÃO**
+> **Status: RATIFICADO**
 
-Responsabilidade proposta: configurar regras e executar entrega durável de notificações.
+## Responsabilidade
 
-## Owns proposto
+`Notifications` transforma eventos relevantes da plataforma em entregas de notificação duráveis para recipients configurados.
+
+Ele responde por perguntas como:
+
+```text
+Qual evento deve gerar uma notificação?
+
+Quem deve receber?
+
+Por qual canal?
+
+A entrega foi concluída?
+
+A entrega falhou?
+
+Ela precisa ser tentada novamente?
+```
+
+`Notifications` reage a fatos produzidos por outros contexts.
+
+Ele não controla o estado de `Integration`, `Run` ou outros domínios que originaram esses fatos.
+
+## Owns
 
 - `NotificationRule`;
 - `NotificationChannel`;
 - `Recipient`;
 - `NotificationDelivery`.
 
-## Public surface proposta
+## NotificationRule
+
+Define quando um fato relevante deve gerar uma notificação.
+
+Conceitualmente:
+
+```text
+event
++
+filters
++
+recipients
++
+channel
+→ notification
+```
+
+As regras podem futuramente utilizar Labels ou scope quando necessário, sem transformar Labels em um sistema de eventos.
+
+## NotificationChannel
+
+Representa como uma notificação é entregue.
+
+Exemplos futuros:
+
+```text
+email
+Slack
+webhook
+```
+
+Não criar inicialmente um Context ou capability pública separada para cada canal.
+
+## Recipient
+
+`Recipient` representa quem ou onde recebe a notificação.
+
+Ele pertence a uma Organization, mas é independente de `User`.
+
+```text
+User
+→ ator que acessa o Leafcutter
+
+Recipient
+→ destino de comunicação
+```
+
+Exemplos:
+
+```text
+ana@acme.com
+ops@acme.com
+Slack #integrations
+webhook operacional
+```
+
+Mesmo que um Recipient corresponda à mesma pessoa representada por um User, o sistema não precisa manter essa associação enquanto não houver requisito concreto.
+
+Não criar relacionamento `Recipient -> User` por antecipação.
+
+## NotificationDelivery
+
+Representa a obrigação e o estado durável de uma entrega concreta de notificação.
+
+Conceitualmente:
+
+```text
+NotificationRule
+        ↓
+Recipient
+        ↓
+NotificationDelivery
+```
+
+Pode registrar:
+
+```text
+pending
+processing
+completed
+failed
+retry state
+```
+
+A representação física será definida durante o desenho de persistência.
+
+## Public surface
+
+```text
+Notifications
+├── Notifications.Rules
+└── Notifications.Recipients
+```
+
+Rules:
 
 ```elixir
 Notifications.Rules.create(...)
 Notifications.Rules.disable(...)
+```
 
+Recipients:
+
+```elixir
 Notifications.Recipients.create(...)
+Notifications.Recipients.disable(...)
+```
 
+Entrega:
+
+```elixir
 Notifications.deliver_for_event(...)
 ```
 
-PubSub sozinho não é suficiente para obrigações de notificação.
+As assinaturas ainda não estão congeladas.
 
-A boundary ainda precisa ser ratificada.
+Não criar inicialmente:
+
+```text
+Notifications.Email
+Notifications.Slack
+Notifications.Webhooks
+```
+
+sem necessidade concreta.
+
+## Dependências
+
+```text
+Notifications
+├──→ Organizations
+├──→ Integrations
+└──→ Executions
+```
+
+### Organizations
+
+Fornece o scope organizacional necessário às regras e recipients.
+
+### Integrations
+
+Fornece fatos e referências relacionados a Integration quando necessários às regras de notificação.
+
+### Executions
+
+Fornece fatos relacionados a Runs, Deliveries, Attempts e lifecycle operacional.
+
+`Notifications` não depende diretamente de:
+
+```text
+Catalog
+Connections
+Audit
+```
+
+## Durabilidade
+
+PubSub sozinho não é suficiente para uma obrigação de notificação.
+
+A estratégia inicial prevista é:
+
+```text
+NotificationDelivery
++
+PostgreSQL
++
+Oban
+```
+
+Oban é apropriado para o trabalho futuro/durável de entrega.
+
+## OTP e supervisão
+
+`Notifications` não possui necessidade atual de processos OTP próprios.
+
+Não criar inicialmente:
+
+```text
+Notifications.Supervisor
+Notifications.Dispatcher
+Notifications.EmailServer
+```
+
+O lifecycle dos jobs duráveis pode ser gerenciado por Oban dentro da árvore supervisionada da OTP application que hospedar o context.
+
+## Não pertence aqui
+
+- `User`;
+- `Role`;
+- `Permission`;
+- estado da Integration;
+- estado do Run;
+- `AuditEvent`;
+- regras de negócio que originam os fatos.
 
 ---
 
 # 7. Audit
 
-> **Status: PROPOSTA PARA RATIFICAÇÃO**
+> **Status: RATIFICADO**
 
-Responsabilidade proposta: registrar ações humanas e administrativas relevantes.
+## Responsabilidade
 
-## Owns proposto
+`Audit` registra, de forma durável e consultável, ações humanas e administrativas relevantes ocorridas na plataforma.
+
+Ele responde por perguntas como:
+
+```text
+Quem realizou a ação?
+
+O que aconteceu?
+
+Sobre qual recurso?
+
+Em qual Organization?
+
+Em qual Environment?
+
+Quando aconteceu?
+
+Quais mudanças relevantes podem ser registradas sem expor dados sensíveis?
+```
+
+`Audit` registra fatos.
+
+Ele não controla a regra de negócio que originou esses fatos.
+
+## Owns
 
 - `AuditEvent`;
 - actor metadata;
@@ -1293,18 +1392,210 @@ Responsabilidade proposta: registrar ações humanas e administrativas relevante
 - Organization/Environment scope;
 - redacted change metadata.
 
-## Public surface proposta
+## AuditEvent
+
+`AuditEvent` representa um fato auditável persistido.
+
+Conceitualmente:
+
+```text
+actor
++
+action
++
+target
++
+scope
++
+metadata
++
+timestamp
+→ AuditEvent
+```
+
+## Actor metadata
+
+Registra quem realizou a ação.
+
+Pode representar, conforme o caso:
+
+```text
+User
+ServiceAccount
+system actor
+```
+
+O AuditEvent deve armazenar informação suficiente para preservar o histórico sem depender de joins frágeis para reconstruir completamente o passado.
+
+A estratégia física será definida posteriormente.
+
+## Action
+
+Representa a ação auditada.
+
+Exemplos:
+
+```text
+integration.promoted
+integration.disabled
+run.cancelled
+delivery.retried
+secret.rotated
+role.assigned
+```
+
+A nomenclatura definitiva será padronizada posteriormente.
+
+## Target reference
+
+Representa o recurso sobre o qual a ação ocorreu.
+
+Conceitualmente:
+
+```text
+target_type
+target_id
+```
+
+`Audit` não precisa conhecer o schema interno do target.
+
+## Scope
+
+AuditEvents podem ser scoped por:
+
+```text
+Organization
++
+optional Environment
+```
+
+Isso permite consulta e autorização do histórico sem transformar Audit em proprietário desses scopes.
+
+## Redacted change metadata
+
+Metadata de mudanças pode ser persistida quando útil.
+
+Nunca armazenar em texto claro:
+
+```text
+password
+Secret value
+OAuth refresh token
+API key
+credential payload
+```
+
+Dados sensíveis devem ser removidos ou redacted antes da persistência.
+
+## Public surface
+
+A API pública inicial é apenas:
+
+```text
+Audit
+```
+
+Com:
 
 ```elixir
 Audit.record(...)
 Audit.list(...)
 ```
 
-Audit deve funcionar como sink.
+Não criar inicialmente:
 
-Outros contexts podem registrar fatos, mas não devem consultar Audit para executar suas regras de negócio.
+```text
+Audit.Events
+Audit.Writer
+Audit.Queries
+```
 
-A boundary ainda precisa ser ratificada.
+sem necessidade concreta.
+
+## Dependências
+
+`Audit` depende apenas de:
+
+```text
+Audit
+   ↓
+Organizations
+```
+
+`Organizations` fornece o scope organizacional necessário.
+
+`Audit` não precisa conhecer como dependência de domínio:
+
+```text
+Catalog
+Connections
+Integrations
+Executions
+Notifications
+```
+
+Esses contexts podem originar fatos auditáveis, mas Audit recebe referências e metadata em vez de depender de seus schemas internos.
+
+O mecanismo concreto pelo qual fatos obrigatórios chegam ao Audit será definido posteriormente, preservando durabilidade e evitando dependências circulares.
+
+## Sink
+
+Audit é um sink de fatos administrativos.
+
+Outros contexts nunca devem consultar Audit para decidir suas próprias regras de negócio.
+
+Evitar:
+
+```text
+"posso promover?"
+→ consultar Audit
+```
+
+Preferir:
+
+```text
+domínio decide
+→ ação acontece
+→ fato auditável é registrado
+```
+
+## OTP e supervisão
+
+`Audit` não possui necessidade atual de processos OTP próprios.
+
+A implementação inicial pode usar:
+
+```text
+AuditEvent
++
+Ecto
++
+Repo
++
+PostgreSQL
+```
+
+Não criar:
+
+```text
+Audit.Supervisor
+Audit.Writer
+Audit.Buffer
+```
+
+sem uma necessidade real.
+
+Se volume ou requisitos futuros exigirem buffering ou processamento assíncrono, essa decisão será revisitada.
+
+## Não pertence aqui
+
+- regras de negócio;
+- estado de Integration;
+- estado de Run;
+- NotificationRule;
+- Secret values;
+- autenticação;
+- autorização.
 
 ---
 
@@ -1341,21 +1632,54 @@ Executions
    └──→ Organizations
 ```
 
-Regras ratificadas:
+```text
+Notifications
+   ├──→ Executions
+   ├──→ Integrations
+   └──→ Organizations
+```
+
+```text
+Audit
+   └──→ Organizations
+```
+
+## Regras ratificadas
 
 - `Organizations` não depende de outros contexts.
 - `Catalog` depende apenas de `Organizations`.
 - `Connections` depende apenas de `Catalog` e `Organizations`.
 - `Integrations` depende apenas de `Connections`, `Catalog` e `Organizations`.
 - `Executions` depende de `Integrations`, `Connections`, `Catalog` e `Organizations`.
-- dependências entre contexts ocorrem somente através de APIs públicas;
-- nenhuma dependência circular foi introduzida até este ponto.
+- `Notifications` depende de `Executions`, `Integrations` e `Organizations`.
+- `Audit` depende apenas de `Organizations`.
+- dependências entre contexts ocorrem através de APIs públicas ou mecanismos explicitamente ratificados;
+- outros contexts não acessam schemas e queries internos;
+- nenhum context utiliza Audit como fonte de regra de negócio;
+- nenhuma dependência circular conhecida foi introduzida nesta primeira rodada.
 
-Ainda precisam ser ratificados:
+---
+
+# Próxima fase
+
+Todos os contexts passaram pela primeira ratificação individual:
 
 ```text
+Organizations
+Catalog
+Connections
+Integrations
+Executions
 Notifications
 Audit
 ```
 
-Depois disso, o Context Map completo deve passar por uma revisão conjunta antes da criação das OTP applications.
+Antes de criar qualquer OTP application:
+
+1. revisar o mapa completo em conjunto;
+2. procurar responsabilidades duplicadas;
+3. procurar dependências desnecessárias;
+4. procurar dependências circulares indiretas;
+5. revisar APIs públicas;
+6. revisar quais contexts realmente precisam conviver na mesma OTP application;
+7. somente então ratificar as boundaries da umbrella.
