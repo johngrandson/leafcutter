@@ -6,6 +6,10 @@ defmodule LeafcutterRuntime.ApplicationTest do
     assert LeafcutterRuntime.RunRegistry |> Process.whereis() |> is_pid()
     assert LeafcutterRuntime.RunDynamicSupervisor |> Process.whereis() |> is_pid()
     assert LeafcutterRuntime.NodeHeartbeat |> Process.whereis() |> is_pid()
+
+    assert {:ok, _runtime_node_id} =
+             LeafcutterRuntime.NodeHeartbeat.runtime_node_id()
+             |> Ecto.UUID.cast()
   end
 
   test "RunRegistry provides unique local registration" do
