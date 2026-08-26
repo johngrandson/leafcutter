@@ -6,8 +6,18 @@ defmodule Leafcutter.Organizations.Users do
   organizations is established separately through memberships.
   """
 
+  import Ecto.Query
+
   alias Leafcutter.Organizations.User
   alias Leafcutter.Repo
+
+  @typedoc """
+  Error returned when a user cannot be disabled.
+
+  The user may not exist, or the lifecycle change may fail validation or a
+  database constraint.
+  """
+  @type disable_error :: :not_found | Ecto.Changeset.t()
 
   @doc """
   Creates a user.
@@ -91,6 +101,69 @@ defmodule Leafcutter.Organizations.Users do
 
       nil ->
         {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Disables a user.
+
+  ## Parameters
+
+  * `id` - The identifier of the user to disable
+
+  ## Returns
+
+  * `{:ok, user}` when the user is disabled
+  * `{:ok, user}` when the user was already disabled
+  * `{:error, :not_found}` when the user does not exist
+  * `{:error, changeset}` when the lifecycle change cannot be persisted
+
+  ## Examples
+
+      iex> {:ok, user} =
+      ...>   Leafcutter.Organizations.Users.create(%{
+      ...>     email: "disable@example.com"
+      ...>   })
+
+      iex> {:ok, disabled} =
+      ...>   Leafcutter.Organizations.Users.disable(user.id)
+
+      iex> is_struct(disabled.disabled_at, DateTime)
+      true
+
+  ## Notes
+
+  * The operation is idempotent.
+  * An existing `disabled_at` timestamp is preserved.
+  * Disabling a user does not delete memberships or historical authorization data.
+  * The user row is locked while the lifecycle transition is evaluated and
+    persisted, keeping concurrent disable operations consistent.
+  """
+  @spec disable(User.id()) :: {:ok, User.t()} | {:error, disable_error()}
+  def disable(id) do
+    Repo.transaction(fn ->
+      User
+      |> where([user], user.id == ^id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+      |> persist_disable()
+    end)
+  end
+
+  defp persist_disable(nil) do
+    Repo.rollback(:not_found)
+  end
+
+  defp persist_disable(%User{} = user) do
+    user
+    |> User.disable_changeset()
+    |> Repo.update()
+    |> case do
+      {:ok, user} ->
+        user
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
     end
   end
 end

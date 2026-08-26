@@ -64,4 +64,24 @@ defmodule Leafcutter.Organizations.UsersTest do
                Users.get("00000000-0000-0000-0000-000000000000")
     end
   end
+
+  describe "disable/1" do
+    test "persists one lifecycle timestamp and preserves it on repeated calls" do
+      assert {:ok, user} = Users.create(%{email: "user@example.com"})
+
+      assert {:ok, first_disable} = Users.disable(user.id)
+      assert %DateTime{} = first_disable.disabled_at
+
+      assert {:ok, second_disable} = Users.disable(user.id)
+      assert second_disable.disabled_at == first_disable.disabled_at
+
+      assert {:ok, fetched} = Users.get(user.id)
+      assert fetched.disabled_at == first_disable.disabled_at
+    end
+
+    test "returns a named error when the user does not exist" do
+      assert {:error, :not_found} =
+               Users.disable("00000000-0000-0000-0000-000000000000")
+    end
+  end
 end
