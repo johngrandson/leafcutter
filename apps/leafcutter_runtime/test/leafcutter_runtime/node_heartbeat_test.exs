@@ -105,7 +105,7 @@ defmodule LeafcutterRuntime.NodeHeartbeatTest do
     assert NodeHeartbeat.runtime_node_id() == original_runtime_node_id
   end
 
-  @spec wait_for_restarted_process(pid(), pos_integer()) :: pid()
+  @spec wait_for_restarted_process(pid(), non_neg_integer()) :: pid()
   defp wait_for_restarted_process(_original_pid, 0) do
     flunk("node heartbeat process did not restart")
   end
