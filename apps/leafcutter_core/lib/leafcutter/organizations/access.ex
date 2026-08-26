@@ -579,7 +579,8 @@ defmodule Leafcutter.Organizations.Access do
     :ok
   end
 
-  @spec role_assignment_query(Membership.id(), Role.id(), Environment.id() | nil) :: Ecto.Query.t()
+  @spec role_assignment_query(Membership.id(), Role.id(), Environment.id() | nil) ::
+          Ecto.Query.t()
   defp role_assignment_query(membership_id, role_id, nil) do
     RoleAssignment
     |> where(

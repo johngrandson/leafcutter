@@ -214,6 +214,7 @@ defmodule Leafcutter.Organizations.AccessRoleAssignmentsTest do
       assert {:ok, _assignment} = Access.assign_role(attrs)
       assert {:ok, _environment} = Environments.disable(environment.id)
       assert {:ok, _role} = Roles.disable(fixture.role.id)
+
       assert {:ok, _membership} =
                Access.remove_member(fixture.organization.id, fixture.user.id)
 

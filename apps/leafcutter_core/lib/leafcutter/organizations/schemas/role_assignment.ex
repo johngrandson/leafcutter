@@ -73,6 +73,13 @@ defmodule Leafcutter.Organizations.RoleAssignment do
       iex> changeset.valid?
       true
 
+      iex> Leafcutter.Organizations.RoleAssignment.create_changeset(
+      ...>   %Leafcutter.Organizations.RoleAssignment{},
+      ...>   %{}
+      ...> )
+      ...> |> Map.fetch!(:valid?)
+      false
+
   ## Notes
 
   * Omitting `environment_id` creates an organization-wide assignment.

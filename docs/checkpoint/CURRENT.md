@@ -407,18 +407,19 @@ Organizations User + Membership Foundation
 
 Organizations Role + Permission Foundation
 → completed
+
+Organizations Role Assignment Foundation
+→ completed
 ```
 
 ## In progress
 
-Completar a primeira foundation de RBAC de `Organizations`.
-
-O modelo de `RoleAssignment` organization-wide/environment-scoped está sendo
-materializado e testado.
+Definir a semântica de avaliação da primeira foundation de RBAC de
+`Organizations`.
 
 ## Next concrete task
 
-Depois do merge de `RoleAssignment`, definir a semântica de avaliação antes de
+Ratificar como os assignments participam da resolução de Permission antes de
 implementar:
 
 ```text
