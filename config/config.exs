@@ -9,6 +9,20 @@
 # move said applications out of the umbrella.
 import Config
 
+config :leafcutter_api,
+  generators: [context_app: false]
+
+# Configures the endpoint
+config :leafcutter_api, LeafcutterApi.Endpoint,
+  url: [host: "localhost"],
+  adapter: Bandit.PhoenixAdapter,
+  render_errors: [
+    formats: [json: LeafcutterApi.ErrorJSON],
+    layout: false
+  ],
+  pubsub_server: LeafcutterApi.PubSub,
+  live_view: [signing_salt: "5tw/tOAb"]
+
 # Sample configuration:
 #
 #     config :logger, :default_handler,
@@ -18,3 +32,16 @@ import Config
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 #
+import Config
+
+# Configure Elixir's Logger
+config :logger, :default_formatter,
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id]
+
+# Use Jason for JSON parsing in Phoenix
+config :phoenix, :json_library, Jason
+
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
+import_config "#{config_env()}.exs"

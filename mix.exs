@@ -24,7 +24,7 @@ defmodule Leafcutter.MixProject do
     [
       # Keep Tidewave at the umbrella root so `mix tidewave` can inspect every
       # child application running in the shared development runtime.
-      {:bandit, "~> 1.0", only: :dev},
+      {:bandit, "~> 1.5"},
       {:tidewave, "~> 0.9", only: :dev},
       # Keep quality tooling at the umbrella root so one command checks every
       # child application without making the tools runtime dependencies.
