@@ -18,3 +18,6 @@ config :leafcutter_core, Leafcutter.Repo,
   pool_size: 10
 
 config :leafcutter_core, Oban, testing: :manual
+
+config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
+  interval: 50
