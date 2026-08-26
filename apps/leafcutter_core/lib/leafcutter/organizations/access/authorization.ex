@@ -74,9 +74,12 @@ defmodule Leafcutter.Organizations.Access.Authorization do
         {:error, :environment_disabled}
 
       %Environment{organization_id: organization_id} ->
-        with {:ok, %{organization_id: ^organization_id}} <-
-               resolve_scope({:organization, organization_id}) do
-          {:ok, %{organization_id: organization_id, environment_id: environment_id}}
+        case resolve_scope({:organization, organization_id}) do
+          {:ok, _organization_scope} ->
+            {:ok, %{organization_id: organization_id, environment_id: environment_id}}
+
+          {:error, reason} ->
+            {:error, reason}
         end
     end
   end
