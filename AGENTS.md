@@ -138,6 +138,21 @@ APIs públicas relevantes devem possuir:
 - contratos de erro explícitos;
 - exemplos quando melhorarem materialmente a compreensão.
 
+### Padrão canônico de `@doc` para schemas
+
+Toda função pública definida em um módulo de schema Ecto deve usar um `@doc`
+multilinha com estas seções, nesta ordem:
+
+1. descrição direta da finalidade da função;
+2. `## Parameters`, com cada argumento e seu papel;
+3. `## Returns`, com o resultado produzido;
+4. `## Examples`, com o caso de sucesso e os casos inválidos relevantes;
+5. `## Notes`, com validações, invariantes e campos deliberadamente excluídos
+   do `cast`.
+
+O conteúdo do `@doc`, inclusive títulos, parâmetros, exemplos e notas, deve
+permanecer em inglês.
+
 Evite contratos genéricos como:
 
 ```elixir
