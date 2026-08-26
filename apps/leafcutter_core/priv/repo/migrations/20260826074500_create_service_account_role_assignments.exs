@@ -27,7 +27,7 @@ defmodule Leafcutter.Repo.Migrations.CreateServiceAccountRoleAssignments do
       unique_index(
         :service_account_role_assignments,
         [:service_account_id, :role_id],
-        name: :service_account_role_assignments_account_role_organization_scope_index,
+        name: :sa_role_assignments_account_role_org_scope_index,
         where: "environment_id IS NULL"
       )
     )
@@ -36,7 +36,7 @@ defmodule Leafcutter.Repo.Migrations.CreateServiceAccountRoleAssignments do
       unique_index(
         :service_account_role_assignments,
         [:service_account_id, :role_id, :environment_id],
-        name: :service_account_role_assignments_account_role_environment_scope_index,
+        name: :sa_role_assignments_account_role_env_scope_index,
         where: "environment_id IS NOT NULL"
       )
     )
