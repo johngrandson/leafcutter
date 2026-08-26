@@ -1,9 +1,11 @@
 defmodule LeafcutterRuntime.RunDynamicSupervisor do
   @moduledoc """
-  Supervises per-Run supervision trees dynamically on the local BEAM node.
+  Supervises per-Run control-plane trees dynamically on the local BEAM node.
 
-  The supervisor starts empty. Concrete Run supervision trees will be added
-  only after durable Run ownership and lifecycle semantics are materialized.
+  Each child is a `LeafcutterRuntime.RunSupervisor` started only after durable
+  ownership has been claimed. The supervisor is local and does not decide
+  ownership, recovery, or fencing; PostgreSQL remains authoritative for those
+  concerns.
   """
 
   use DynamicSupervisor
@@ -28,8 +30,9 @@ defmodule LeafcutterRuntime.RunDynamicSupervisor do
   ## Notes
 
   * The supervisor is local to one BEAM node.
-  * Run ownership is not determined by this process.
-  * PostgreSQL will remain the durable authority for Run ownership and fencing.
+  * Children are transient per-Run supervisors keyed through the local Registry.
+  * Durable claim must complete before a Run tree is added.
+  * Direct callers should normally use `LeafcutterRuntime.Runs.start/1`.
   """
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(_opts) do
@@ -37,6 +40,7 @@ defmodule LeafcutterRuntime.RunDynamicSupervisor do
   end
 
   @impl true
+  @spec init(:ok) :: {:ok, DynamicSupervisor.sup_flags()}
   def init(:ok) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
