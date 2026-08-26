@@ -70,7 +70,8 @@ mesmo nome sem reviver ownership pertencente a um processo antigo.
 O heartbeat segue esta ordem:
 
 ```text
-persistir last_heartbeat_at no PostgreSQL
+obter timestamp do PostgreSQL
+→ persistir last_heartbeat_at
 → emitir Telemetry efêmero
 → agendar próxima tentativa
 ```
@@ -82,9 +83,96 @@ Evento mantido:
 ```
 
 Falhas temporárias de persistência são registradas e tentadas novamente no próximo
-intervalo sem colocar o `NodeHeartbeat` em crash loop. O heartbeat ainda não concede,
-renova ou recupera ownership de Run; essa responsabilidade entra com `owner_node_id`
-e `generation`.
+intervalo sem colocar o `NodeHeartbeat` em crash loop.
+
+## Ownership durável e fencing de Run
+
+O primeiro schema de `Run` materializa somente lifecycle e authority de ownership:
+
+```text
+Run
+├── status
+├── owner_node_id
+├── generation
+└── ownership_acquired_at
+```
+
+Estados iniciais:
+
+```text
+pending
+running
+completed
+failed
+cancelled
+```
+
+Somente `pending` e `running` são claimable. O primeiro claim muda `pending` para
+`running`. Estados terminais não podem receber ownership novo.
+
+`owner_node_id` referencia uma incarnação específica em `runtime_nodes`. A
+expiração usa um threshold inicial de 45 segundos e compara
+`runtime_nodes.last_heartbeat_at` com o relógio do PostgreSQL. O relógio local da
+máquina não participa da decisão distribuída de liveness.
+
+Claim é serializado por row lock na própria Run:
+
+```text
+transaction
+↓
+SELECT Run FOR UPDATE
+↓
+validar claimant RuntimeNode ativo
+↓
+avaliar owner atual
+```
+
+Semântica:
+
+```text
+Run sem owner
+→ atribui claimant
+→ generation + 1
+
+owner expirado
+→ substitui owner
+→ generation + 1
+
+mesmo owner ativo
+→ retorna o token atual
+→ não incrementa generation
+
+outro owner ativo
+→ rejeita claim
+```
+
+O resultado de claim é um fencing token:
+
+```text
+run_id
+runtime_node_id
+generation
+```
+
+Release aplica o token na mesma instrução SQL que remove ownership:
+
+```sql
+WHERE run_id = :run_id
+  AND owner_node_id = :runtime_node_id
+  AND generation = :generation
+```
+
+Release preserva status e generation. Uma segunda release do mesmo token é
+idempotente enquanto não existir claim posterior. Depois que outro node incrementa
+`generation`, o token antigo é rejeitado como stale.
+
+Não criar uma operação separada de `verify_ownership` antes de uma escrita. Toda
+mutação crítica futura deve incluir `owner_node_id + generation` no mesmo comando SQL
+que altera o estado, evitando uma race entre verificação e persistência.
+
+A criação pública de Run continua adiada até que definição executável e RunSnapshot
+estejam ratificadas. `RunSupervisor`, `RunCoordinator`, recovery scanning e Broadway
+permanecem fora deste recorte.
 
 ## Run supervision tree
 

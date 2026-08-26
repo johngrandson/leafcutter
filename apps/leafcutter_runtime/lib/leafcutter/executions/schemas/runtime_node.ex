@@ -80,6 +80,7 @@ defmodule Leafcutter.Executions.RuntimeNode do
 
   * `id` identifies one application incarnation and is generated outside the schema.
   * `node_name` is metadata and is deliberately not unique.
+  * `Executions.Nodes` supplies `last_heartbeat_at` from the PostgreSQL clock.
   * Reusing a node name after a restart must not revive ownership held by an older incarnation.
   * Node names may contain at most 255 characters.
   """

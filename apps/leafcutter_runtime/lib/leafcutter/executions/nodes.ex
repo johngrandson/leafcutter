@@ -6,7 +6,7 @@ defmodule Leafcutter.Executions.Nodes do
   remain descriptive metadata and may be reused by later incarnations.
   """
 
-  alias Leafcutter.Executions.RuntimeNode
+  alias Leafcutter.Executions.{DatabaseClock, RuntimeNode}
   alias Leafcutter.Repo
 
   @typedoc "Error returned when a runtime node heartbeat cannot be persisted."
@@ -42,35 +42,44 @@ defmodule Leafcutter.Executions.Nodes do
 
   * Repeated heartbeats for the same `runtime_node_id` update one durable row.
   * The same `node_name` may belong to multiple historical runtime incarnations.
+  * `last_heartbeat_at` uses the PostgreSQL clock so all runtime instances share one time authority.
   * Liveness is derived from `last_heartbeat_at`; there is no active flag.
   * This operation records liveness only and does not grant or renew Run ownership.
   """
   @spec heartbeat(RuntimeNode.id(), String.t()) ::
           {:ok, RuntimeNode.t()} | {:error, heartbeat_error()}
   def heartbeat(runtime_node_id, node_name) do
-    heartbeat_at = DateTime.utc_now(:microsecond)
+    Repo.transaction(fn ->
+      heartbeat_at = DatabaseClock.now()
 
-    changeset =
-      RuntimeNode.heartbeat_changeset(
-        %RuntimeNode{},
-        %{
-          id: runtime_node_id,
-          node_name: node_name,
-          last_heartbeat_at: heartbeat_at
-        }
-      )
+      changeset =
+        RuntimeNode.heartbeat_changeset(
+          %RuntimeNode{},
+          %{
+            id: runtime_node_id,
+            node_name: node_name,
+            last_heartbeat_at: heartbeat_at
+          }
+        )
 
-    Repo.insert(
-      changeset,
-      on_conflict: [
-        set: [
-          node_name: node_name,
-          last_heartbeat_at: heartbeat_at,
-          updated_at: heartbeat_at
-        ]
-      ],
-      conflict_target: [:id],
-      returning: true
-    )
+      case Repo.insert(
+             changeset,
+             on_conflict: [
+               set: [
+                 node_name: node_name,
+                 last_heartbeat_at: heartbeat_at,
+                 updated_at: heartbeat_at
+               ]
+             ],
+             conflict_target: [:id],
+             returning: true
+           ) do
+        {:ok, runtime_node} ->
+          runtime_node
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
   end
 end
