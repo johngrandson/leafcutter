@@ -20,4 +20,5 @@ config :leafcutter_core, Leafcutter.Repo,
 config :leafcutter_core, Oban, testing: :manual
 
 config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
-  interval: 50
+  interval: 50,
+  mode: :telemetry_only
