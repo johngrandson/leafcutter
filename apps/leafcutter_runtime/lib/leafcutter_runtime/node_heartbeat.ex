@@ -79,9 +79,11 @@ defmodule LeafcutterRuntime.NodeHeartbeat do
 
   ## Examples
 
-      iex> LeafcutterRuntime.NodeHeartbeat.runtime_node_id()
-      ...> |> Ecto.UUID.cast()
-      ...> |> match?({:ok, _runtime_node_id})
+      iex> match?(
+      ...>   {:ok, _runtime_node_id},
+      ...>   LeafcutterRuntime.NodeHeartbeat.runtime_node_id()
+      ...>   |> Ecto.UUID.cast()
+      ...> )
       true
 
   ## Notes
@@ -138,14 +140,14 @@ defmodule LeafcutterRuntime.NodeHeartbeat do
     {:noreply, state}
   end
 
-  @spec configured_interval() :: pos_integer()
+  @spec configured_interval() :: term()
   defp configured_interval do
     :leafcutter_runtime
     |> Application.get_env(__MODULE__, [])
     |> Keyword.get(:interval, @default_interval)
   end
 
-  @spec configured_mode() :: mode()
+  @spec configured_mode() :: term()
   defp configured_mode do
     :leafcutter_runtime
     |> Application.get_env(__MODULE__, [])
@@ -236,10 +238,8 @@ defmodule LeafcutterRuntime.NodeHeartbeat do
   @spec log_persistence_failure(state(), String.t()) :: :ok
   defp log_persistence_failure(state, reason) do
     Logger.warning(
-      "Unable to persist runtime node heartbeat",
-      node_name: state.node_name,
-      reason: reason,
-      runtime_node_id: state.runtime_node_id
+      "Unable to persist runtime node heartbeat for #{state.runtime_node_id} " <>
+        "(#{state.node_name}): #{reason}"
     )
   end
 end
