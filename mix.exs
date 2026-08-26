@@ -7,6 +7,8 @@ defmodule Leafcutter.MixProject do
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      # Dialyzer analyzes test support modules under MIX_ENV=test.
+      dialyzer: [plt_add_apps: [:ex_unit]],
       aliases: aliases()
     ]
   end
