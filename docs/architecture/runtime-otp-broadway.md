@@ -10,6 +10,33 @@ Broadway data plane
 → fluxo, demand, concorrência, batching e backpressure
 ```
 
+## Foundation OTP inicial
+
+A infraestrutura mínima do runtime começa com três processos supervisionados:
+
+```text
+LeafcutterRuntime.Application
+├── LeafcutterRuntime.RunRegistry
+├── LeafcutterRuntime.RunDynamicSupervisor
+└── LeafcutterRuntime.NodeHeartbeat
+```
+
+`RunRegistry` é um `Registry` local com chaves `:unique`. Ele fornece identidade
+operacional dentro do node e não representa ownership distribuído.
+
+`RunDynamicSupervisor` começa vazio e somente receberá árvores de Run depois que
+ownership, generation/fencing e lifecycle durável estiverem materializados.
+
+`NodeHeartbeat` inicialmente emite apenas Telemetry efêmero:
+
+```text
+[:leafcutter, :runtime, :node, :heartbeat]
+```
+
+Esse heartbeat não é autoridade de liveness ou ownership. A representação durável
+de heartbeat por node será adicionada junto do modelo de ownership/fencing em
+`Executions`, mantendo PostgreSQL como autoridade conforme ADR-0004 e ADR-0011.
+
 ## Run supervision tree
 
 ```text
