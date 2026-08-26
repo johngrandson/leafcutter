@@ -17,6 +17,7 @@ defmodule Leafcutter.Organizations.Access do
     User
   }
 
+  alias Leafcutter.Organizations.Access.Authorization
   alias Leafcutter.Repo
 
   @typedoc """
@@ -174,7 +175,7 @@ defmodule Leafcutter.Organizations.Access do
   @spec authorize(actor(), Leafcutter.Organizations.Permission.t(), scope()) ::
           :ok | {:error, authorization_error()}
   def authorize(actor, permission, scope) do
-    Leafcutter.Organizations.Access.Authorization.authorize(actor, permission, scope)
+    Authorization.authorize(actor, permission, scope)
   end
 
   @doc """

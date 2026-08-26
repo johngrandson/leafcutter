@@ -126,7 +126,14 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
     test "supports organization-wide inheritance and environment-only assignments" do
       scope = create_service_account_scope()
 
-      assert {:ok, _permission} = Roles.grant_permission(scope.organization_role.id, :organization_read)
+      assert {:ok, other_environment} =
+               Environments.create(%{
+                 organization_id: scope.organization.id,
+                 name: unique_name("Other environment")
+               })
+
+      assert {:ok, _permission} =
+               Roles.grant_permission(scope.organization_role.id, :organization_read)
 
       assert {:ok, _assignment} =
                ServiceAccountAccess.assign_role(%{
@@ -141,7 +148,8 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
                  {:environment, scope.environment.id}
                )
 
-      assert {:ok, _permission} = Roles.grant_permission(scope.environment_role.id, :environment_read)
+      assert {:ok, _permission} =
+               Roles.grant_permission(scope.environment_role.id, :environment_read)
 
       assert {:ok, _assignment} =
                ServiceAccountAccess.assign_role(%{
@@ -162,6 +170,13 @@ defmodule Leafcutter.Organizations.AccessAuthorizationTest do
                  {:service_account, scope.service_account.id},
                  :environment_read,
                  {:organization, scope.organization.id}
+               )
+
+      assert {:error, :permission_denied} =
+               Access.authorize(
+                 {:service_account, scope.service_account.id},
+                 :environment_read,
+                 {:environment, other_environment.id}
                )
     end
 
