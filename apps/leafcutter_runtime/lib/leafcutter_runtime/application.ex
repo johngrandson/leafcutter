@@ -3,7 +3,11 @@ defmodule LeafcutterRuntime.Application do
 
   use Application
 
-  alias LeafcutterRuntime.{NodeHeartbeat, RunDynamicSupervisor}
+  alias LeafcutterRuntime.{
+    NodeHeartbeat,
+    RunDynamicSupervisor,
+    RunRecovery
+  }
 
   @impl true
   @spec start(Application.start_type(), term()) :: Supervisor.on_start()
@@ -13,7 +17,8 @@ defmodule LeafcutterRuntime.Application do
     children = [
       {Registry, keys: :unique, name: LeafcutterRuntime.RunRegistry},
       RunDynamicSupervisor,
-      {NodeHeartbeat, %{runtime_node_id: runtime_node_id}}
+      {NodeHeartbeat, %{runtime_node_id: runtime_node_id}},
+      {RunRecovery, %{runtime_node_id: runtime_node_id}}
     ]
 
     Supervisor.start_link(
