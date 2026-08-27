@@ -38,12 +38,13 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
   describe "database invariants" do
     test "persists one snapshot for an existing Run" do
       run = insert_run()
+      definition = definition_fixture()
 
-      assert {:ok, snapshot} = insert_snapshot(run)
+      assert {:ok, snapshot} = insert_snapshot(run, %{definition: definition})
 
       assert snapshot.run_id == run.id
       assert snapshot.format_version == 1
-      assert snapshot.definition == definition_fixture()
+      assert snapshot.definition == definition
       assert Repo.get!(RunSnapshot, run.id) == snapshot
     end
 
@@ -155,14 +156,15 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
     |> Repo.insert!()
   end
 
-  @spec insert_snapshot(Run.t()) ::
+  @spec insert_snapshot(Run.t(), map()) ::
           {:ok, RunSnapshot.t()} | {:error, Changeset.t()}
-  defp insert_snapshot(run) do
+  defp insert_snapshot(run, attrs \ %{}) do
     %{
       run_id: run.id,
       format_version: 1,
       definition: definition_fixture()
     }
+    |> Map.merge(attrs)
     |> snapshot_changeset()
     |> Repo.insert()
   end
