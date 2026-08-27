@@ -124,6 +124,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     definition
     |> normalized_cast(attrs, @root_cast_fields, @root_fields)
     |> validate_required(@root_cast_fields)
+    |> validate_uuid(:package_version_id)
     |> cast_embed(:source, required: true, with: &endpoint_changeset/2)
     |> cast_embed(:destinations, required: true, with: &endpoint_changeset/2)
     |> validate_length(:destinations, min: 1)
@@ -136,6 +137,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     endpoint
     |> normalized_cast(attrs, @endpoint_cast_fields, @endpoint_fields)
     |> validate_required(@endpoint_cast_fields)
+    |> validate_uuid(:contract_version_id)
     |> validate_format(:ref, ~r/\S/u,
       message: "must contain a non-whitespace character"
     )
@@ -147,6 +149,8 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     connection
     |> normalized_cast(attrs, @connection_fields, @connection_fields)
     |> validate_required([:id, :config])
+    |> validate_uuid(:id)
+    |> validate_uuid(:secret_version_id)
     |> validate_json_object(:config)
   end
 
@@ -235,6 +239,28 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
       validation: :duplicate_fields,
       fields: fields
     )
+  end
+
+  @spec validate_uuid(Changeset.t(), atom()) :: Changeset.t()
+  defp validate_uuid(changeset, field) do
+    case fetch_change(changeset, field) do
+      {:ok, value} ->
+        case Ecto.UUID.cast(value) do
+          {:ok, uuid} ->
+            put_change(changeset, field, uuid)
+
+          :error ->
+            add_error(
+              changeset,
+              field,
+              "is not a valid UUID",
+              validation: :uuid
+            )
+        end
+
+      :error ->
+        changeset
+    end
   end
 
   @spec validate_json_object(Changeset.t(), atom()) :: Changeset.t()
