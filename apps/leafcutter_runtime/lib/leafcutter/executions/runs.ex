@@ -9,8 +9,9 @@ defmodule Leafcutter.Executions.Runs do
 
   import Ecto.Query
 
-  alias Ecto.Changeset
-  alias Leafcutter.Executions.{DatabaseClock, Run, RuntimeNode}
+  alias Ecto.{Changeset, Multi}
+  alias Leafcutter.Executions.{DatabaseClock, Run, RunSnapshot, RuntimeNode}
+  alias Leafcutter.Executions.RunSnapshot.DefinitionV1
   alias Leafcutter.Repo
 
   @default_runtime_node_stale_after_ms 45_000
@@ -44,6 +45,63 @@ defmodule Leafcutter.Executions.Runs do
           :runtime_node_not_found
           | :runtime_node_expired
           | Ecto.Changeset.t()
+
+  @doc """
+  Creates a pending Run and freezes its executable definition atomically.
+
+  ## Parameters
+
+  * definition_attrs - The complete logical RunSnapshot definition v1
+
+  ## Returns
+
+  * {:ok, run} after both the Run and its immutable snapshot are committed
+  * {:error, changeset} when the definition or a persistence constraint is invalid
+
+  ## Examples
+
+      iex> definition = %{
+      ...>   package_version_id: Ecto.UUID.generate(),
+      ...>   source: %{
+      ...>     ref: "source",
+      ...>     contract_version_id: Ecto.UUID.generate(),
+      ...>     connection: %{
+      ...>       id: Ecto.UUID.generate(),
+      ...>       config: %{},
+      ...>       secret_version_id: nil
+      ...>     }
+      ...>   },
+      ...>   destinations: [
+      ...>     %{
+      ...>       ref: "destination",
+      ...>       contract_version_id: Ecto.UUID.generate(),
+      ...>       connection: %{
+      ...>         id: Ecto.UUID.generate(),
+      ...>         config: %{},
+      ...>         secret_version_id: nil
+      ...>       }
+      ...>     }
+      ...>   ],
+      ...>   effective_config: %{}
+      ...> }
+      iex> {:ok, run} = Leafcutter.Executions.Runs.create(definition)
+      iex> run.status
+      :pending
+
+  ## Notes
+
+  * The input is the definition itself, not an envelope.
+  * The caller cannot set Run identity, lifecycle, ownership, generation, or snapshot version.
+  * Definition validation completes before any database write is attempted.
+  * Run and RunSnapshot persistence share one transaction and roll back together.
+  * Two valid calls create two distinct Runs; idempotency is outside this slice.
+  """
+  @spec create(map()) :: {:ok, Run.t()} | {:error, Changeset.t()}
+  def create(definition_attrs) do
+    with {:ok, definition} <- DefinitionV1.validate(definition_attrs) do
+      persist_new_run(definition)
+    end
+  end
 
   @doc """
   Claims or reclaims a Run for an active runtime node incarnation.
@@ -256,6 +314,43 @@ defmodule Leafcutter.Executions.Runs do
         persist_claim(run, runtime_node_id, database_now)
       end)
     end)
+  end
+
+  @spec persist_new_run(RunSnapshot.definition()) ::
+          {:ok, Run.t()} | {:error, Changeset.t()}
+  defp persist_new_run(definition) do
+    Multi.new()
+    |> Multi.insert(:run, create_run_changeset())
+    |> Multi.insert(:snapshot, fn %{run: run} ->
+      RunSnapshot.create_changeset(
+        %RunSnapshot{},
+        %{run_id: run.id, definition: definition}
+      )
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{run: run}} ->
+        {:ok, run}
+
+      {:error, _operation, %Changeset{} = changeset, _changes} ->
+        {:error, changeset}
+    end
+  end
+
+  @spec create_run_changeset() :: Changeset.t()
+  defp create_run_changeset do
+    %Run{}
+    |> Changeset.change()
+    |> Changeset.foreign_key_constraint(:owner_node_id)
+    |> Changeset.check_constraint(:status, name: :runs_status_valid)
+    |> Changeset.check_constraint(
+      :generation,
+      name: :runs_generation_non_negative
+    )
+    |> Changeset.check_constraint(
+      :owner_node_id,
+      name: :runs_ownership_fields_consistent
+    )
   end
 
   @spec recoverable_runs_query(
