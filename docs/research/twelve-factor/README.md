@@ -15,6 +15,7 @@ Usar os princípios Twelve-Factor como lente de revisão, não como regra que su
 4. `04-fatores-disposability-a-admin-processes.md` — disposability, parity, logs e admin processes.
 5. `05-roadmap-leafcutter.md` — aderência atual e próximos gaps.
 6. `06-checklist-para-agentes.md` — perguntas para review.
+7. `STATUS_UPDATE_2026-08-26.md` — snapshot datado que registra como o repositório evoluiu após a pesquisa original.
 
 ## Estado atual relevante
 
@@ -41,3 +42,5 @@ Ainda aberto:
 ## Regra
 
 Quando Twelve-Factor entrar em tensão com durabilidade/fencing/OTP do Leafcutter, registrar o tradeoff. Não aplicar checklist mecanicamente.
+
+Os arquivos de pesquisa preservam o contexto em que foram escritos. Para o estado atual, prevalecem código, testes, ADRs aceitos, `../../checkpoint/CURRENT.md` e `../../architecture/estado-atual-e-visao-futura.md`.
