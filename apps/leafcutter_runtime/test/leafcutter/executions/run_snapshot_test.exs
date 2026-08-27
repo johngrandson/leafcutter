@@ -158,7 +158,7 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
 
   @spec insert_snapshot(Run.t(), map()) ::
           {:ok, RunSnapshot.t()} | {:error, Changeset.t()}
-  defp insert_snapshot(run, attrs \ %{}) do
+  defp insert_snapshot(run, attrs \\ %{}) do
     %{
       run_id: run.id,
       format_version: 1,
