@@ -209,7 +209,7 @@ O contrato de RunSnapshot v1 está ratificado, mas não materializado:
 typed definition v1
 + shared primary key with Run
 + atomic Run/RunSnapshot creation
-+ immutable PostgreSQL row
++ PostgreSQL UPDATE rejection
 + pending eligibility by supported format
 ```
 
@@ -229,7 +229,7 @@ ExecutionEvent
 Enrichment execution state
 ```
 
-A criação futura a partir de `EnvironmentDeployment` resolverá as authorities upstream para o formato ratificado. Seus schemas e o resolver semântico continuam para slices posteriores.
+A criação futura a partir de `EnvironmentDeployment` resolverá as authorities upstream para o formato ratificado. Esse workflow pertence à orchestration em `leafcutter_runtime` e entregará a definition pronta a Executions. Seus schemas e o resolver semântico continuam para slices posteriores.
 
 ### Data plane Broadway
 
@@ -293,6 +293,7 @@ Entre as principais:
 
 - schemas de Catalog, Connections e Integrations;
 - resolução semântica de EnvironmentDeployment para RunSnapshot v1;
+- política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
 - Package Manifest JSON Schema v1;
