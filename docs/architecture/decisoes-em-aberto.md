@@ -2,25 +2,14 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-## Próxima decisão
-
-### RunSnapshot e criação pública de Run
-
-Fechar:
-
-- relação 1:1 entre Run e RunSnapshot;
-- definition attrs e error contract;
-- PackageVersion/ContractVersion references;
-- effective config congelada;
-- Connection e SecretVersion references sem raw secrets;
-- atomicidade de criação;
-- quando `pending` entra no recovery automático.
+O contrato de RunSnapshot v1 não está mais aberto. Ele foi ratificado em `docs/decisions/ADR-0017-run-snapshot-v1.md` e detalhado em `docs/specifications/run-snapshot-v1.md`. A próxima atividade é sua materialização, não uma nova decisão arquitetural.
 
 ## Domínio
 
 - schemas e APIs públicas de Catalog;
 - Connection/Secret/SecretVersion;
 - Integration/EnvironmentDeployment;
+- resolução semântica de EnvironmentDeployment para RunSnapshot v1;
 - histórico de deployment;
 - homologation evidence e promotion records;
 - Record/Delivery/Attempt/Checkpoint;
