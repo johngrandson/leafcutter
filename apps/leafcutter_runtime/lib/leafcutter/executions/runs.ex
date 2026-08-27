@@ -40,6 +40,10 @@ defmodule Leafcutter.Executions.Runs do
   @typedoc "Error returned when Run ownership cannot be released."
   @type release_error :: :run_not_found | :stale_ownership
 
+  @typedoc "Error returned when a RunSnapshot cannot be fetched."
+  @type fetch_snapshot_error ::
+          :run_not_found | :run_snapshot_not_found
+
   @typedoc "Error returned when a recovery batch cannot be claimed."
   @type recovery_claim_error ::
           :runtime_node_not_found
@@ -100,6 +104,54 @@ defmodule Leafcutter.Executions.Runs do
   def create(definition_attrs) do
     with {:ok, definition} <- DefinitionV1.validate(definition_attrs) do
       persist_new_run(definition)
+    end
+  end
+
+  @doc """
+  Fetches the immutable snapshot associated with a Run.
+
+  ## Parameters
+
+  * run_id - The identifier of the Run whose snapshot will be fetched
+
+  ## Returns
+
+  * {:ok, snapshot} when both the Run and its snapshot exist
+  * {:error, :run_not_found} when the Run does not exist
+  * {:error, :run_snapshot_not_found} when a legacy Run has no snapshot
+
+  ## Examples
+
+      iex> Leafcutter.Executions.Runs.fetch_snapshot(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :run_not_found}
+
+  ## Notes
+
+  * Run existence and snapshot presence are classified from one database statement.
+  * A missing Run takes precedence over a missing snapshot.
+  * The operation never creates, replaces, or updates a snapshot.
+  """
+  @spec fetch_snapshot(Run.id()) ::
+          {:ok, RunSnapshot.t()} | {:error, fetch_snapshot_error()}
+  def fetch_snapshot(run_id) do
+    Run
+    |> where([run], run.id == ^run_id)
+    |> join(:left, [run], snapshot in RunSnapshot,
+      on: snapshot.run_id == run.id
+    )
+    |> select([run, snapshot], {run.id, snapshot})
+    |> Repo.one()
+    |> case do
+      nil ->
+        {:error, :run_not_found}
+
+      {_run_id, nil} ->
+        {:error, :run_snapshot_not_found}
+
+      {_run_id, %RunSnapshot{} = snapshot} ->
+        {:ok, snapshot}
     end
   end
 
