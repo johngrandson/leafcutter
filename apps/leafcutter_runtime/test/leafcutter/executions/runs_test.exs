@@ -3,7 +3,7 @@ defmodule Leafcutter.Executions.RunsTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
-  alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
+  alias Leafcutter.Executions.{Nodes, Run, Runs, RunSnapshot, RuntimeNode}
   alias Leafcutter.Repo
 
   @type run_fixture_attrs :: %{
@@ -18,6 +18,69 @@ defmodule Leafcutter.Executions.RunsTest do
     on_exit(fn -> Sandbox.stop_owner(owner) end)
 
     :ok
+  end
+
+  describe "create/1" do
+    test "creates a pending Run and immutable snapshot in one transaction" do
+      definition = definition_fixture()
+
+      assert {:ok, run} = Runs.create(definition)
+
+      assert run.status == :pending
+      assert run.owner_node_id == nil
+      assert run.generation == 0
+      assert run.ownership_acquired_at == nil
+
+      snapshot = Repo.get!(RunSnapshot, run.id)
+
+      assert snapshot.run_id == run.id
+      assert snapshot.format_version == RunSnapshot.current_format_version()
+      assert snapshot.definition == definition
+    end
+
+    test "does not persist either record when the definition is invalid" do
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      invalid_definition =
+        definition_fixture()
+        |> Map.put("package_version_id", "not-a-uuid")
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(invalid_definition)
+
+      refute changeset.valid?
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects attempts to set internal Run or snapshot fields" do
+      definition_with_internal_fields =
+        definition_fixture()
+        |> Map.put("status", "running")
+        |> Map.put("format_version", 999)
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(definition_with_internal_fields)
+
+      assert {:base, {"contains unknown fields", options}} =
+               List.keyfind(changeset.errors, :base, 0)
+
+      assert options[:validation] == :unknown_fields
+      assert Repo.aggregate(Run, :count) == 0
+      assert Repo.aggregate(RunSnapshot, :count) == 0
+    end
+
+    test "creates distinct Runs for two valid calls" do
+      definition = definition_fixture()
+
+      assert {:ok, first_run} = Runs.create(definition)
+      assert {:ok, second_run} = Runs.create(definition)
+
+      refute first_run.id == second_run.id
+      assert Repo.get!(RunSnapshot, first_run.id)
+      assert Repo.get!(RunSnapshot, second_run.id)
+    end
   end
 
   describe "claim/2" do
@@ -213,6 +276,34 @@ defmodule Leafcutter.Executions.RunsTest do
       assert {:owner_node_id, {_message, _options}} =
                List.keyfind(changeset.errors, :owner_node_id, 0)
     end
+  end
+
+  @spec definition_fixture() :: map()
+  defp definition_fixture do
+    %{
+      "package_version_id" => Ecto.UUID.generate(),
+      "source" => %{
+        "ref" => "source",
+        "contract_version_id" => Ecto.UUID.generate(),
+        "connection" => %{
+          "id" => Ecto.UUID.generate(),
+          "config" => %{},
+          "secret_version_id" => nil
+        }
+      },
+      "destinations" => [
+        %{
+          "ref" => "destination",
+          "contract_version_id" => Ecto.UUID.generate(),
+          "connection" => %{
+            "id" => Ecto.UUID.generate(),
+            "config" => %{},
+            "secret_version_id" => nil
+          }
+        }
+      ],
+      "effective_config" => %{}
+    }
   end
 
   @spec insert_run(run_fixture_attrs()) :: Run.t()
