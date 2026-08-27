@@ -1,28 +1,48 @@
 # Architecture Decision Records
 
-ADRs registram decisões arquiteturais duráveis. Atualize o ADR quando a decisão mudar; não apague o histórico.
+ADRs registram decisões duráveis. O status da decisão e o estado de implementação são dimensões diferentes.
 
-| ADR | Status | Decisão |
+```text
+Accepted
+→ a direção foi aprovada
+
+Materialized / Partial / Not materialized
+→ quanto dessa direção existe no código atual
+```
+
+| ADR | Decisão | Estado de implementação |
 |---|---|---|
-| ADR-0001 | Accepted | Umbrella com poucas OTP applications |
-| ADR-0002 | Accepted | Phoenix Contexts maduros e APIs segmentadas |
-| ADR-0003 | Accepted | Comunicação síncrona, PubSub e trabalho durável |
-| ADR-0004 | Accepted | OTP para estado operacional; Postgres para estado durável |
-| ADR-0005 | Accepted | Broadway como data plane |
-| ADR-0006 | Accepted | JSON Schema 2020-12 + JSV |
-| ADR-0007 | Accepted | Integration Packages fora de `apps/` |
-| ADR-0008 | Accepted | Connector -> Operation -> Transport |
-| ADR-0009 | Accepted | Semântica `at-least-once` |
-| ADR-0010 | Accepted | Fan-out durável sem fila externa inicial |
-| ADR-0011 | Accepted | Ownership por node + generation/fencing |
-| ADR-0012 | Accepted | OpenAPI canônico; Postman derivado |
-| ADR-0013 | Accepted | Idioma e documentação in-code |
-| ADR-0014 | Accepted | Desenvolvedor como autor principal e harness versionado |
-| ADR-0015 | Accepted | Harness multi-agente com contrato compartilhado |
+| ADR-0001 | Umbrella com poucas OTP applications | MATERIALIZADO |
+| ADR-0002 | Phoenix Contexts maduros e APIs segmentadas | PARCIAL — Organizations e Executions foundation existem |
+| ADR-0003 | Comunicação síncrona, PubSub e trabalho durável | PARCIAL |
+| ADR-0004 | OTP operacional; PostgreSQL durável | MATERIALIZADO NO CONTROL PLANE |
+| ADR-0005 | Broadway como data plane | NÃO MATERIALIZADO |
+| ADR-0006 | JSON Schema 2020-12 + JSV | NÃO MATERIALIZADO |
+| ADR-0007 | Integration Packages fora de `apps/` | ESTRUTURA RATIFICADA; BUILD ABERTO |
+| ADR-0008 | Connector → Operation → Transport | NÃO MATERIALIZADO |
+| ADR-0009 | Semântica `at-least-once` | MATERIALIZADA COMO PRINCÍPIO; DATA PLANE PENDENTE |
+| ADR-0010 | Fan-out durável sem fila externa inicial | NÃO MATERIALIZADO |
+| ADR-0011 | Ownership por RuntimeNode + generation/fencing | MATERIALIZADO, INCLUINDO RECOVERY |
+| ADR-0012 | OpenAPI canônico; Postman derivado | PHOENIX FOUNDATION; OPENAPI PENDENTE |
+| ADR-0013 | Idioma e documentação in-code | MATERIALIZADO |
+| ADR-0014 | Desenvolvedor como autor principal e harness | MATERIALIZADO |
+| ADR-0015 | Harness multi-agente com contrato compartilhado | MATERIALIZADO |
+| ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
 
-## Convenção
+## Convenção de status decisório
 
 - `Accepted`: decisão aprovada.
-- `Proposed`: proposta ainda não ratificada.
+- `Proposed`: proposta aguardando ratificação.
 - `Superseded`: substituída por ADR posterior.
-- `Deprecated`: mantida somente por histórico.
+- `Deprecated`: mantida somente como histórico.
+
+## Regra de manutenção
+
+Ao materializar uma decisão antes parcial ou futura, atualizar:
+
+1. o ADR;
+2. a documentação arquitetural relacionada;
+3. specifications afetadas;
+4. `checkpoint/CURRENT.md`.
+
+Não reescrever um ADR para fingir que a decisão sempre teve a forma atual. Mudanças de direção devem ser registradas por novo ADR ou seção explícita de evolução.

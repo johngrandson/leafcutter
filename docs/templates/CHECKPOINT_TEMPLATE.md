@@ -1,17 +1,40 @@
 # Checkpoint
 
-## Current phase
+## Fase atual
 
-## Completed
+...
 
-## In progress
+## Materializado
 
-## Next concrete task
+- comportamento;
+- código/tests;
+- contracts.
 
-## Relevant documents
+## Futuro ratificado preservado
 
-## Relevant code paths
+- ...
 
-## Validation commands
+## Em andamento
 
-## Open risks
+- ...
+
+## Próxima tarefa concreta
+
+- objetivo;
+- definition of done;
+- arquivos;
+- decisão necessária.
+
+## Decisões abertas
+
+- ...
+
+## Quality state
+
+```text
+format:
+compile:
+test:
+credo:
+dialyzer:
+```

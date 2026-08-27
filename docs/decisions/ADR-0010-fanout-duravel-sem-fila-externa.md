@@ -1,24 +1,15 @@
-# ADR-0010 - Fan-out durável sem fila externa inicial
+# ADR-0010 — Fan-out durável sem fila externa inicial
 
 - Status: Accepted
+- Estado de implementação: NÃO MATERIALIZADO
 
 ## Decisão
 
-Persistir em batch:
-
-```text
-Records
-N Deliveries por Record
-Checkpoint
-```
-
-na mesma transação. Destination Broadways consomem Deliveries persistidas de forma independente.
-
-Não usar Kafka/RabbitMQ/PGMQ inicialmente. Postgres funciona como backlog durável, não como conceito de domínio chamado spool.
+Records, Deliveries e Checkpoint serão persistidos no PostgreSQL antes do processamento de destinos. Delivery será o backlog durável inicial.
 
 ## Consequências
 
-- recovery e auditoria simples;
-- mais write load no Postgres;
-- insert/update em batch e poucos estados duráveis;
-- fila externa só entra por evidência de gargalo.
+- sem Kafka/RabbitMQ/Redis por antecipação;
+- checkpoint não avança sem fan-out committed;
+- external queue só entra após gargalo comprovado;
+- mesmo com fila futura, Delivery continua entidade de domínio.

@@ -1,109 +1,89 @@
-# Glossário oficial
+# Glossário
 
-## Catalog
+> **Status: CANÔNICO.** Quando um termo ainda não possui implementação, isso é indicado.
 
-Registro de building blocks reutilizáveis: Connectors, Operations, Contracts e Package Versions.
+## Materializados
 
-## Connector
+**Organization** — fronteira de tenancy.
 
-Conhecimento compartilhado sobre como um sistema externo funciona.
+**Environment** — scope operacional dentro de uma Organization.
 
-## Operation
+**User** — ator humano do domínio.
 
-Ação reutilizável de leitura ou escrita executada através de um Connector.
+**ServiceAccount** — ator não humano pertencente diretamente a uma Organization; credenciais ainda não materializadas.
 
-## Transport
+**Membership** — associação de User a Organization.
 
-Implementação de protocolo, inicialmente HTTP.
+**Permission** — primitive tipada de autorização, persistida por identifier estável.
 
-## Connection
+**Role** — agrupamento organization-scoped de Permissions.
 
-Configuração concreta e environment-scoped de acesso a um sistema externo.
+**RoleAssignment** — Role concedido a Membership, organization-wide ou environment-scoped.
 
-## Secret
+**ServiceAccountRoleAssignment** — Role concedido diretamente a ServiceAccount.
 
-Valores sensíveis versionados usados por uma Connection.
+**RuntimeNode** — uma incarnação específica da application runtime, identificada por UUID.
 
-## Contract
+**Run** — identidade durável de uma execução; atualmente possui lifecycle mínimo e ownership, ainda sem definição executável completa.
 
-JSON Schema versionado que define a estrutura válida de um payload.
+**Generation** — fencing token monotônico de ownership de Run.
 
-## Integration Package
+**Ownership token** — `run_id + runtime_node_id + generation`.
 
-Artefato versionado com manifest, contracts e código específico de integração.
+**RunRegistry** — Registry local para localizar árvores/processos de Run; não é authority distribuída.
 
-## Integration
+**RunRecovery** — processo de polling que reconcilia ownership durável e árvores locais.
 
-Instância configurada de um Package para uma Organization + Environment.
+## Ratificados para o futuro
 
-## Trigger / Schedule
+**Connector** — integração executável com um sistema externo.
 
-Mecanismo que inicia um Run.
+**ConnectorVersion** — versão imutável da implementação/metadata publicada.
 
-## Run
+**Operation** — ação específica exposta por uma ConnectorVersion.
 
-Execução concreta e imutável de uma Integration.
+**Transport** — execução de protocolo, inicialmente HTTP.
 
-## Run Snapshot
+**ContractVersion** — JSON Schema imutável usado em boundary de dados.
 
-Configuração efetiva congelada no início do Run.
+**Package** — identidade reutilizável de uma integração.
 
-## Record
+**PackageVersion** — definição executável publicada e imutável.
 
-Ocorrência de um item de origem dentro de um Run.
+**Integration** — identidade lógica de uma Organization ligada a um Package.
 
-## Source Identity
+**EnvironmentDeployment** — configuração executável da Integration em um Environment.
 
-Identidade estável da entidade no sistema de origem.
+**RunSnapshot** — definição imutável resolvida para uma Run.
 
-## Payload Hash
+**Record** — ocorrência de um item source dentro da Run.
 
-Fingerprint do conteúdo atual do Record.
+**Delivery** — obrigação durável de processar um Record para um destination.
 
-## Delivery
+**Attempt** — tentativa concreta de efeito externo.
 
-Obrigação durável de processar um Record para um destination.
+**Checkpoint** — último progresso source seguro e durável.
 
-## Attempt
+**SourceIdentity** — identidade estável de uma entidade no source.
 
-Tentativa técnica concreta de uma Operation externa.
+**PayloadHash** — fingerprint do conteúdo de uma ocorrência.
 
-## Destination Identity
+**IdentityMapping** — relação persistente entre identidades source/destination.
 
-ID retornado/extraído no sistema de destino.
+**Transformation** — função pura de negócio.
 
-## IdentityMapping
+**Enrichment** — side effect opcional antes da Transformation, com resultado durável.
 
-Relação entre Source Identity e Destination Identity.
+**Interceptor** — adaptação explícita de request/transport.
 
-## Transformation
+**ExecutionEvent** — fato de lifecycle de execução, não event bus genérico.
 
-Função Elixir pura que converte payload de origem em payload(s) de destino.
+**AuditEvent** — ação humana/administrativa append-only.
 
-## Enrichment
+## Termos a evitar
 
-Consulta externa opcional e durável realizada antes da Transformation.
+**Exactly-once universal** — promessa não feita pelo sistema.
 
-## Interceptor
+**Distributed Registry como ownership** — incorreto; PostgreSQL é authority.
 
-Hook explícito de transporte para headers, query, URL, signing ou tracing metadata.
-
-## ExecutionEvent
-
-Fato relevante do lifecycle de execução.
-
-## AuditEvent
-
-Registro de ação humana ou administrativa.
-
-## Environment
-
-Escopo operacional isolado dentro de uma Organization.
-
-## Homologation
-
-Processo de validação/aprovação de uma Package Version/configuração antes da promoção.
-
-## Promotion
-
-Ativação de uma versão aprovada em um target Environment sem copiar secrets.
+**Context = tabela** — incorreto; context é boundary de domínio.

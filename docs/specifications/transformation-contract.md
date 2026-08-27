@@ -1,23 +1,18 @@
-# Transformation Contract
+# Transformation contract
 
-- Status: Accepted baseline
+- Estado: RATIFICADO — NÃO MATERIALIZADO
 
-Transformation receives a source payload that already passed Contract validation and optional immutable configuration.
-
-```elixir
-@callback transform(payload :: map(), config :: map()) ::
-  {:ok, map()}
-  | {:ok, [map()]}
-  | :skip
-  | {:error, reason :: term()}
-```
-
-A versão exata do callback pode usar arity 1 quando config não é necessária. A implementação não executa side effects.
+Transformation é função pura sobre payload já validado e config não sensível resolvida.
 
 ```text
-1 -> 1
-1 -> N
-1 -> 0
+{:ok, payload}       1 → 1
+{:ok, [payloads]}    1 → N
+:skip                1 → 0
+{:error, reason}     controlled failure
 ```
 
-N->1, joins e windowed aggregation não pertencem a esta primitive.
+Não faz HTTP, Repo, secret resolution ou side effect. Enrichment externo é etapa separada.
+
+N→1, joins e aggregation stateful estão fora do contract inicial.
+
+Tipos concretos, error shape e metadata adicional serão fechados com a primeira PackageVersion executável.

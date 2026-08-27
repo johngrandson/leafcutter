@@ -1,21 +1,30 @@
-# Milestone - Nome
+# Milestone — Título
 
-## Goal
+- Estado: PLANEJADO | EM ANDAMENTO | CONCLUÍDO
 
-## Scope
+## Objetivo
 
-## Non-goals
+Resultado arquitetural/operacional esperado.
 
-## Owner contexts
+## Materializado neste milestone
 
-## Deliverables
+- ...
 
-## Failure scenarios
+## Explicitamente fora do escopo
 
-## Tests
+- futuro preservado;
+- decisões ainda abertas.
 
-## Documentation
+## Invariantes
 
-## Definition of done
+- ...
 
-## Next milestone
+## Verificação
+
+- tests;
+- quality gates;
+- docs/ADR/spec.
+
+## Próximo milestone
+
+- ...

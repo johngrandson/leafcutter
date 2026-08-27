@@ -1,8 +1,35 @@
-# Observabilidade, monitoring e auditoria
+# Observabilidade e auditoria
 
-## Execution Monitoring
+> **Status: TELEMETRY DE HEARTBEAT MATERIALIZADA; OBSERVABILIDADE COMPLETA E AUDIT FUTUROS.**
 
-É uma visão sobre dados do domínio:
+## Materializado
+
+`NodeHeartbeat` emite:
+
+```text
+[:leafcutter, :runtime, :node, :heartbeat]
+```
+
+Metadata inclui runtime node identity. O evento é efêmero; a authority de liveness está no PostgreSQL.
+
+A application Phoenix também possui Telemetry foundation gerada.
+
+## Observabilidade futura da plataforma
+
+Métricas planejadas:
+
+- DB latency e pool pressure;
+- heartbeat age e recovery claims;
+- number of locally supervised Runs;
+- Run recovery failures/backoff;
+- Broadway demand e throughput;
+- Delivery backlog por destination;
+- HTTP latency, rate limits e retries;
+- memory e scheduler utilization.
+
+## Execution monitoring futuro
+
+Consultará dados de domínio:
 
 ```text
 Run
@@ -13,75 +40,28 @@ Run
 └── ExecutionEvents
 ```
 
-Responde perguntas como:
+## Audit futuro
 
-- quantos Records foram persistidos;
-- quais destinations estão atrasados;
-- quais Deliveries falharam;
-- por que um Attempt falhou;
-- qual checkpoint foi atingido;
-- qual Package/Contract/config foi usado.
+`AuditEvent` será append-only e registrará ações humanas/administrativas, como:
 
-## Platform Observability
-
-É separada de Execution Monitoring:
-
-- throughput;
-- Broadway demand/backlog;
-- mailbox sizes quando relevante;
-- memory;
-- DB latency;
-- node health;
-- HTTP latency;
-- rate-limit pressure;
-- Telemetry events.
-
-## Attempt
-
-Attempt registra uma tentativa técnica concreta:
-
-- start/end/duration;
-- transport metadata;
-- normalized error;
-- status code quando aplicável;
-- references para request/response payload;
-- generation/owner metadata quando necessário.
-
-## ExecutionEvent
-
-Apenas mudanças relevantes:
-
-```text
-run_started
-checkpoint_advanced
-source_completed
-destination_throttled
-run_paused
-run_resumed
-run_completed
-run_failed
-```
-
-Não persistir cada evento interno do Broadway.
-
-## AuditEvent
-
-Registra ações humanas/administrativas:
-
-- promotion;
-- approval;
-- rollback;
+- permission e role changes;
 - secret rotation;
-- manual retry;
-- cancel;
-- permission change.
+- homologation approval;
+- promotion/rollback;
+- manual retry/cancel.
 
-Dados sensíveis devem ser redigidos.
+Raw secrets não entram em Audit.
 
-## PubSub
+## Notifications futuras
 
-PubSub transmite atualizações efêmeras para consumidores operacionais e futuro frontend. Não é fonte da verdade e não garante entrega posterior.
+NotificationRules consumirão fatos duráveis self-contained. PubSub sozinho não garante entrega. Oban poderá executar deliveries duráveis de menor cardinalidade.
 
-## Notifications
+## Ainda aberto
 
-Notification Rules reagem a eventos duráveis e enviam via Oban para Channels/Recipients. Labels podem filtrar regras, mas não representam estado.
+- metrics backend;
+- log aggregation e redaction;
+- tracing strategy;
+- ExecutionEvent schema;
+- AuditEvent schema;
+- durable fact/outbox mechanism;
+- retention e export.

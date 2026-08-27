@@ -1,18 +1,39 @@
-# ADR-0001 - Umbrella com poucas OTP applications
+# ADR-0001 — Umbrella com poucas OTP applications
 
 - Status: Accepted
-
-## Contexto
-
-O Leafcutter possui domínio, runtime concorrente, connectors e API, mas será desenvolvido inicialmente por uma pessoa. Microservices ou muitas apps aumentariam custo e esconderiam o fluxo.
+- Estado de implementação: MATERIALIZADO
 
 ## Decisão
 
-Usar uma umbrella criada com `mix new leafcutter --umbrella`, contendo poucas OTP applications justificadas por boundaries de dependência e lifecycle. Inicialmente tudo sobe em uma única release homogênea.
+O Leafcutter usa uma umbrella com quatro boundaries operacionais:
+
+```text
+leafcutter_core
+leafcutter_connectors
+leafcutter_runtime
+leafcutter_api
+```
+
+Contexts não recebem OTP application própria.
+
+## Estado atual
+
+As quatro apps existem e o grafo é:
+
+```text
+core       → none
+connectors → none
+runtime    → core + connectors
+api        → core + runtime
+```
 
 ## Consequências
 
-- boundaries explícitos sem custo de deployments separados;
-- possibilidade de separar releases depois;
-- necessidade de impedir dependências circulares;
-- contexts não precisam virar apps individualmente.
+- poucas supervision trees de topo;
+- uma release inicial coesa;
+- workflows podem compor contexts sem microservices;
+- nova app exige boundary operacional real.
+
+## Futuro preservado
+
+Especialização de nodes ou releases separadas só entra após necessidade medida.

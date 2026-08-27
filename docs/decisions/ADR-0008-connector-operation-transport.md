@@ -1,20 +1,21 @@
-# ADR-0008 - Connector, Operation e Transport
+# ADR-0008 — Connector → Operation → Transport
 
 - Status: Accepted
+- Estado de implementação: NÃO MATERIALIZADO
 
 ## Decisão
 
 ```text
-Connector → sistema
-Operation → ação
-Transport → protocolo
+Connector  → semântica do sistema externo
+Operation  → ação específica
+Transport  → protocolo
 ```
 
-Read Operations normalizam `records`, `next_cursor`, `done?`. Write Operations recebem batches e preservam resultado por item. HTTP é o primeiro Transport.
+HTTP será o primeiro Transport.
 
 ## Consequências
 
-- runtime protocol-agnostic;
-- connectors conhecidos escondem paginação/auth/rate limits;
-- Generic HTTP cobre APIs simples;
-- outros Transports entram sem redesenhar o domínio.
+- runtime genérico não conhece detalhes de HTTP/vendor;
+- Read Operations normalizam paginação;
+- Write Operations preservam partial success;
+- outros transports entram somente com necessidade real.

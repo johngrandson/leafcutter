@@ -1,32 +1,35 @@
-# Handoff entre sessões
+# Session handoff
 
-## Antes de encerrar
+Ao encerrar uma sessão relevante, registrar:
 
-1. Atualize `docs/checkpoint/CURRENT.md`.
-2. Registre ADR se a intenção arquitetural mudou.
-3. Atualize docs in-code e externas impactadas.
-4. Liste arquivos alterados.
-5. Liste comandos/testes executados.
-6. Registre risco ou ponto ainda aberto.
-7. Defina uma próxima tarefa concreta e pequena.
-8. Faça commit quando o estado estiver coerente.
-
-## Conteúdo mínimo do checkpoint
+## Estado
 
 ```text
-Current phase
-Completed
-In progress
-Next concrete task
-Relevant documents
-Relevant code paths
-Validation commands
-Open risks
+Materialized now:
+- ...
+
+Ratified future preserved:
+- ...
+
+Open decision:
+- ...
 ```
 
-## Não fazer
+## Trabalho realizado
 
-- deixar a próxima sessão depender de uma conversa;
-- escrever um resumo genérico sem arquivos concretos;
-- marcar decisão como aprovada sem ADR/documentação;
-- deixar docs divergirem do código conscientemente.
+- arquivos alterados;
+- contracts adicionados/alterados;
+- migrations;
+- tests/gates executados;
+- falhas conhecidas.
+
+## Próximo passo
+
+- uma tarefa concreta;
+- definição de done;
+- arquivos prováveis;
+- decisão que precisa ser ratificada antes de código.
+
+## Atualizações
+
+Atualizar `CURRENT.md` somente para milestone/mudança de direção. Atualizar ADR/spec quando contract arquitetural mudar.

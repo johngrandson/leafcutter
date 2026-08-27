@@ -1,26 +1,21 @@
-# ADR-0002 - Phoenix Contexts maduros e APIs segmentadas
+# ADR-0002 — Phoenix Contexts maduros e APIs segmentadas
 
 - Status: Accepted
-
-## Contexto
-
-Uma facade única por context pode se tornar god module. DDD/hexagonal rígido adicionaria cerimônia excessiva.
+- Estado de implementação: PARCIALMENTE MATERIALIZADO
 
 ## Decisão
 
-Usar Phoenix Contexts como arquitetura principal, com:
+Contexts representam boundaries de domínio e podem expor facade raiz, capability modules e internals privados.
 
-```text
-root facade pequena
-capability modules públicos
-internal modules
-ownership de schemas/queries
-```
+## Estado atual
 
-Outros contexts usam apenas APIs públicas. O root module não reexporta toda a API.
+`Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, ownership e recovery.
+
+Catalog, Connections, Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
 
 ## Consequências
 
-- navegação simples;
-- SRP sem explosão de camadas;
-- exige disciplina de ownership e testes de boundaries.
+- outros contexts não acessam schemas/queries internos;
+- referência por ID não cria dependência de API;
+- composição cross-context pertence à application layer;
+- context não é sinônimo de arquivo nem tabela.

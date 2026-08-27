@@ -1,8 +1,10 @@
 # Visão geral da arquitetura
 
-## O problema que o Leafcutter resolve
+> **Status: PARCIALMENTE MATERIALIZADO.** O documento mostra primeiro o sistema existente e depois a plataforma-alvo ratificada.
 
-O Leafcutter conecta sistemas com estruturas e regras diferentes.
+## O problema
+
+O Leafcutter conecta sistemas com contratos, identidades, autenticação e comportamento operacional diferentes.
 
 ```text
 System A
@@ -12,71 +14,96 @@ validated source data
    └── transform for System C → batch → deliver to C
 ```
 
-Cada destino pode ter:
+Cada destino precisa evoluir e falhar de forma independente.
 
-- contrato próprio;
-- transformação própria;
-- batching próprio;
-- rate limit próprio;
-- concorrência própria;
-- retries independentes;
-- falhas isoladas.
+## O que existe hoje
 
-## As peças principais
+### Domínio e RBAC
+
+```text
+Organization
+├── Environments
+├── Users + Memberships
+├── ServiceAccounts
+└── Roles + Permissions + scoped assignments
+```
+
+### Runtime
+
+```text
+RuntimeNode heartbeat
+        ↓
+Run ownership + generation
+        ↓
+RunRecovery
+        ↓
+RunSupervisor
+└── RunCoordinator
+```
+
+PostgreSQL decide ownership e recovery. Registry e processos OTP representam somente o estado local da incarnação atual.
+
+### Applications
+
+```text
+core       → Organizations + Repo + PubSub + Oban
+connectors → boundary executável ainda vazia
+runtime    → Executions foundation + OTP runtime
+api        → Phoenix API-only foundation
+```
+
+## Plataforma-alvo ratificada
 
 ```text
 Organization
 └── Environment
     ├── Connections
-    ├── Integrations
+    ├── EnvironmentDeployments
     └── Runs
 
 Catalog
-├── Connectors
+├── Connectors + Versions
 ├── Operations
-├── Contracts
-└── Integration Packages
-
-Integration Package
-├── manifest.json
-├── JSON Schemas
-├── Transformations
-├── optional Enrichments
-└── Interceptors
+├── Contracts + Versions
+└── Packages + Versions
 
 Run
-├── Run Coordinator
-├── Source Broadway
-├── optional Enrichment Broadways
-└── Destination Broadways
+├── immutable RunSnapshot
+├── RunCoordinator
+├── SourceBroadway
+├── optional EnrichmentBroadway
+└── DestinationBroadway x N
 ```
 
 ## Control plane e data plane
 
-```text
-CONTROL PLANE
-OTP processes
-- start
-- pause
-- resume
-- cancel
-- recover
-- coordinate lifecycle
+Atual:
 
-DATA PLANE
-Broadway pipelines
-- fetch
-- validate
-- persist durable fan-out
-- transform
-- enrich
-- batch
-- deliver
+```text
+CONTROL PLANE MATERIALIZADO
+- durable node liveness
+- claim/release
+- generation fencing
+- local per-Run supervision
+- polling recovery
+```
+
+Futuro ratificado:
+
+```text
+DATA PLANE BROADWAY
+- source fetch and validation
+- durable Record + Delivery fan-out
+- transformation and enrichment
+- batching and delivery
+- retry and checkpoint
 ```
 
 ## Durabilidade
 
-O fan-out inicial é persistido:
+Hoje, liveness e ownership já são duráveis.
+
+No data plane futuro:
 
 ```text
 Record
@@ -84,12 +111,12 @@ Record
 └── Delivery C pending
 ```
 
-O checkpoint só avança na mesma transação que persiste o lote de Records e todas as Deliveries.
+Records, Deliveries e Checkpoint serão persistidos atomicamente antes de o source avançar.
 
 ## Cluster
 
-Um Run pertence a um node por vez. O node executa a árvore inteira do Run localmente. PostgreSQL determina ownership e recovery; Distributed Erlang melhora comunicação e detecção, mas não é a autoridade durável.
+Uma Run tree permanece em um único node. RuntimeNodes expiram por heartbeat. Outro node pode reclaimar uma Run com nova `generation`. Não há authority em `:global`, Horde ou Registry distribuído.
 
 ## API
 
-Toda capacidade deve ser operável sem frontend. OpenAPI é a fonte canônica da API. Postman é um espelho derivado. SDKs entram somente depois da estabilização do contrato.
+A application Phoenix existe, mas autenticação, OpenAPI completo e endpoints de produto ainda são futuros ratificados. Toda capacidade deverá ser operável sem frontend.

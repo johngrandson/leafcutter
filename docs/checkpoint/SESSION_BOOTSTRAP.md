@@ -1,30 +1,43 @@
 # Bootstrap para uma nova sessão
 
-Use este processo apenas em ferramentas sem acesso ao repositório (ChatGPT web).
+Codex CLI e Claude Code carregam `AGENTS.md` e `CURRENT.md` por configuração/hook. Use este processo manual somente quando a ferramenta não puder ler o repositório.
 
-Codex CLI e Claude Code não precisam dele: ambos carregam `AGENTS.md` automaticamente (Claude Code via import em `CLAUDE.md`) e recebem `docs/checkpoint/CURRENT.md` pelo hook de `SessionStart` em `.codex/hooks.json` e `.claude/settings.json` (ADR-0015).
+## Leitura canônica
 
-## Leitura
+1. `AGENTS.md`.
+2. `docs/checkpoint/CURRENT.md`.
+3. `docs/architecture/estado-atual-e-visao-futura.md`.
+4. `docs/decisions/README.md` e ADRs relevantes.
+5. Código e testes da área atual.
+6. Specification relacionada, quando existir.
 
-Siga a seção "Leitura obrigatória antes de trabalhar" de `AGENTS.md` (ordem canônica), colando o conteúdo dos arquivos na conversa quando a ferramenta não puder lê-los.
+## Perguntas obrigatórias antes de agir
+
+```text
+What exists in code now?
+What is ratified but not implemented?
+What is still open?
+Which context/application owns the change?
+Which tests prove the current behavior?
+```
 
 ## Prompt de continuidade
 
 ```text
 Estamos continuando o desenvolvimento do Leafcutter.
 
-Leia primeiro AGENTS.md e docs/checkpoint/CURRENT.md. Depois leia os ADRs e documentos apontados pelo checkpoint. Inspecione o código atual antes de responder.
+Leia AGENTS.md, docs/checkpoint/CURRENT.md e docs/architecture/estado-atual-e-visao-futura.md. Depois leia os ADRs, código e testes relevantes.
 
-O desenvolvedor é o autor principal do código. Não implemente uma feature inteira sem pedido explícito. Atue primeiro como orientador e revisor. Mantenha mudanças pequenas, respeite ownership de contexts e destaque qualquer conflito entre código, documentação e ADRs.
+Separe explicitamente:
+1. estado materializado;
+2. arquitetura ratificada ainda futura;
+3. decisões abertas.
 
-Diga:
-1. qual é a fase atual;
-2. qual é a próxima tarefa concreta;
-3. quais arquivos são relevantes;
-4. quais decisões já estão aceitas;
-5. qual ponto ainda exige ratificação.
+O desenvolvedor é o autor principal. Não implemente feature ampla sem pedido explícito. Respeite boundaries, use typespecs precisos, preserve a visão futura válida e destaque qualquer divergência entre código, testes e documentação.
+
+Informe a fase atual, próxima tarefa concreta, arquivos relevantes e ponto que ainda exige ratificação.
 ```
 
-## Ao encerrar uma sessão
+## Encerramento
 
-Siga `docs/harness/SESSION_HANDOFF.md`.
+Atualize `CURRENT.md` somente quando houver marco ou mudança de direção e siga `docs/harness/SESSION_HANDOFF.md`.

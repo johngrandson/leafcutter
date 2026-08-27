@@ -1,293 +1,142 @@
 # Ambientes, RBAC e homologação
 
-## Environment
+> **Status: RBAC MATERIALIZADO; HOMOLOGAÇÃO/PROMOÇÃO RATIFICADAS — NÃO MATERIALIZADAS.**
 
-Environment é um escopo operacional dentro de uma Organization.
+## Environment atual
 
-Nomes não precisam ser hardcoded, mas exemplos comuns são:
+`Environment` é um scope operacional configurável dentro de uma Organization. Nomes como `development`, `homologation` e `production` são convenções, não valores hardcoded.
 
-```text
-development
-homologation
-production
-```
+Lifecycle básico de Environment está implementado. Novos recursos não são criados em Organization ou Environment desabilitado quando a operação exige scope ativo.
 
-## Isolamento
+## RBAC materializado
 
-Environment separa:
-
-- Connections e Secrets;
-- Integration configuration;
-- Deployments;
-- Runs e history;
-- IdentityMappings;
-- schedules;
-- access permissions.
-
-Nunca usar credencial de teste como fallback em produção.
-
-## Promotion
-
-Package Versions são imutáveis.
-
-```text
-Package 1.4.0
-    ↓ deploy HML
-homologation Runs
-    ↓ approval
-promote
-    ↓
-PROD deployment uses 1.4.0
-with PROD Connections and config
-```
-
-Promoção não copia secrets.
-
-## Rollback
-
-Rollback seleciona uma Package Version anterior e gera AuditEvent. Runs antigos continuam referenciando seus snapshots originais.
-
-## Homologation
-
-Homologação deve registrar:
-
-- Package Version testada;
-- environment de origem;
-- test Runs/evidências;
-- approver;
-- timestamps;
-- resultado;
-- observações;
-- target environment.
-
-Dry-run e payloads anonimizados podem entrar em releases posteriores.
-
-## RBAC
-
-Permissões são a primitive; Roles são agrupamentos.
-
-Dimensões:
-
-```text
-who
-→ User or ServiceAccount
-
-what
-→ Permission
-
-where
-→ Organization + Environment
-```
-
-Exemplos:
-
-```text
-integration.read
-integration.write
-integration.run
-integration.approve
-integration.promote
-run.cancel
-run.retry
-connection.read_metadata
-secret.rotate
-payload.read
-audit.read
-environment.manage
-```
-
-Acesso a status pode ser separado de acesso a payloads sensíveis.
-
-### Service accounts
-
-`ServiceAccount` representa um ator não humano scoped diretamente por uma Organization:
-
-```text
-Organization
-└── ServiceAccount
-    ├── id
-    ├── name
-    └── disabled_at
-```
-
-Diferente de `User`, um `ServiceAccount` não participa de `Membership`.
+### Atores
 
 ```text
 User
-└── Membership
+└── Membership in Organization
 
 ServiceAccount
-└── Organization direta
+└── direct Organization ownership
 ```
 
-Essa separação mantém FKs e tipos explícitos e evita introduzir antecipadamente um
-`Principal` polimórfico ou transformar `Membership` em uma abstração genérica de ator.
+Não existe `Principal` persistido.
 
-Credenciais concretas não pertencem ao schema de `ServiceAccount` inicialmente:
+### Roles e permissions
+
+`Role` é organization-scoped. `Permission` é primitive conhecida em código e persistida por identifier estável.
+
+Catálogo materializado hoje:
 
 ```text
-API key
-token
-client secret
-authentication mechanism
+organization.read
+organization.manage
+environment.read
+environment.manage
+access.manage
 ```
 
-Esses mecanismos serão modelados apenas quando a autenticação concreta de service
-accounts for implementada.
+A expansão para permissions como `integration.run`, `run.cancel`, `secret.rotate` e `payload.read` é futura e acontecerá junto às capacidades correspondentes.
 
-Criação de `ServiceAccount` exige Organization existente e ativa. Disable é idempotente
-e permanece permitido mesmo se a Organization já estiver desabilitada.
-
-### Role assignments para User
-
-A atribuição inicial de Role para usuários acontece através de `Membership`:
+### Assignments
 
 ```text
 Membership
 └── RoleAssignment
-    ├── role_id
-    └── environment_id | nil
-```
 
-Semântica do scope:
-
-```text
-environment_id == nil
-→ Role vale para toda a Organization do Membership
-
-environment_id != nil
-→ Role vale somente naquele Environment
-```
-
-`RoleAssignment` representa estado corrente de autorização e não possui identidade
-de domínio própria nem lifecycle separado.
-
-Invariantes para criação de assignment:
-
-- Organization do Membership deve existir e estar ativa;
-- Membership deve existir e estar ativo;
-- Role deve existir, estar ativo e pertencer à mesma Organization;
-- Environment, quando informado, deve existir, estar ativo e pertencer à mesma Organization;
-- o mesmo Role pode coexistir em scope organization-wide e em scopes de Environment;
-- o mesmo Role não pode ser duplicado dentro do mesmo scope para o mesmo Membership.
-
-### Role assignments para ServiceAccount
-
-`ServiceAccount` recebe Roles sem passar por `Membership`:
-
-```text
 ServiceAccount
 └── ServiceAccountRoleAssignment
-    ├── role_id
-    └── environment_id | nil
 ```
 
-A semântica de scope é a mesma do usuário:
+Scope:
 
 ```text
 environment_id == nil
-→ Role vale para toda a Organization do ServiceAccount
+→ organization-wide
 
 environment_id != nil
-→ Role vale somente naquele Environment
+→ exact Environment
 ```
 
-`ServiceAccountRoleAssignment` representa estado corrente de autorização, não possui
-identidade de domínio própria e permanece separado de `RoleAssignment`.
+Assignment organization-wide satisfaz checks em qualquer Environment ativo da mesma Organization. Assignment environment-scoped não satisfaz Organization nem outro Environment.
 
-Invariantes para criação:
+### Estado corrente
 
-- Organization do ServiceAccount deve existir e estar ativa;
-- ServiceAccount deve existir e estar ativo;
-- Role deve existir, estar ativo e pertencer à mesma Organization;
-- Environment, quando informado, deve existir, estar ativo e pertencer à mesma Organization;
-- o mesmo Role pode coexistir em scope organization-wide e em scopes de Environment;
-- o mesmo Role não pode ser duplicado dentro do mesmo scope para o mesmo ServiceAccount.
-
-Para ambos os tipos de assignment:
+Assignments e RolePermissions representam estado atual:
 
 ```text
-assign_role
-→ INSERT
-
-revoke_role
-→ DELETE
-
-histórico
-→ AuditEvent
+assign/grant → INSERT
+revoke       → DELETE
+history      → future AuditEvent
 ```
 
-Revogação é idempotente e pode reduzir acesso mesmo quando recursos relacionados já
-estão desabilitados.
+Revogações são idempotentes e podem reduzir acesso mesmo com recursos desabilitados.
 
-A separação física entre `RoleAssignment` e `ServiceAccountRoleAssignment` é
-intencional: preserva FKs e tipos explícitos sem introduzir um `Principal` polimórfico.
-
-## Autorização
-
-A API pública de decisão é:
+### API de decisão
 
 ```elixir
 Organizations.Access.authorize(actor, permission, scope)
 ```
 
-O contrato de ator não cria entidade persistida `Principal`:
+Actors:
 
 ```text
 {:user, user_id}
 {:service_account, service_account_id}
 ```
 
-O contrato de scope é explícito:
+Scopes:
 
 ```text
 {:organization, organization_id}
 {:environment, environment_id}
 ```
 
-Semântica de herança:
+A decisão valida lifecycle do actor, membership/ownership, Organization, Environment, Role e Permission. Ausência de grant aplicável retorna `:permission_denied`.
+
+## Segurança futura
+
+Ainda não materializado:
+
+- credenciais concretas de ServiceAccount;
+- passwords/sessions/OIDC/MFA para User;
+- payload access permissions;
+- secret rotation;
+- AuditEvent de mudanças de RBAC;
+- policy de exposição de erros na API HTTP.
+
+## Homologação ratificada
+
+Planejado:
 
 ```text
-Role assignment organization-wide
-→ satisfaz checks na Organization
-→ também satisfaz checks em qualquer Environment ativo daquela Organization
-
-Role assignment environment-scoped
-→ satisfaz somente checks naquele Environment
-→ não satisfaz check organization-wide
-→ não satisfaz outro Environment
+EnvironmentDeployment state
+→ immutable fingerprint
+→ HomologationRequest approval
+→ promote approved promotable state
 ```
 
-Para um `User`, autorização exige:
-
-- User existente e ativo;
-- Membership existente e ativo na Organization resolvida pelo scope.
-
-Para um `ServiceAccount`, autorização exige:
-
-- ServiceAccount existente e ativo;
-- ServiceAccount pertencente à Organization resolvida pelo scope.
-
-Para ambos:
-
-- Organization deve existir e estar ativa;
-- Environment, quando usado como scope, deve existir e estar ativo;
-- somente Roles ativos participam da decisão;
-- a Permission precisa continuar concedida ao Role;
-- assignment revogado deixa de participar imediatamente da decisão.
-
-Quando ator e scope são válidos, mas nenhum Role aplicável concede a Permission:
+Promotion copiará somente:
 
 ```text
-{:error, :permission_denied}
+PackageVersion
+promotable config
+approval/fingerprint reference
 ```
 
-Erros de lifecycle e de resolução permanecem explícitos na API interna do domínio,
-como `:user_disabled`, `:membership_not_found`, `:service_account_disabled` e
-`:environment_disabled`. A camada HTTP decide posteriormente quanto desse detalhe é
-exposto externamente.
+Não copiará:
 
-A autorização é uma leitura point-in-time. Ela não substitui invariantes do domínio
-na operação privilegiada que efetivamente altera estado.
+```text
+Connections
+Secrets
+Triggers
+environment-local config
+```
 
-Controllers/plugs fazem checagem na borda, mas operações de domínio privilegiadas também devem exigir actor/scope explícitos. Não depender somente de `require_admin` no controller.
+## Rollback ratificado
+
+Rollback será operação que seleciona estado promovido anterior válido. Não haverá entidade `Rollback` inicial. Runs históricos continuarão ligados aos próprios snapshots.
+
+## Evidências
+
+Runs poderão ser referenciadas por IDs opacos como evidência de homologação. Integrations não dependerá de internals de Executions para interpretar esses IDs.

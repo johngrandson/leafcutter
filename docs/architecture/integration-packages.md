@@ -1,112 +1,56 @@
 # Integration Packages
 
-## Definição
+> **Status: ESTRUTURA RATIFICADA — NÃO MATERIALIZADA.**
 
-Um Integration Package é a unidade versionada que descreve e implementa uma topologia de integração.
+## Papel
 
-```text
-Package Version
-→ código + manifest + contracts + dependency versions
-```
-
-Package não é uma Integration de cliente. A relação é:
+Package é código e metadata reutilizáveis. Não contém credenciais nem configuração concreta de cliente.
 
 ```text
-Package Version
-    ↓ configured as
-Integration
-    ↓ executed as
-Run
+Package
+└── immutable PackageVersion
+    ├── exactly one Source
+    ├── one or more Destinations
+    ├── ConnectorVersion + Operation refs
+    ├── ContractVersion refs
+    ├── SourceIdentity rule
+    ├── Transformations
+    ├── optional Enrichments
+    └── explicit Interceptors
 ```
 
-## Estrutura alvo
+## Estrutura física ratificada
 
 ```text
-packages/
-└── customer_distribution/
-    ├── manifest.json
-    ├── schemas/
-    │   ├── source_customer.json
-    │   ├── crm_customer.json
-    │   └── billing_customer.json
-    ├── lib/
-    │   └── customer_distribution/
-    │       ├── crm.ex
-    │       ├── billing.ex
-    │       ├── enrichments/
-    │       └── interceptors/
-    └── test/
-        ├── fixtures/
-        └── customer_distribution_test.exs
+packages/<package>/
+├── mix.exs
+├── manifest.json
+├── lib
+└── test
 ```
 
-## `manifest.json`
+Cada Package é um Mix project independente fora de `apps/`.
 
-O manifest é declarativo e validado por JSON Schema + JSV.
+## Imutabilidade
 
-Ele descreve:
+PackageVersion publicada é imutável. Evolução cria nova versão. `PackageDependency` não faz parte do V1.
 
-- identidade e versão do Package;
-- Source Connector/Operation;
-- Source Contract;
-- destinations;
-- Destination Contracts;
-- Transformation modules;
-- Enrichment definitions opcionais;
-- Interceptors explícitos;
-- dependency versions;
-- defaults, constraints e configuration requirements.
+## Dependências
 
-Ele não contém:
+Package pode depender de contracts públicos de `leafcutter_connectors`. Não depende de internals de runtime ou API.
 
-- secrets;
-- URLs reais de cliente quando environment-specific;
-- credenciais;
-- estado de Run;
-- checkpoints;
-- regras RBAC;
-- lógica de transformação em strings/DSL.
+## Build futuro
 
-## Código
+Packages instalados serão compilados na mesma release inicial. O mecanismo físico para incluí-los no dependency graph continua aberto e deverá ser explícito e auditável.
 
-Transformation, Enrichment preparation e Interceptor são módulos Elixir normais. Código in-package é compilado, testado, versionado e revisado em Git.
+## Manifest
 
-## Versionamento
+O JSON Schema definitivo do `manifest.json` ainda não está fechado. Não tratar exemplos atuais como contract final.
 
-Package Versions são imutáveis.
+## Não antecipar
 
-```text
-customer_distribution@1.3.0
-→ connector versions congeladas
-→ contract versions congeladas
-→ Git commit de origem registrado
-```
-
-Upgrade é explícito. Runs antigos continuam apontando para a versão original.
-
-## Build inicial
-
-A separação física `apps/` vs `packages/` é canônica:
-
-```text
-apps/
-→ plataforma
-
-packages/
-→ integrações executadas pela plataforma
-```
-
-A primeira estratégia de build pode compilar os Packages com a mesma release, mas não deve misturar seu código nos contexts da plataforma.
-
-## Tooling
-
-A interface inicial de desenvolvimento será Mix:
-
-```bash
-mix platform.package.validate
-mix platform.package.test
-mix platform.package.build
-mix platform.package.publish
-```
-
-Os nomes exatos das tasks serão definidos quando o package lifecycle for implementado. Não criar CLI própria cedo.
+- registry remoto;
+- package isolation;
+- dependency solver complexo;
+- filesystem auto-discovery implícito;
+- standalone CLI antes de Mix tooling se mostrar insuficiente.

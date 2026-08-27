@@ -1,32 +1,34 @@
-# Operation Contract
+# Operation contract
 
-- Status: Accepted baseline
+- Estado: RATIFICADO — NÃO MATERIALIZADO
 
-## Read
+## Read Operation
 
-```elixir
-@callback fetch(configuration(), cursor()) ::
-  {:ok, page_result()}
-  | {:error, OperationError.t()}
-```
-
-`page_result` normaliza:
+Normaliza paginação:
 
 ```text
-records
-next_cursor
-done?
-metadata
+fetch(config, cursor)
+→ records
+→ next_cursor
+→ done?
+→ metadata
 ```
 
-## Write
+## Write Operation
 
-```elixir
-@callback deliver([payload()], configuration()) ::
-  {:ok, [item_result()]}
-  | {:error, OperationError.t()}
+Recebe batch validado e preserva resultado por item:
+
+```text
+success + optional destination identity
+error + normalized operation error
 ```
 
-`item_result` preserva sucesso/falha individual e Destination Identity quando disponível.
+## Regras
 
-A Operation não controla Broadway, não agenda retry e não acessa configuração de tenant fora da Connection recebida.
+- sem acesso a internals de Integration/Run;
+- auth/config chegam resolvidos;
+- partial success é explícito;
+- Transport executa protocolo;
+- error taxonomy segue `error-retry-model.md`.
+
+Signatures, structs e behaviours finais serão ratificados com a primeira implementação HTTP.

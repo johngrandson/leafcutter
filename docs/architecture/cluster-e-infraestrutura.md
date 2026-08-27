@@ -1,90 +1,88 @@
-# Cluster BEAM e infraestrutura
+# Cluster e infraestrutura
 
-## Modelo cru inicial
+> **Status: MODELO DISTRIBUÍDO PARCIALMENTE MATERIALIZADO.** A authority no PostgreSQL existe; discovery e deployment multi-node concretos continuam futuros.
+
+## Unidade de execução
+
+Uma árvore de Run permanece em um único node:
 
 ```text
-Internet
-   ↓
-Load Balancer
-   ↓
-BEAM nodes homogêneos
-   ↓
+Node A
+└── RunSupervisor
+    └── RunCoordinator
+```
+
+No futuro, as pipelines Broadway da mesma Run também permanecem nesse node inicialmente.
+
+## Identidade de runtime
+
+Cada startup da application gera um UUID:
+
+```text
+application start
+→ new RuntimeNode id
+
+NodeHeartbeat restart
+→ same RuntimeNode id
+
+BEAM/application restart
+→ new RuntimeNode id
+```
+
+`node_name` não possui unicidade e não pode reviver ownership antigo.
+
+## Authority
+
+```text
 PostgreSQL
+→ liveness, ownership, generation and recovery
+
+Registry
+→ local process lookup
+
+Distributed Erlang
+→ optional operational signal and communication
 ```
 
-Cada máquina/container executa inicialmente uma release e um BEAM node.
+Não usar Distributed Erlang como banco, fila durável ou lock authority.
 
-## Nodes homogêneos
+## Recovery concorrente
 
-Todos os nodes começam com:
+Nodes podem escanear simultaneamente. `FOR UPDATE SKIP LOCKED` distribui lotes sem leader election.
 
-- API Phoenix;
-- Core contexts;
-- Oban configurado;
-- Runtime OTP/Broadway;
-- Connectors.
-
-Não separar API workers e runtime workers antes de medir contenção real.
-
-## Distribuição Erlang
-
-Nodes usam rede privada e discovery, possivelmente DNSCluster quando o ambiente for escolhido.
-
-Distributed Erlang serve para:
-
-- cluster PubSub;
-- comunicação operacional entre nodes;
-- `nodeup`/`nodedown`;
-- visibilidade de membership.
-
-Não serve como:
-
-- banco;
-- fila durável;
-- ownership definitivo de Run;
-- substituto de Postgres;
-- justificativa para espalhar processos de um mesmo Run entre nodes.
-
-## Regra inicial de placement
+## Topologia inicial planejada
 
 ```text
-A Run belongs to one node.
+Load Balancer
+      ↓
+BEAM Node A   BEAM Node B   BEAM Node C
+        \        |        /
+             PostgreSQL
 ```
 
-Coordinator, Source, Enrichments e Destinations daquele Run ficam juntos. Distribuir branches individualmente é evolução futura, não premissa.
+Todos os nodes usarão a mesma release inicialmente.
 
-## Segurança
+## Ainda não materializado
 
-- portas de distribuição nunca expostas à internet;
-- cookie armazenado como secret;
-- rede privada;
-- TLS para distribuição se o ambiente exigir;
-- Postgres não público;
-- secrets fora de manifests/logs.
+- cluster discovery;
+- runtime release/deployment em múltiplos hosts;
+- provider e infraestrutura como código;
+- Postgres HA/backups;
+- health/readiness completo;
+- shutdown de release validado em cluster real;
+- metrics/logging stack;
+- object storage;
+- retenção de RuntimeNode incarnations.
 
-## Escala
-
-Escala horizontal inicial:
-
-```text
-1 node
-→ 2 nodes
-→ N homogeneous nodes
-```
-
-Adicionar nodes aumenta capacidade de API, Oban e Runs concorrentes.
-
-## Evolução
-
-Somente após métricas:
+## Evolução condicionada por métricas
 
 ```text
 homogeneous nodes
-→ specialized API/runtime nodes
+→ optional API/runtime specialization
+→ package isolation
 → object storage
-→ package artifact isolation
 → analytics store
-→ external queue if justified
+→ external queue if proven necessary
 ```
 
-BEAM cluster não é Kubernetes. É um conjunto de runtimes excelentes em supervisionar e comunicar processos concorrentes.
+Nenhuma especialização é pressuposta no V1.

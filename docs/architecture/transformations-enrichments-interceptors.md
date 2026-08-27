@@ -1,70 +1,51 @@
 # Transformations, Enrichments e Interceptors
 
+> **Status: RATIFICADO — NÃO MATERIALIZADO.**
+
 ## Transformation
 
-Responsabilidade: converter um payload válido de origem em payload(s) de negócio para um destino.
+Função pura que converte dado validado em payload de negócio.
 
-É Elixir puro e não executa side effects.
+Contracts planejados:
 
-Retornos oficiais:
-
-```elixir
-{:ok, payload}        # 1 -> 1
-{:ok, [payloads]}     # 1 -> N
-:skip                 # 1 -> 0
-{:error, reason}      # falha controlada
+```text
+1 → 1   {:ok, payload}
+1 → N   {:ok, payloads}
+1 → 0   :skip
+error   {:error, reason}
 ```
 
-Cada payload de `1 -> N` é validado individualmente pelo Destination Contract.
-
-Transformation pode usar:
-
-- `if`, `case`, `cond`;
-- pattern matching;
-- `Enum`, `Map`, `String`, datas;
-- regras condicionais;
-- cálculos;
-- normalização;
-- config imutável do Run Snapshot.
-
-Não pode chamar HTTP, Repo, Oban, PubSub, filesystem ou secrets.
+Não faz HTTP, Repo, secret resolution ou logging de side effect.
 
 ## Enrichment
 
-Responsabilidade: executar uma consulta externa opcional no meio do fluxo para obter dados adicionais.
+Side effect opcional executado antes da Transformation quando dados adicionais são necessários.
 
 ```text
 validated source
-    ↓
-optional Enrichment
-    ↓
-source + enrichment result
-    ↓
-Transformation
+→ prepare enrichment request
+→ Connector Operation
+→ persist result/status
+→ Transformation
 ```
 
-O Package prepara o input de forma pura; Connector/Operation executa o side effect; o resultado é persistido. Enrichment é uma unidade durável e retryable.
-
-No OTP, Enrichment é uma Broadway pipeline opcional dentro da árvore do Run. Não criar uma hierarquia manual de workers quando Broadway já resolve lifecycle e backpressure.
-
-Primeiro suportar Enrichment compartilhado antes do fan-out. Enrichment específico por destination pode reutilizar a mesma primitive posteriormente.
+A definição pertence à PackageVersion; o resultado de execução pertence a Executions.
 
 ## Interceptor
 
-Responsabilidade: adaptar ou observar a comunicação, não o dado de negócio.
+Adapta comunicação, não regra de negócio:
 
-Pode modificar:
+- correlation ID;
+- custom header/query;
+- signing;
+- URL adjustment;
+- tracing metadata.
 
-- headers;
-- query params;
-- URL;
-- assinatura;
-- correlation/tracing metadata.
+Será declarado explicitamente pelo Package. Interceptor global invisível é evitado.
 
-Inicialmente não modifica o body depois da validação do Destination Contract.
+## Limites iniciais
 
-Interceptors são explícitos no Package. Não criar cadeias globais invisíveis.
-
-## Funções auxiliares
-
-Lógica reutilizável continua como módulos/funções Elixir normais dentro do Package. Não existe uma entidade de plataforma chamada Function.
+- sem N→1 ou joins stateful;
+- sem side effect escondido em `transform`;
+- sem body mutation depois da destination validation no desenho inicial;
+- sem framework genérico antes dos primeiros contracts reais.

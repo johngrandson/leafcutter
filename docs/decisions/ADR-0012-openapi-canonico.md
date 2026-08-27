@@ -1,14 +1,16 @@
-# ADR-0012 - OpenAPI canônico
+# ADR-0012 — OpenAPI canônico; Postman derivado
 
 - Status: Accepted
+- Estado de implementação: PHOENIX FOUNDATION; OPENAPI NÃO MATERIALIZADO
 
 ## Decisão
 
-A plataforma é API-first. OpenAPI é a fonte canônica da API administrativa e, separadamente, das Inbound APIs. Postman é derivado/sincronizado. SDKs entram após estabilização.
+OpenAPI será a fonte canônica dos contracts HTTP. Postman e SDKs serão derivados.
+
+## Estado atual
+
+`leafcutter_api` possui Endpoint/Router/Telemetry básicos, mas ainda não possui surface de produto nem spec OpenAPI.
 
 ## Consequências
 
-- nenhum conhecimento exclusivo no Postman;
-- documentação e testes de contrato deriváveis;
-- frontend futuro é outra interface sobre a mesma API;
-- exige disciplina de examples/errors/operationId/tags.
+Nenhum client derivado pode conter conhecimento exclusivo. SDKs só entram após estabilização do contrato.

@@ -1,70 +1,56 @@
 # Modelo operacional do agente
 
-Aplica-se a qualquer agente que opere neste repositório: Codex, Claude Code ou outro (ADR-0015).
+Aplica-se a qualquer agente que opere no repositório.
 
 ## Objetivo
 
-Usar o agente para aumentar precisão e compreensão sem terceirizar a autoria do Leafcutter.
+Aumentar precisão, compreensão e velocidade sem terceirizar autoria nem inventar arquitetura ausente.
 
-## Modos de trabalho
+## Leitura antes de agir
 
-### Guide mode - padrão
+1. `AGENTS.md`.
+2. `docs/checkpoint/CURRENT.md`.
+3. `docs/architecture/estado-atual-e-visao-futura.md`.
+4. ADRs/specifications relevantes.
+5. Código e testes atuais.
 
-O agente:
+## Modos
 
-1. lê checkpoint/docs/código;
-2. explica o fluxo;
-3. identifica owner/context;
-4. apresenta opções e tradeoffs;
-5. sugere a menor implementação;
-6. espera o desenvolvedor escrever.
+### Guide mode — padrão
+
+- explica fluxo atual;
+- identifica context/app owner;
+- separa materializado/futuro/aberto;
+- apresenta opções e tradeoffs;
+- sugere menor slice;
+- espera o desenvolvedor escrever.
 
 ### Review mode
 
-O agente revisa um diff ou arquivos e verifica:
-
-- correctness;
-- context boundaries;
-- SRP;
-- OTP/Broadway fit;
-- docs/specs;
-- errors;
-- replay/idempotency;
-- tests;
-- segurança.
+Verifica correctness, boundaries, OTP fit, durabilidade, fencing, idempotência, typespecs, tests, security e alinhamento documental.
 
 ### Debug mode
 
-O agente ajuda a reproduzir, ler stacktrace, inspecionar supervision tree, queries e Telemetry. Não aplica refactor amplo antes de isolar a causa.
+Reproduz e isola causa antes de refactor. Usa stacktrace, supervision tree, queries e Telemetry.
 
-### Implementation mode - somente explícito
+### Implementation mode — explícito
 
-Permitido para:
+Permitido para mudança solicitada e delimitada. Feature ampla exige plano aprovado.
 
-- scaffolding pequeno;
-- mudanças mecânicas;
-- testes pedidos;
-- correção delimitada;
-- artifact/documentation generation.
-
-Feature inteira exige pedido explícito e plano aprovado.
-
-## Read order
-
-Siga a seção "Leitura obrigatória antes de trabalhar" de `AGENTS.md` (ordem canônica).
-
-## Saída esperada antes de código
+## Saída esperada antes do código
 
 ```text
-Owner context
-Current flow
-Proposed minimal change
-Files involved
-Failure cases
+Owner context/application
+Current behavior
+Ratified future affected
+Open decision, if any
+Minimal change
+Files
+Failure/race cases
 Tests
-Documentation/spec impact
+Docs/ADR/spec impact
 ```
 
 ## Regra de parada
 
-Se a tarefa exigir decisão não ratificada, parar a implementação e registrar a decisão necessária. Não preencher lacunas arquiteturais silenciosamente.
+Se uma decisão necessária estiver aberta, parar. Não converter diagrama futuro em contract concreto silenciosamente.
