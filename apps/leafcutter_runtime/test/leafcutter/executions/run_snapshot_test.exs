@@ -62,9 +62,7 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
       assert changeset.valid?
       assert Changeset.get_change(changeset, :format_version) == 1
 
-      assert Changeset.get_change(changeset, :definition)[
-               "effective_config"
-             ] == %{
+      assert Changeset.get_change(changeset, :definition)["effective_config"] == %{
                "retry" => %{"enabled" => true}
              }
     end
