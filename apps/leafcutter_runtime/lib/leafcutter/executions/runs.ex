@@ -138,7 +138,8 @@ defmodule Leafcutter.Executions.Runs do
   * Another active owner prevents the claim.
   * Runtime liveness and ownership timestamps use the PostgreSQL clock.
   * The Run row is locked while claimability and current ownership are evaluated.
-  * Public Run creation remains deferred until executable definition and RunSnapshot are ratified.
+  * Runs created through create/1 always carry a structurally valid snapshot.
+  * Legacy pending Runs remain possible until snapshot eligibility is enforced by claim/2.
   """
   @spec claim(Run.id(), RuntimeNode.id()) ::
           {:ok, ownership_token()} | {:error, claim_error()}
@@ -281,7 +282,7 @@ defmodule Leafcutter.Executions.Runs do
   ## Notes
 
   * Only Runs already in the `:running` state participate in automatic recovery.
-  * Pending Runs continue to require an explicit start until RunSnapshot is ratified.
+  * Pending Runs remain excluded until snapshot eligibility is added to recovery.
   * Unowned Runs and Runs whose owner heartbeat is older than the stale threshold are eligible.
   * Rows are ordered by oldest `updated_at` and then identifier.
   * `FOR UPDATE SKIP LOCKED` distributes concurrent recovery batches across runtime nodes.
