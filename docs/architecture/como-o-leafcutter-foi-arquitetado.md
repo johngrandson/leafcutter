@@ -2,7 +2,7 @@
 title: "Como o Leafcutter foi arquitetado"
 subtitle: "Estado materializado, decisões ratificadas e evolução planejada"
 author: "Leafcutter Architecture"
-date: "26 de agosto de 2026"
+date: "27 de agosto de 2026"
 lang: pt-BR
 toc: true
 toc-depth: 3
@@ -153,7 +153,7 @@ RunRecovery
 → start local trees after commit
 ```
 
-O scanner não inicia Runs `pending`, pois ainda não existe RunSnapshot que prove que a linha representa definição executável completa.
+O scanner materializado ainda não inicia Runs `pending`. O contrato de RunSnapshot v1 foi ratificado, mas ainda não existe no código; quando materializado, presença e versão suportada provarão eligibility no control plane, não executabilidade semântica completa.
 
 # A plataforma-alvo ratificada
 
@@ -173,7 +173,7 @@ Run
 → concrete execution
 ```
 
-Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica.
+Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica. A fundação de RunSnapshot v1 está ratificada no ADR-0017; o futuro resolver de EnvironmentDeployment continua em slice posterior.
 
 ## Catalog
 
@@ -280,7 +280,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-A próxima decisão é RunSnapshot. Depois permanecem abertos schemas de Catalog/Connections/Integrations, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 deixou de ser uma decisão aberta e agora aguarda materialização. Permanecem abertos os schemas de Catalog/Connections/Integrations, o resolver semântico de EnvironmentDeployment, merge e provenance de config, rolling upgrade de formatos, idempotência/invocation, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -291,7 +291,7 @@ present
 → RBAC + ownership + supervision + recovery
 
 next
-→ immutable executable Run definition
+→ materialized versioned RunSnapshot foundation
 
 future
 → durable Broadway integration data plane

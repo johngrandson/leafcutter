@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Run definition and snapshot foundation**
+**RunSnapshot v1 materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. A documentação foi realinhada para distinguir estado atual, futuro ratificado e decisões abertas.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. O contrato de RunSnapshot v1 foi ratificado, mas ainda não existe no código ou no banco.
 
 ## Estado materializado
 
@@ -93,7 +93,7 @@ RunSupervisor
 
 `RunRecovery` reconstrói árvores já owned e reclama Runs `running` sem owner ou com owner expirado usando polling e `FOR UPDATE SKIP LOCKED`.
 
-Runs `pending` ainda não são iniciadas automaticamente.
+Runs `pending` ainda não são iniciadas automaticamente. RunSnapshot, criação pública de Run e eligibility por formato ainda não estão materializados.
 
 ### API e connectors
 
@@ -101,7 +101,7 @@ Runs `pending` ainda não são iniciadas automaticamente.
 
 ## Arquitetura ratificada preservada
 
-Ainda planejados:
+Ainda não materializados:
 
 ```text
 Catalog
@@ -109,7 +109,7 @@ Connections
 Integrations
 Notifications
 Audit
-RunSnapshot
+RunSnapshot v1
 Record
 Delivery
 Attempt
@@ -122,6 +122,8 @@ Broadway data plane
 OpenAPI completo
 Homologation/Promotion/Rollback
 ```
+
+Para RunSnapshot v1, o contrato físico, o formato da definition, a criação atômica e a eligibility de `pending` estão ratificados em ADR-0017 e na specification correspondente.
 
 ## Completed milestones
 
@@ -142,41 +144,46 @@ Run ownership + fencing
 RunSupervisor + RunCoordinator
 Automatic RunRecovery bootstrap
 Documentation present/future alignment
+RunSnapshot v1 contract ratification
 ```
 
 ## Em andamento
 
-Definir a representação executável e imutável de uma Run.
+Materializar o contrato ratificado de RunSnapshot v1 sem antecipar Catalog, Connections ou Integrations.
 
 ## Próxima tarefa concreta
 
-Ratificar `RunSnapshot` e o workflow público de criação:
+Implementar, nesta ordem lógica:
 
 ```text
-validated executable definition
-↓ transaction
-Run + immutable RunSnapshot
+run_snapshots persistence + immutable schema
 ↓
-pending Run becomes safely startable
+typed definition v1 validation
+↓ transaction
+Runs.create/1 → Run + RunSnapshot
+↓
+Runs.fetch_snapshot/1
+↓
+pending eligibility in claim and recovery
 ```
 
-Fechar:
+Fechar no código e nos testes:
 
-- relação 1:1 Run/RunSnapshot;
-- attrs e error contract;
-- PackageVersion e ContractVersion references;
-- effective config;
-- Connection e SecretVersion references sem raw secrets;
-- atomicidade;
-- eligibility de `pending` no recovery;
-- imutabilidade e lifecycle.
+- relação 1:1 por shared primary key;
+- constraints, `ON DELETE CASCADE` e trigger que rejeita `UPDATE`;
+- formato v1 e versões suportadas;
+- criação pública atômica;
+- leitura explícita do snapshot;
+- novos erros de claim;
+- recovery de `pending` com snapshot suportado;
+- compatibilidade com Runs legadas `running` sem snapshot.
 
-Ainda não adicionar Broadway ou Record/Delivery antes dessa definição.
+Ainda não adicionar resolver de EnvironmentDeployment, schemas upstream, Broadway ou Record/Delivery.
 
 ## Principais decisões abertas
 
-- RunSnapshot;
 - schemas/APIs de Catalog, Connections e Integrations;
+- resolução semântica de EnvironmentDeployment para a definition v1;
 - Package Manifest e build de packages;
 - Connector/Operation/Transport contracts;
 - data plane e durable fan-out;
@@ -189,6 +196,8 @@ Ainda não adicionar Broadway ou Record/Delivery antes dessa definição.
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0017-run-snapshot-v1.md`
+- `docs/specifications/run-snapshot-v1.md`
 - `docs/architecture/estado-atual-e-visao-futura.md`
 - `docs/architecture/modelo-conceitual.md`
 - `docs/architecture/runtime-otp-broadway.md`

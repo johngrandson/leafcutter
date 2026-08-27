@@ -114,6 +114,8 @@ cancelled
 
 Ownership é serializado no PostgreSQL. `generation` é o fencing token monotônico.
 
+RunSnapshot, criação pública de Run e eligibility de `pending` por formato ainda não estão materializados.
+
 ### Supervision e recovery atuais
 
 ```text
@@ -201,10 +203,24 @@ Promotion copia somente estado promovível; não copia secrets, Connections, Tri
 
 ### Executions completo
 
-Planejado:
+O contrato de RunSnapshot v1 está ratificado, mas não materializado:
 
 ```text
-RunSnapshot
+typed definition v1
++ shared primary key with Run
++ atomic Run/RunSnapshot creation
++ PostgreSQL UPDATE rejection
++ pending eligibility by supported format
+```
+
+Detalhes canônicos:
+
+- `docs/decisions/ADR-0017-run-snapshot-v1.md`;
+- `docs/specifications/run-snapshot-v1.md`.
+
+Também planejados:
+
+```text
 Record
 Delivery
 Attempt
@@ -213,7 +229,7 @@ ExecutionEvent
 Enrichment execution state
 ```
 
-A próxima decisão é o `RunSnapshot` imutável e o workflow público de criação de Run.
+A criação futura a partir de `EnvironmentDeployment` resolverá as authorities upstream para o formato ratificado. Esse workflow pertence à orchestration em `leafcutter_runtime` e entregará a definition pronta a Executions. Seus schemas e o resolver semântico continuam para slices posteriores.
 
 ### Data plane Broadway
 
@@ -275,9 +291,9 @@ A estratégia física para incluí-los na release continua aberta.
 
 Entre as principais:
 
-- forma exata de `RunSnapshot`;
-- workflow público de criação de Run;
 - schemas de Catalog, Connections e Integrations;
+- resolução semântica de EnvironmentDeployment para RunSnapshot v1;
+- política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
 - Package Manifest JSON Schema v1;
@@ -299,12 +315,14 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
+O contrato desta fronteira já foi ratificado; o próximo slice é sua materialização:
+
 ```text
-validated executable definition
+validate typed definition v1
 ↓ transaction
 Run + immutable RunSnapshot
 ↓
-pending Run becomes safely startable
+pending Run becomes eligible in the control plane
 ```
 
-Somente depois disso o scanner poderá considerar Runs `pending` automaticamente sem interpretar uma linha mínima como uma execução completa.
+Essa eligibility prova presença e versão suportada do snapshot. Ela não antecipa o resolver de EnvironmentDeployment, o carregamento no coordinator ou a execução Broadway.
