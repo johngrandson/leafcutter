@@ -83,6 +83,32 @@ defmodule Leafcutter.Executions.RunsTest do
     end
   end
 
+  describe "fetch_snapshot/1" do
+    test "returns the immutable snapshot for a Run created publicly" do
+      assert {:ok, run} = Runs.create(definition_fixture())
+
+      assert {:ok, %RunSnapshot{} = snapshot} =
+               Runs.fetch_snapshot(run.id)
+
+      assert snapshot.run_id == run.id
+      assert snapshot.format_version == RunSnapshot.current_format_version()
+    end
+
+    test "distinguishes an existing legacy Run without a snapshot" do
+      run = insert_run()
+
+      assert {:error, :run_snapshot_not_found} =
+               Runs.fetch_snapshot(run.id)
+    end
+
+    test "returns run_not_found when the Run does not exist" do
+      assert {:error, :run_not_found} =
+               Runs.fetch_snapshot(
+                 "00000000-0000-0000-0000-000000000000"
+               )
+    end
+  end
+
   describe "claim/2" do
     test "claims a pending Run and returns generation one" do
       run = insert_run()
