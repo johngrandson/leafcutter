@@ -1,44 +1,43 @@
-# Checklist de revisão
+# Checklist de review
+
+## Estado e escopo
+
+- [ ] O diff implementa apenas o slice autorizado.
+- [ ] O comportamento descrito como atual existe no código/testes.
+- [ ] A arquitetura futura ratificada não foi apagada.
+- [ ] Decisão aberta não foi fechada por inferência.
 
 ## Boundaries
 
-- O owner context está correto?
-- A mudança acessa internals de outro context?
-- A facade raiz cresceu indevidamente?
-- Capability module seria mais coerente?
+- [ ] Context owner correto.
+- [ ] Nenhum acesso a internals de outro context.
+- [ ] Workflow cross-context está na application layer adequada.
+- [ ] Nenhuma app/processo/abstração nova sem boundary/lifecycle real.
 
-## Simplicidade
+## Durabilidade e concorrência
 
-- Existe uma função simples no lugar de nova abstração?
-- O processo OTP possui estado/lifecycle/failure boundary real?
-- Há camada que apenas delega?
-- Dependency nova elimina código suficiente?
-
-## Runtime
-
-- Estado durável está no Postgres?
-- Estado operacional é reconstruível?
-- Semântica `at-least-once` foi considerada?
-- Partial batch success está preservado?
-- `generation` protege escrita crítica?
+- [ ] Authority durável está no PostgreSQL quando necessário.
+- [ ] Idempotência e retries têm semântica explícita.
+- [ ] Row locks/transações são curtos e justificados.
+- [ ] Toda escrita crítica de Run aplica fencing token na própria mutação.
+- [ ] Crash/restart/replay foram considerados.
 
 ## Contracts
 
-- Source/destination JSON Schema correto?
-- Erro normalizado e previsível?
-- `@spec` corresponde à implementação?
-- Dados sensíveis foram redigidos?
+- [ ] `@moduledoc`, `@doc`, `@typedoc` e `@spec` corretos.
+- [ ] Typespecs possuem shapes precisas.
+- [ ] Erros públicos são previsíveis.
+- [ ] Raw secrets não aparecem em docs/logs/snapshots indevidos.
 
-## Tests
+## Testes e gates
 
-- Happy path?
-- Invalid data?
-- Retryable/permanent error?
-- Crash/recovery quando aplicável?
-- Concorrência/claim quando aplicável?
+- [ ] Happy path e failure paths.
+- [ ] Constraints de banco.
+- [ ] Concorrência determinística quando relevante.
+- [ ] `mix quality` passa.
 
-## Documentation
+## Documentação
 
-- Código e docs in-code em inglês?
-- `@moduledoc`, `@doc`, `@typedoc`, `@spec`?
-- Docs/ADR/checkpoint atualizados?
+- [ ] ADR/specification atualizados quando necessário.
+- [ ] `estado-atual-e-visao-futura.md` continua correto.
+- [ ] `CURRENT.md` avançou se houve milestone.

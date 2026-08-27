@@ -1,26 +1,46 @@
 # Sequência de implementação
 
-## Regra
+## Concluído
 
-Não criar todas as apps, contexts e schemas de uma vez. Implementar verticalmente, preservando boundaries ratificados.
+```text
+1. architecture/context map
+2. four OTP applications
+3. shared Repo + PubSub + Oban
+4. Organizations + Environment
+5. User + Membership
+6. Role + Permission
+7. User/ServiceAccount role assignments
+8. authorization evaluation
+9. Registry + DynamicSupervisor + NodeHeartbeat
+10. durable RuntimeNode liveness
+11. Run ownership + generation fencing
+12. RunSupervisor + RunCoordinator
+13. automatic RunRecovery
+14. documentation present/future alignment
+```
 
-## Sequência recomendada
+## Próximo slice
 
-1. Ratificar Context Map.
-2. Ratificar apps da umbrella.
-3. Criar `leafcutter_core` mínimo e Repo.
-4. Criar Organizations/Environments mínimos.
-5. Criar Catalog Contracts + JSV spike.
-6. Fechar Package Manifest v1 e validation tooling.
-7. Criar Connections/Secrets baseline.
-8. Criar Integrations e Run Snapshot.
-9. Criar Executions durable model.
-10. Criar Generic HTTP Connector e Operation contracts.
-11. Criar Source Broadway com persistence batch/checkpoint.
-12. Criar Destination Broadway com claim/transform/validate/deliver.
-13. Criar Attempts, retries e IdentityMapping.
-14. Expor workflow por OpenAPI/API.
-15. Adicionar schedules, Enrichment e cluster recovery.
-16. Adicionar governance conforme roadmap.
+```text
+RunSnapshot
++
+public Run creation workflow
++
+pending eligibility
+```
 
-Cada etapa deve produzir algo testável e documentado.
+## Sequência ratificada posterior
+
+```text
+Catalog/Contracts/Packages foundations
+→ Connections/Secrets
+→ Integrations/EnvironmentDeployment
+→ complete executable RunSnapshot
+→ Connector/Operation/Transport
+→ Record/Delivery/Attempt/Checkpoint
+→ Source/Destination Broadway
+→ monitoring/retry/lifecycle
+→ governance/notifications/audit
+```
+
+A ordem fina pode mudar quando dependencies reais forem modeladas. Não pular RunSnapshot para criar Broadway com definição executável implícita.

@@ -1,30 +1,92 @@
-# Run Ownership and Recovery
+# Run ownership, fencing e recovery
 
-- Status: Accepted baseline
+- Status decisório: Accepted
+- Estado de implementação: MATERIALIZADO
+
+## RuntimeNode
 
 ```text
-one Run
-→ one owner node
-→ one generation
+id                 UUID per application incarnation
+node_name          metadata, not unique
+last_heartbeat_at  PostgreSQL clock
 ```
 
-## Node heartbeat
+Restart isolado de NodeHeartbeat preserva `id`; restart da application cria nova incarnação.
 
-Uma linha/registro por BEAM node ativo. Heartbeat expiration autoriza tentativa de recovery.
+## Run
 
-## Claim
+```text
+id
+status
+owner_node_id | nil
+generation >= 0
+ownership_acquired_at | nil
+```
 
-Claim é transação atômica que:
+Constraint: owner e ownership timestamp aparecem juntos.
 
-- verifica owner expirado/estado reclaimable;
-- define novo owner;
-- incrementa generation;
-- registra evento de recovery.
+Estados atuais:
 
-## Fencing
+```text
+pending
+running
+completed
+failed
+cancelled
+```
 
-Escritas críticas carregam/validam generation. Owner antigo não pode continuar após takeover.
+## Claim explícito
 
-## Distributed Erlang
+```elixir
+Runs.claim(run_id, runtime_node_id)
+```
 
-`nodedown` acelera detecção, mas não concede ownership.
+- valida claimant existente/ativo;
+- locka Run `FOR UPDATE`;
+- pending/unowned/stale-owned pode ser adquirido;
+- primeiro claim muda pending para running;
+- nova posse incrementa generation;
+- mesmo active owner recebe token idempotente;
+- outro active owner é rejeitado.
+
+Token:
+
+```text
+run_id
+runtime_node_id
+generation
+```
+
+## Release
+
+```elixir
+Runs.release(token)
+```
+
+UPDATE inclui os três campos do token. Release preserva status/generation. Repetição é idempotente enquanto não existir claim posterior.
+
+## Supervision local
+
+```text
+run_id → RunSupervisor + token
+{:coordinator, run_id} → RunCoordinator + token
+```
+
+Registry é local.
+
+## Recovery
+
+`RunRecovery`:
+
+- lista tokens owned pela incarnação atual;
+- reconstrói árvore ausente sem incrementar generation;
+- reclama Runs running sem owner ou com owner expirado;
+- usa `FOR UPDATE SKIP LOCKED`, batch 25, ordering `updated_at + id`;
+- inicia árvore após commit;
+- não inicia pending;
+- aplica backoff global e por Run;
+- tenta release best effort no shutdown normal.
+
+## Fencing future writes
+
+Toda escrita crítica futura usa o token no mesmo SQL da mutação. Não existe check-then-write separado.

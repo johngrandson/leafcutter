@@ -1,6 +1,8 @@
-# Error and Retry Model
+# Error and retry model
 
-- Status: Accepted baseline
+- Estado: RATIFICADO — NÃO MATERIALIZADO
+
+Taxonomia inicial:
 
 ```text
 validation
@@ -11,17 +13,17 @@ temporary
 permanent
 ```
 
-## Retry
+Política:
 
 ```text
 validation      no automatic retry
-authentication  blocked until configuration/secret changes
-rate_limited    retry at Retry-After/backoff
+authentication  wait for config/secret change
+rate_limited    retry later
 timeout         retry
 temporary       retry
 permanent       no automatic retry
 ```
 
-Delivery retryable volta a `pending` com `available_at`. Attempt registra cada try.
+Delivery retryable usará `available_at` futuro e incrementará attempt count. Broadway não será o scheduler.
 
-Write Operation com resposta parcial retorna resultados por item; erro da request inteira não confirma nenhum item.
+Ainda precisam ser fechados tipos Elixir, serialized shape, backoff, max attempts e relação com HTTP status/vendor errors.

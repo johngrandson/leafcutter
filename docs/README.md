@@ -1,49 +1,84 @@
-# Índice da documentação do Leafcutter
+# Documentação do Leafcutter
 
-## Arquitetura
+A documentação do Leafcutter separa explicitamente **estado materializado**, **arquitetura ratificada para o futuro**, **decisões em aberto** e **material de pesquisa**.
 
-- `architecture/como-o-leafcutter-foi-arquitetado.md`: narrativa geral da arquitetura.
-- `architecture/principios-e-restricoes.md`: critérios obrigatórios de design.
-- `architecture/visao-geral.md`: visão resumida das peças.
-- `architecture/modelo-conceitual.md`: relações entre Package, Integration, Run e dados de execução.
-- `architecture/contextos-e-ownership.md`: proposta de Phoenix Contexts e ownership.
-- `architecture/umbrella-e-dependencias.md`: proposta de apps e grafo de dependências.
-- `architecture/integration-packages.md`: estrutura de packages.
-- `architecture/contracts-json-schema.md`: contratos e JSV.
-- `architecture/connectors-operations-transports.md`: integração com sistemas externos.
-- `architecture/transformations-enrichments-interceptors.md`: lógica customizada.
-- `architecture/runtime-otp-broadway.md`: control plane e data plane.
-- `architecture/durabilidade-e-recovery.md`: Postgres, checkpoints e `at-least-once`.
-- `architecture/cluster-e-infraestrutura.md`: nodes BEAM e evolução da infraestrutura.
-- `architecture/api-openapi.md`: API-first, OpenAPI e Postman.
-- `architecture/ambientes-rbac-homologacao.md`: governança.
-- `architecture/observabilidade-e-auditoria.md`: monitoramento e eventos.
-- `architecture/storage-e-retencao.md`: lifecycle de metadata e payloads.
-- `architecture/testes-e-qualidade.md`: estratégia de qualidade.
-- `architecture/roadmap.md`: releases planejadas.
-- `architecture/decisoes-em-aberto.md`: pontos ainda não ratificados.
-- `architecture/glossario.md`: linguagem oficial do produto.
+## Ordem de autoridade
 
-## Decisões
+```text
+Código + testes
+    ↓
+ADRs aceitos
+    ↓
+Documentação arquitetural ratificada
+    ↓
+Specifications e OpenAPI versionados
+    ↓
+CURRENT.md para o ponto de continuidade
+    ↓
+Research e conversas como apoio
+```
 
-Consulte `decisions/README.md`.
+Quando um documento divergir do código, o código e os testes prevalecem. Quando a divergência representar mudança intencional de arquitetura, o ADR e a documentação devem ser atualizados antes de tratar a mudança como consolidada.
 
-## Harness
+## Vocabulário de estado
 
-- `harness/CODEX_OPERATING_MODEL.md`
-- `harness/SESSION_HANDOFF.md`
-- `harness/TASK_BRIEF_TEMPLATE.md`
-- `harness/REVIEW_CHECKLIST.md`
-- `harness/CHANGE_PROTOCOL.md`
+| Estado | Significado |
+|---|---|
+| **MATERIALIZADO** | Existe no código e possui cobertura compatível com o estágio atual. |
+| **PARCIALMENTE MATERIALIZADO** | Parte do desenho está no código; o documento preserva também a evolução ratificada. |
+| **RATIFICADO — NÃO MATERIALIZADO** | A direção foi aprovada, mas ainda não existe implementação completa. |
+| **ABERTO** | A decisão ainda precisa ser fechada antes de implementação. |
+| **PESQUISA** | Referência não normativa; não altera a arquitetura por si só. |
+| **TEMPLATE** | Estrutura operacional reutilizável. |
 
-## Implementação
+A convenção completa está em `architecture/estado-atual-e-visao-futura.md` e no ADR-0016.
 
-- `implementation/sequence.md`
-- `implementation/first-milestone.md`
-- `implementation/definition-of-done.md`
-- `implementation/quality-gates.md`
+## Começo recomendado
 
-## Checkpoint
+1. `checkpoint/CURRENT.md` — estado atual e próxima decisão.
+2. `architecture/estado-atual-e-visao-futura.md` — mapa entre presente e futuro.
+3. `architecture/visao-geral.md` — visão resumida.
+4. `architecture/contextos-e-ownership.md` — boundaries de domínio.
+5. `architecture/umbrella-e-dependencias.md` — boundaries das OTP applications.
+6. `architecture/runtime-otp-broadway.md` — runtime materializado e data plane planejado.
+7. `decisions/README.md` — decisões e estado de implementação.
+8. `implementation/README.md` — sequência prática e gates.
 
-- `checkpoint/CURRENT.md`
-- `checkpoint/SESSION_BOOTSTRAP.md`
+## Áreas
+
+### Arquitetura
+
+`architecture/README.md` indexa todos os documentos e informa se cada um descreve estado atual, futuro ratificado ou ambos.
+
+### Decisões
+
+`decisions/README.md` contém o índice de ADRs, seu status decisório e seu estado de implementação.
+
+### Checkpoint
+
+- `checkpoint/CURRENT.md`: estado vivo do projeto.
+- `checkpoint/SESSION_BOOTSTRAP.md`: leitura mínima para iniciar uma sessão.
+
+### Implementação
+
+`implementation/README.md` conecta o roadmap arquitetural aos slices de código e aos quality gates.
+
+### Specifications
+
+`specifications/README.md` diferencia contracts já materializados de specifications ratificadas para o data plane futuro.
+
+### Produto
+
+`product/README.md` separa capacidades já disponíveis como foundation das capacidades completas do produto planejado.
+
+### Harness
+
+`harness/README.md` descreve colaboração com agentes, handoff, revisão e protocolo de mudanças.
+
+### Pesquisa
+
+`research/README.md` contém material não normativo. Pesquisa pode motivar uma proposta, mas não substitui ADR nem ratificação.
+
+### Templates
+
+`templates/README.md` contém modelos para ADR, checkpoint e milestone já alinhados à separação entre presente e futuro.

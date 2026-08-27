@@ -1,86 +1,53 @@
 # Storage e retenção
 
-## Modelo lógico e armazenamento físico
+> **Status: POSTGRESQL FOUNDATION MATERIALIZADA; POLÍTICAS E TIERS FUTUROS.**
 
-O modelo lógico permanece:
+## Estado atual
 
-```text
-Run
-└── Record
-    ├── Enrichment
-    └── Delivery
-        └── Attempt
-```
-
-Isso não obriga todos os payloads a permanecer no Postgres quente para sempre.
-
-## Metadata vs content
+PostgreSQL armazena:
 
 ```text
-Queryable metadata
-→ status, timestamps, identity, hashes, errors, indexes
-
-Audit content
-→ source payload, transformed payload, request, response
+Organizations/RBAC tables
+runtime_nodes
+runs
+Oban tables
 ```
 
-## Primeira versão
+Um único Repo e uma única migration stream são usados.
 
-Começar simples com PostgreSQL, inclusive JSONB quando útil, mas manter campos/ref abstraídos para futura migração de conteúdo volumoso.
+## Papel do PostgreSQL
 
-## Evolução
+PostgreSQL continuará sendo a operational truth para metadata, ownership, checkpoint e backlog durável inicial.
+
+## Payloads futuros
+
+Na primeira versão do data plane, JSONB pode ser usado por simplicidade. O modelo deve separar metadata de content para permitir externalização posterior.
 
 ```text
 PostgreSQL
-→ operational truth and queryable metadata
+→ operational metadata and current backlog
 
-Object Storage
-→ large immutable payloads and archived bodies
+Object Storage future
+→ large immutable payloads and archives
 
 Analytics Store future
-→ large-scale historical aggregation
+→ high-volume historical aggregation
 ```
 
-Object storage é preferível a introduzir um segundo banco operacional apenas para frio.
+## Retenção ainda aberta
 
-## Payload references
+- RuntimeNode incarnations antigas;
+- Runs terminais;
+- Records e Deliveries;
+- Attempts e request/response metadata;
+- raw payloads;
+- AuditEvents e ExecutionEvents;
+- notification history.
 
-Quando externalizado:
+## Segurança
 
-```text
-payload_ref
-payload_sha256
-content_type
-size
-retention_class
-```
+Payload access terá permission própria. Secrets nunca são armazenados como payload de execução. Redaction e encryption policy ainda precisam ser fechadas.
 
-Hashes ajudam integridade e deduplicação futura.
+## Regra de evolução
 
-## Retenção
-
-Policies podem ser environment/plan scoped:
-
-```text
-hot
-warm
-cold
-expired/deleted
-```
-
-Audit export pode ser assíncrono e possuir SLA próprio, executado por Oban.
-
-## Queries
-
-Frontend/API comum usa:
-
-- summaries;
-- filtros;
-- paginação;
-- individual Record/Delivery/Attempt.
-
-Nunca carrega a coleção completa de milhões de Records.
-
-## PII e secrets
-
-Payload access precisa de permissão própria. Secrets nunca são persistidos em audit payloads. Redaction deve ser aplicada antes de logs e eventos.
+Object storage ou analytics DB entram quando volume, custo ou query pattern justificarem. Não introduzir tiers antecipadamente.

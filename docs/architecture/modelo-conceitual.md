@@ -1,15 +1,39 @@
 # Modelo conceitual
 
-## Relação principal
+> **Status: PARCIALMENTE MATERIALIZADO.** As entidades atuais são marcadas separadamente da cadeia executável futura.
+
+## Conceitos materializados
 
 ```text
-Package Version
-    │ configured as
+Organization
+└── Environment
+
+User
+└── Membership
+    └── RoleAssignment
+
+ServiceAccount
+└── ServiceAccountRoleAssignment
+
+Role
+└── RolePermission
+
+RuntimeNode
+└── Run ownership
+```
+
+`Run` existe hoje como identidade de lifecycle e authority de ownership. Ainda não representa uma definição executável completa.
+
+## Relação principal planejada
+
+```text
+PackageVersion
+    │ deployed through
     ▼
-Integration
-    │ executed as
+EnvironmentDeployment
+    │ snapshotted into
     ▼
-Run
+Run + RunSnapshot
     │ processes
     ▼
 Record
@@ -23,76 +47,69 @@ Attempt
 
 ## Organization e Environment
 
-`Organization` é a fronteira de propriedade de um cliente. `Environment` isola configuração e operação, por exemplo `development`, `homologation` e `production`.
+`Organization` é a fronteira de tenancy. `Environment` é scope operacional configurável. O lifecycle básico e o RBAC desses conceitos estão implementados.
 
-Connections, Integrations, Runs e IdentityMappings são environment-scoped quando o isolamento for necessário.
+No futuro, Connections, EnvironmentDeployments, Runs e IdentityMappings carregarão referências explícitas de Organization/Environment conforme seu ownership.
 
 ## Catalog
 
-O Catalog organiza building blocks reutilizáveis:
-
-- Official Connectors;
-- Custom Connectors reutilizáveis;
-- Operations;
-- Contracts e suas versões;
-- Integration Packages e suas versões;
-- categorias e metadata de descoberta.
-
-## Integration Package
-
-O Package é código e metadata versionados. Ele não guarda secrets nem configuração concreta de cliente.
+O Catalog ratificado controla identidade, metadata, publicação e versões imutáveis de:
 
 ```text
+Connector
+ConnectorVersion
+Operation metadata
+Contract
+ContractVersion
 Package
-├── source definition
-├── destination definitions
-├── contracts
-├── transformations
-├── enrichments
-├── interceptors
-└── dependency versions
+PackageVersion
 ```
 
-## Integration
+Ainda não existe implementação do Catalog.
 
-A Integration é uma instância configurada do Package dentro de um Organization + Environment.
+## Integration e EnvironmentDeployment
 
-Ela escolhe:
+`Integration` será identidade lógica de uma Organization vinculada a um Package estável.
 
-- Package Version;
-- Connections;
-- valores de configuração;
-- batching e concorrência permitidos;
-- Trigger/Schedule;
-- Labels;
-- estado ativo/inativo.
+`EnvironmentDeployment` será a configuração executável por Environment:
 
-## Run Snapshot
+- PackageVersion;
+- source/destination Connection bindings;
+- promotable config;
+- local config;
+- Triggers;
+- lifecycle.
 
-Quando um Run começa, a configuração efetiva é congelada:
+## Run e RunSnapshot
+
+Hoje `Run` possui status, owner, generation e timestamps de ownership.
+
+A próxima evolução adicionará uma relação 1:1 com `RunSnapshot` imutável:
 
 ```text
-Package defaults
-+ Integration overrides
-+ resolved Contract versions
-+ resolved dependency versions
+resolved PackageVersion
++ ContractVersions
++ effective config
 + Connection references
-= immutable Run Snapshot
++ safe SecretVersion references
+= immutable RunSnapshot
 ```
 
-Mudanças posteriores na Integration não alteram Runs já iniciados.
+Raw secrets permanecem fora do snapshot.
 
 ## Record, Delivery e Attempt
 
+Futuro ratificado:
+
 ```text
 Record
-→ ocorrência de um item da origem dentro de um Run
+→ ocorrência de um item da origem dentro de uma Run
 
 Delivery
-→ obrigação durável de processar esse Record para um destino
+→ obrigação durável de processar o Record para um destino
 
 Attempt
-→ tentativa concreta de executar uma operação externa
+→ tentativa concreta de efeito externo
 ```
 
 ## Identity
@@ -101,29 +118,31 @@ Attempt
 Record ID
 → ocorrência interna
 
-Source Identity
-→ identidade estável no sistema de origem
+SourceIdentity
+→ identidade estável na origem
 
-Payload Hash
-→ fingerprint do conteúdo daquela versão
+PayloadHash
+→ fingerprint do conteúdo
 
 IdentityMapping
-→ relação entre uma Source Identity e uma Destination Identity
+→ relação persistente entre identidades de sistemas diferentes
 ```
 
-## Enrichment
+## Checkpoint
 
-Enrichment é trabalho opcional e durável para buscar dados adicionais antes da Transformation. Side effects pertencem a Connector/Operation; a Transformation permanece pura.
+Checkpoint será o último progresso seguro do source. Seu avanço será atômico com a criação de Records e Deliveries.
 
 ## Eventos
 
+Planejado:
+
 ```text
 ExecutionEvent
-→ fatos relevantes do lifecycle de um Run
+→ lifecycle da execução
 
 AuditEvent
-→ ação humana ou administrativa
+→ ações humanas/administrativas
 
 PubSub message
-→ sinal efêmero, nunca fonte da verdade
+→ propagação efêmera, nunca authority
 ```

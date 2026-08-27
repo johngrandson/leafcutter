@@ -1,51 +1,76 @@
 # Decisões em aberto
 
-Estas decisões não devem ser tratadas como fechadas apenas porque aparecem como proposta em documentos.
+> **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-## Imediatas
+## Próxima decisão
 
-1. Ratificar Context Map, context por context.
-2. Ratificar apps da umbrella e dependências.
-3. Definir ownership de Repo, migrations, PubSub e Oban entre apps.
-4. Definir estratégia de compilação de `packages/` na mesma release.
-5. Fechar Package Manifest JSON Schema v1.
-6. Definir Ecto schemas, campos, constraints e índices.
-7. Fechar API surface e error envelope OpenAPI.
+### RunSnapshot e criação pública de Run
+
+Fechar:
+
+- relação 1:1 entre Run e RunSnapshot;
+- definition attrs e error contract;
+- PackageVersion/ContractVersion references;
+- effective config congelada;
+- Connection e SecretVersion references sem raw secrets;
+- atomicidade de criação;
+- quando `pending` entra no recovery automático.
+
+## Domínio
+
+- schemas e APIs públicas de Catalog;
+- Connection/Secret/SecretVersion;
+- Integration/EnvironmentDeployment;
+- histórico de deployment;
+- homologation evidence e promotion records;
+- Record/Delivery/Attempt/Checkpoint;
+- ExecutionEvent e AuditEvent;
+- durable cross-context fact mechanism.
 
 ## Runtime
 
-- algoritmo concreto de pause/resume/cancel;
-- limites de backlog e storage backpressure;
-- granularidade de persistence batch;
-- claim timeout/visibility de Deliveries;
-- política de retry/backoff;
-- processo de graceful shutdown;
-- validação de `generation` em todas as escritas críticas.
+- lifecycle completo de Run;
+- pause/resume/cancel/terminalização;
+- data-plane ownership checks;
+- persistence batch sizes;
+- Delivery claim visibility;
+- retry policy final;
+- backlog/storage limits;
+- recovery wake-up hints além de polling.
 
-## Segurança e governança
+## Contracts e packages
 
-- permission matrix inicial;
-- secret encryption/provider;
-- policy de payload redaction;
-- homologation evidence model;
-- production promotion approvals.
+- Package Manifest JSON Schema v1;
+- package inclusion no build/release;
+- Connector/Operation/Transport behaviours;
+- JSON Schema compilation/cache;
+- HTTP client e pool strategy.
+
+## Segurança
+
+- User authentication;
+- ServiceAccount credentials;
+- secret provider/encryption;
+- payload redaction;
+- external error exposure;
+- expanded permission matrix.
 
 ## Infraestrutura
 
-- provider;
 - cluster discovery;
-- Postgres topology/backups;
-- object storage;
-- metrics/logging stack;
-- deployment/migration sequencing.
+- provider e deployment topology;
+- Postgres HA, backup e migration sequencing;
+- metrics/logging/tracing stack;
+- RuntimeNode cleanup;
+- object storage e retention.
 
-## Futuro deliberado
+## Futuro deliberadamente não decidido
 
 - external queue;
 - Redis;
 - package isolation;
-- dedicated analytics DB;
+- analytics DB;
+- specialized nodes;
 - multi-source joins;
 - SDKs;
-- standalone CLI;
 - API Management completo.

@@ -1,92 +1,89 @@
-# Roadmap arquitetural por releases
+# Roadmap arquitetural
 
-> O roadmap descreve o produto completo em etapas. Datas e numeração fina podem mudar; boundaries não devem depender do cronograma.
+> O roadmap preserva a plataforma-alvo sem fingir que todas as capacidades já existem. A sequência pode mudar; boundaries ratificadas não dependem de datas.
 
-## V0 - Foundation
+## Foundation materializada
 
-- umbrella vazia;
-- documentação, ADRs e harness;
-- CI mínimo;
-- context map ratificado;
-- apps e dependency graph;
-- Repo/Postgres base;
-- OpenAPI foundation;
-- package specification draft.
+### Plataforma
 
-## V1 - Reliable HTTP integration core
+- umbrella com quatro OTP applications;
+- grafo de dependências sem ciclos;
+- Repo, PubSub e Oban compartilhados;
+- migrations centralizadas;
+- harness, ADRs e quality gates.
 
-- Organizations e Environments básicos;
+### Organizations
+
+- Organization e Environment lifecycle;
+- User, ServiceAccount e Membership;
+- Role, Permission e assignments scoped;
+- authorization para User e ServiceAccount.
+
+### Runtime control plane
+
+- RuntimeNode liveness durável;
+- Run lifecycle mínimo;
+- ownership + generation fencing;
+- claim/release;
+- Registry local e DynamicSupervisor;
+- RunSupervisor + RunCoordinator;
+- RunRecovery por polling com `SKIP LOCKED`.
+
+## Próximo estágio: definição executável de Run
+
+- RunSnapshot 1:1 e imutável;
+- workflow público de criação de Run;
+- eligibility segura de Run `pending`;
+- references/config congeladas sem raw secrets.
+
+## Reliable integration core
+
 - Catalog mínimo;
-- JSON Schema + JSV;
+- Contracts + JSON Schema/JSV;
+- Connector/Operation/Transport contracts;
 - Generic HTTP Connector;
-- Package Versions compiladas com a release;
-- Connections/Secrets básicos;
-- one Source -> N Destinations;
-- Transformations 1->0/1/N;
-- durable Records/Deliveries;
-- Broadway source/destination pipelines;
-- manual Run;
-- checkpoint e `at-least-once`;
-- Attempts, Execution Monitoring API;
-- IdentityMapping;
-- OpenAPI + Postman derivado.
+- Connections/Secrets;
+- Integration + EnvironmentDeployment;
+- PackageVersion 1 Source → N Destinations;
+- manual and automatic Run startup from snapshot.
 
-## V1.x - Reliability and operations
+## Data plane durável
 
-- retries avançados e rate limits;
+- Record, Delivery, Attempt e Checkpoint;
+- SourceBroadway;
+- DestinationBroadway por destination;
+- durable fan-out atomicity;
+- Transformation 1→0/1/N;
+- retry e partial batch results;
+- IdentityMapping.
+
+## Operação e governança
+
+- lifecycle completo de Run;
+- pause/resume/cancel;
 - schedules via Oban;
-- shared Enrichment pipelines;
-- notification rules;
-- node heartbeat, ownership e recovery;
-- multi-node homogeneous deployment;
-- graceful shutdown/deploy recovery;
-- audit events.
+- Enrichment;
+- NotificationRules;
+- AuditEvents;
+- homologation, promotion e rollback;
+- secret rotation e payload access controls.
 
-## V2 - Governance
+## Ecossistema
 
-- RBAC granular;
-- service accounts;
-- homologation;
-- promotion/rollback;
-- environment-scoped permissions;
-- payload access controls;
-- secret rotation/versioning;
-- deployment history.
+- official/custom connectors;
+- package tooling e manifest v1;
+- build/publish/registry;
+- OpenAPI import;
+- Postman derivado.
 
-## V3 - Package and Connector ecosystem
+## Futuro condicionado por demanda
 
-- Official Connectors iniciais;
-- Custom Connector lifecycle;
-- Mix-based package validation/build/publish;
-- Package dependency resolution;
-- artifact/registry design;
-- immutable Contract registry;
-- OpenAPI import.
-
-## V4 - Inbound and multi-transport
-
-- Inbound Endpoints;
-- inbound OpenAPI revisions;
-- Database/SFTP/other Transports conforme demanda;
-- Codecs CSV/XML conforme demanda;
-- object storage for payloads;
-- audit exports.
-
-## V5 - Scale and isolation
-
-- specialized node roles somente se medido;
-- package artifact isolation;
-- external queue somente se Postgres durable backlog for gargalo comprovado;
+- inbound APIs;
+- Database/SFTP transports;
+- object storage;
+- package isolation;
+- specialized nodes;
 - analytics store;
-- advanced capacity/fairness controls;
-- multi-region probes/runtime se houver caso comercial.
-
-## V6+ - Advanced integration platform
-
-- API Management completo;
-- API Consumers/Client Credentials;
+- external queue somente com gargalo comprovado;
 - multi-source orchestration;
-- joins/windowed aggregation;
-- developer portal;
-- SDKs após API estabilizada;
-- standalone CLI somente se Mix tooling se tornar insuficiente.
+- SDKs após estabilização.

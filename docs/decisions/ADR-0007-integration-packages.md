@@ -1,16 +1,24 @@
-# ADR-0007 - Integration Packages
+# ADR-0007 — Integration Packages fora de `apps/`
 
 - Status: Accepted
+- Estado de implementação: ESTRUTURA RATIFICADA; MECANISMO DE BUILD ABERTO
 
 ## Decisão
 
-Código específico de integrações vive em `packages/`, separado de `apps/`. Cada Package possui `manifest.json`, schemas, módulos Elixir e testes. Inicialmente participa do mesmo build/release.
+```text
+packages/<package>/
+├── mix.exs
+├── manifest.json
+├── lib
+└── test
+```
 
-Package é versionado e imutável; Integration é configuração de cliente; Run é execução.
+Cada Package será Mix project independente, não uma quinta platform application.
+
+## Estado atual
+
+A estrutura e os contracts conceituais estão documentados, mas nenhum Package funcional ou mecanismo de inclusão na release foi materializado.
 
 ## Consequências
 
-- core da plataforma não conhece clientes;
-- Git/testes/versionamento normais;
-- estratégia física de compilação ainda precisa ser ratificada;
-- caminho aberto para artifacts isolados no futuro.
+Build precisa ser explícito e auditável. Package não depende de internals de runtime/API.

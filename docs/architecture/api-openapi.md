@@ -1,84 +1,62 @@
-# API-first, OpenAPI e Postman
+# API e OpenAPI
 
-## Decisão
+> **Status: PHOENIX FOUNDATION MATERIALIZADA; API DE PRODUTO E OPENAPI RATIFICADOS — NÃO MATERIALIZADOS.**
 
-Toda capacidade do Leafcutter deve ser operável sem frontend.
+## Estado atual
 
-OpenAPI é a fonte canônica do contrato da API. Postman é uma Collection gerada/sincronizada a partir dela.
-
-```text
-OpenAPI
-├── documentation
-├── Postman collection
-└── SDKs futuros
-```
-
-## Domínios esperados na API
+`leafcutter_api` possui:
 
 ```text
-Authentication
-Organizations
-Users / Service Accounts / RBAC
-Environments
-Catalog
-Contracts
-Packages / Package Versions
-Connections / Secrets metadata
-Integrations
-Homologations / Promotions / Rollbacks
-Triggers / Schedules
-Runs
-Records
-Deliveries
-Attempts
-Enrichments
-IdentityMappings
-Notification Rules
-Audit
+Phoenix Endpoint
+Router
+Telemetry
+ErrorJSON básico
+Bandit adapter
 ```
 
-## Workflows
+Ainda não existem endpoints públicos para Organizations, RBAC, Runs ou demais contexts.
 
-A API deve permitir workflows completos, não apenas CRUD:
+## Direção ratificada
+
+Toda capacidade do produto será operável sem frontend.
 
 ```text
-create Organization
-→ create HML and PROD environments
-→ create Connections
-→ publish Package Version
-→ configure Integration in HML
-→ execute and inspect
-→ homologate
-→ promote
-→ execute in PROD
+OpenAPI canônico
+├── documentação da plataforma
+├── Postman derivado
+└── SDKs futuros após estabilização
 ```
 
-## Commands
+Postman e SDKs não podem conter regras ou knowledge ausente no contrato canônico.
 
-Ações de domínio podem usar endpoints explícitos:
+## Boundary HTTP
+
+Fluxo planejado:
 
 ```text
-POST /integrations/{id}/activate
-POST /integrations/{id}/runs
-POST /runs/{id}/pause
-POST /deliveries/{id}/retry
-POST /deployments/{id}/promote
+HTTP request
+→ authenticate
+→ resolve actor
+→ Organizations.Access.authorize(...)
+→ workflow/context public API
+→ map domain result to HTTP
 ```
 
-A nomenclatura final ainda precisa ser desenhada no OpenAPI.
+Controllers e plugs adaptam transporte; não possuem regra de negócio.
 
-## Idempotency
+## Erros
 
-Endpoints que criam efeitos relevantes devem aceitar Idempotency-Key quando apropriado.
+Contracts de domínio continuam explícitos. O error envelope HTTP final ainda precisa ser ratificado, incluindo o quanto de lifecycle interno será exposto externamente.
 
-## Paginação e erros
+## Health e readiness
 
-Paginação, filtros, sorting e error envelope devem ser consistentes em toda a API.
+Health/readiness completos ainda não foram materializados. A API deverá distinguir processo vivo de dependências realmente prontas, especialmente Repo e runtime.
 
-## SDKs
+## Futuro deliberado
 
-SDKs só entram depois que endpoints, errors e workflows estabilizarem. Não devem influenciar a arquitetura da primeira versão.
-
-## Inbound API
-
-Inbound Endpoints são sources HTTP declarativos de Integration Packages. A OpenAPI das APIs inbound é separada da OpenAPI administrativa da plataforma.
+- OpenAPI versionado;
+- autenticação de User e ServiceAccount;
+- endpoints de gestão e execução;
+- Postman gerado;
+- inbound HTTP sources em release posterior;
+- SDKs somente com API estável.

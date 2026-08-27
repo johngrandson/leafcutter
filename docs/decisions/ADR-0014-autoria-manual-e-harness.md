@@ -1,16 +1,14 @@
-# ADR-0014 - Autoria manual e harness versionado
+# ADR-0014 — Desenvolvedor como autor principal e harness versionado
 
 - Status: Accepted
+- Estado de implementação: MATERIALIZADO
 
 ## Decisão
 
-O desenvolvedor escreve e entende a maior parte do código. Codex/ChatGPT atuam por padrão como guia, revisor, pesquisador e parceiro de debugging.
+O desenvolvedor é autor principal. Agentes atuam como guia, revisor, debugger ou executor de mudanças explicitamente autorizadas.
 
-O repositório é a memória canônica através de AGENTS.md, ADRs, arquitetura, testes e `CURRENT.md`.
+O repositório, não a conversa, é a memória canônica.
 
 ## Consequências
 
-- desenvolvimento mais lento, porém maior domínio;
-- agentes não implementam features amplas sem pedido;
-- checkpoint de sessão precisa ser atualizado;
-- conversas não são fonte de verdade.
+Mudanças amplas exigem pedido explícito. Handoff, task brief, checklist e checkpoint são versionados.

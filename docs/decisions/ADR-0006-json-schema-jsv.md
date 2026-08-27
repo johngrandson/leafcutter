@@ -1,17 +1,16 @@
-# ADR-0006 - JSON Schema Draft 2020-12 e JSV
+# ADR-0006 — JSON Schema 2020-12 + JSV
 
 - Status: Accepted
+- Estado de implementação: NÃO MATERIALIZADO
 
 ## Decisão
 
-JSON Schema Draft 2020-12 é o contrato canônico dos payloads. JSV é o validator inicial. Runtime usa maps/lists/scalars compatíveis com JSON.
+Contracts externos usarão JSON Schema Draft 2020-12 e JSV.
 
-Schemas e referências são versionados, congelados e compilados fora do hot path.
+## Futuro ratificado
+
+Source e destination payloads serão validados. ContractVersions publicadas serão imutáveis. Validators serão compilados/reutilizados e referências remotas resolvidas antes da execução.
 
 ## Consequências
 
-- contratos portáveis;
-- validação nas duas bordas;
-- OpenAPI import futuro;
-- nenhuma geração obrigatória de structs por schema;
-- JSV não deve vazar pelo domínio inteiro.
+JSON Schema protege boundaries externas, mas não vira framework de regras internas do Leafcutter.

@@ -1,17 +1,54 @@
 # Durabilidade, checkpoint e recovery
 
-## Semântica
+> **Status: OWNERSHIP/RECOVERY MATERIALIZADOS; DURABLE FAN-OUT RATIFICADO PARA O FUTURO.**
 
-O Leafcutter assume `at-least-once`.
+## Semântica base
 
 ```text
-Se não é possível provar que o efeito terminou,
-o trabalho pode ser executado novamente.
+at-least-once
 ```
 
-Exactly-once não é prometido entre sistemas externos. Idempotency, upsert e IdentityMapping podem produzir efeito efetivamente único quando o destino suporta.
+Se o sistema não consegue provar que um efeito externo terminou, o trabalho pode ser executado novamente. Exactly-once universal não é prometido.
 
-## Fan-out durável
+## Durabilidade já existente
+
+### RuntimeNode
+
+```text
+id
+node_name
+last_heartbeat_at
+```
+
+`id` representa uma incarnação. O nome Erlang não é identidade. Heartbeat usa o relógio do PostgreSQL.
+
+### Run ownership
+
+```text
+owner_node_id
+generation
+ownership_acquired_at
+```
+
+`generation` é fencing token. Release e futuras escritas críticas precisam aplicar o token na mesma instrução SQL da mutação.
+
+### Recovery local e de node
+
+```text
+process crash
+→ Supervisor restarts local process
+
+local tree missing but ownership still current
+→ RunRecovery reconstructs same generation
+
+node heartbeat expired
+→ another node reclaims
+→ generation increments
+```
+
+`RunRecovery` usa polling, lotes e `FOR UPDATE SKIP LOCKED`.
+
+## Durabilidade futura do data plane
 
 Para um Record com dois destinos:
 
@@ -21,24 +58,26 @@ Record 42
 └── Delivery Billing pending
 ```
 
-Records, todas as Deliveries e o checkpoint seguro são persistidos em uma transação.
-
-## Checkpoint
-
-O Source Producer mantém cursor operacional em memória. PostgreSQL guarda o último cursor seguro.
+Transação ratificada:
 
 ```text
-Producer current cursor = 47
-Postgres safe cursor    = 45
+insert Records
++ insert all Deliveries
++ advance Checkpoint
+= one commit
 ```
 
-Crash pode reprocessar 46-47. Isso é esperado.
+Se a transação falha, o checkpoint não avança.
 
-Não criar `CheckpointSupervisor`. Checkpoint é estado durável, não lifecycle próprio.
+## Checkpoint futuro
 
-## Estados mínimos
+O source pode manter cursor operacional em memória. PostgreSQL guarda o último cursor seguro. Reprocessamento após crash é esperado.
 
-Evitar write amplification. Delivery precisa de poucos estados duráveis significativos:
+Checkpoint é estado durável; não haverá `CheckpointSupervisor` sem lifecycle real.
+
+## Delivery e Attempt futuros
+
+Estados mínimos esperados de Delivery:
 
 ```text
 pending
@@ -47,55 +86,31 @@ completed
 failed
 ```
 
-Detalhes de alta frequência permanecem no runtime.
+`Attempt` registra a chamada concreta. Sucesso parcial de batch é preservado por item.
 
-## Error model
-
-```text
-:validation      → no automatic retry
-:authentication  → no retry until configuration changes
-:rate_limited    → retry later
-:timeout         → retry
-:temporary       → retry
-:permanent       → no automatic retry
-```
-
-Write Operations preservam sucesso parcial por item.
-
-## Recovery local
-
-Se um processo ou pipeline cai, o Supervisor reinicia. Estado durável permite reconstrução.
-
-## Recovery de node
-
-Um Run pertence a um node por vez.
+## Error model ratificado
 
 ```text
-runtime_nodes
-→ one heartbeat per BEAM node
-
-runs
-→ owner_node
-→ generation
+validation      → no automatic retry
+authentication  → blocked until configuration changes
+rate_limited    → retry later
+timeout         → retry
+temporary       → retry
+permanent       → no automatic retry
 ```
 
-Distributed Erlang `nodedown` é sinal rápido, não autoridade.
-
-Quando heartbeat expira, outro node pode claimar atomicamente o Run, incrementar `generation`, carregar snapshot/checkpoint e reiniciar sua árvore.
-
-`generation` funciona como fencing token. Escritas críticas de owner antigo devem ser rejeitadas.
-
-## Registry
-
-Elixir Registry é local ao node e serve para localizar processos locais por Run ID. Não é mecanismo de exclusividade de cluster.
+A forma final dos structs e códigos públicos ainda será fechada junto aos contracts de Connector/Operation.
 
 ## Sem fila externa inicial
 
 ```text
-Source Broadway
-→ bulk insert Records + Deliveries + Checkpoint
-→ Postgres durable backlog
-→ Destination Broadways
+SourceBroadway
+→ PostgreSQL durable backlog
+→ DestinationBroadway
 ```
 
-Fila externa só entra após métricas demonstrarem que o Postgres no caminho de ingestão é o gargalo dominante.
+Fila externa entra somente se métricas demonstrarem que o backlog durável no PostgreSQL é o gargalo dominante.
+
+## Recovery não significa criação de trabalho
+
+O scanner atual recupera apenas Runs `running`. Runs `pending` precisam de definição executável imutável antes de se tornarem elegíveis automaticamente.

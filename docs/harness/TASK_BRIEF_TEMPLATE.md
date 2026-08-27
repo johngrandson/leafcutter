@@ -1,49 +1,43 @@
-# Task Brief
+# Task brief
 
-## Goal
+## Objetivo
 
-Descreva uma única mudança observável.
+Descreva o resultado observável.
 
-## Owner context
+## Estado atual materializado
 
-Context e capability module responsáveis.
+- código existente;
+- APIs/contracts existentes;
+- tests que provam comportamento.
 
-## Current behavior
+## Arquitetura futura relacionada
 
-Como funciona hoje, com referências de arquivos.
+- decisões ratificadas que devem ser preservadas;
+- itens explicitamente fora do slice.
 
-## Desired behavior
+## Decisões abertas
 
-Resultado esperado, sem prescrever abstrações desnecessárias.
+- nenhuma / listar e parar antes da implementação.
 
-## Constraints
+## Owner
 
-- ADRs relevantes;
-- idioma;
-- security;
-- performance;
-- backwards compatibility.
-
-## Non-goals
-
-O que não deve entrar nesta tarefa.
-
-## Failure cases
-
-Crashes, retries, invalid data, stale ownership, partial success etc.
-
-## Tests
-
-Testes unitários/context/runtime/contract necessários.
-
-## Documentation
-
-`@moduledoc`, `@doc`, `@spec`, ADR, architecture docs, OpenAPI.
-
-## Validation commands
-
-```bash
-mix format --check-formatted
-mix compile --warnings-as-errors
-mix test <paths>
+```text
+Context:
+OTP application:
+Public API/workflow:
 ```
+
+## Mudança mínima
+
+- arquivos;
+- contract;
+- persistência/processos;
+- error cases;
+- concorrência/idempotência.
+
+## Definition of done
+
+- tests;
+- quality gates;
+- docs/ADR/spec;
+- checkpoint, se milestone.

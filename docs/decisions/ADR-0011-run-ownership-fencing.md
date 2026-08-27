@@ -1,23 +1,36 @@
-# ADR-0011 - Ownership de Run e fencing
+# ADR-0011 — Ownership de Run e fencing
 
 - Status: Accepted
+- Estado de implementação: MATERIALIZADO
 
 ## Decisão
 
-Um Run pertence a um BEAM node por vez. Existe um heartbeat por node, não por Run. Run guarda `owner_node` e `generation`.
+Um Run pertence a uma RuntimeNode incarnação por vez. Existe um heartbeat por incarnação, não por Run. `generation` é fencing token monotônico.
 
-Cada inicialização da application `leafcutter_runtime` cria um `RuntimeNode.id` novo para representar uma incarnação específica do runtime. Reiniciar apenas o processo `NodeHeartbeat` preserva esse identificador; reiniciar a application ou o BEAM cria outro.
+## Estado atual
 
-`node_name` registra o valor de `node()` apenas como metadata e não possui unicidade. Duas incarnações diferentes podem reutilizar o mesmo nome sem que o heartbeat novo ressuscite ownership pertencente à incarnação anterior.
+Materializado:
 
-Após expiração do heartbeat, outro node pode claimar atomicamente, incrementar `generation` e reconstruir a árvore. Escritas críticas rejeitam generation antiga.
+```text
+runtime_nodes
+runs.owner_node_id
+runs.generation
+claim/release
+RunRegistry local
+RunSupervisor + RunCoordinator
+RunRecovery polling
+FOR UPDATE SKIP LOCKED
+```
 
-Registry é local. Distributed Erlang sinaliza membership, mas PostgreSQL é a autoridade.
+O relógio do PostgreSQL decide liveness. Reclaim incrementa generation. Release usa o token no mesmo UPDATE.
+
+## Recovery
+
+O scanner reconstrói árvores já owned sem incrementar generation e reclama Runs `running` sem owner ou com owner expirado.
 
 ## Consequências
 
-- proteção contra stale owners, restarts e partitions;
-- identidade durável não depende somente do nome Erlang reutilizável;
-- registros históricos de incarnações antigas podem permanecer para diagnóstico e fencing;
-- sem `:global`, `:pg`, Horde ou lock distribuído customizado;
-- todas as escritas críticas precisam considerar fencing.
+- stale owners são rejeitados;
+- Registry não é authority distribuída;
+- sem `:global`, `:pg`, Horde ou lock customizado;
+- toda escrita crítica futura inclui o token na própria mutação.

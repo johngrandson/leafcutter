@@ -1,25 +1,21 @@
-# ADR-0003 - Comunicação entre contexts
+# ADR-0003 — Comunicação entre contexts
 
 - Status: Accepted
+- Estado de implementação: PARCIALMENTE MATERIALIZADO
 
 ## Decisão
 
-```text
-precisa de resposta
-→ chamada direta à API pública
+Chamadas síncronas passam por APIs públicas. PubSub propaga fatos efêmeros. Trabalho que não pode ser perdido precisa de representação durável.
 
-fato efêmero já ocorrido
-→ Phoenix.PubSub
+## Estado atual
 
-obrigação assíncrona que deve sobreviver
-→ persistência + Oban
-```
+Contexts materializados expõem APIs públicas. `Leafcutter.PubSub` e Oban são compartilhados. Ownership/recovery de Run possuem estado durável próprio.
 
-PubSub nunca é fonte da verdade. Contexts não acessam internals uns dos outros.
+O mecanismo físico para fatos duráveis cross-context obrigatórios ainda não foi materializado.
 
 ## Consequências
 
-- fluxo principal rastreável;
-- efeitos secundários desacoplados;
-- sem event bus genérico;
-- eventos duráveis exigem persistência explícita.
+- nenhum event bus genérico;
+- PubSub não substitui outbox/durable work;
+- consumers de fatos duráveis recebem envelope self-contained;
+- workflows coordenam use cases cross-context.

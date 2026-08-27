@@ -1,37 +1,38 @@
-# Package Manifest v1 - Draft
+# Package Manifest v1
 
-- Status: Proposed
+- Estado: DRAFT / ABERTO
 
-O schema definitivo ainda será desenhado. Esta lista registra responsabilidades, não campos congelados.
+## Estrutura conceitual
 
-## Deve declarar
+```text
+package identity/version
+exactly one source
+one or more destinations
+ConnectorVersion + Operation refs
+ContractVersion refs
+SourceIdentity rule
+config contract
+transformations
+enrichments
+interceptors
+```
 
-- package id/version;
-- source Connector/Operation/Contract;
-- identity config quando a Operation não souber;
-- destinations;
-- destination Connector/Operation/Contract;
-- Transformation module;
-- optional Enrichments;
-- explicit Interceptors;
-- dependencies e versões;
-- configuration requirements;
-- defaults/constraints permitidos.
+## Regras já ratificadas
 
-## Não deve declarar
+- PackageVersion publicada é imutável;
+- Package não contém secrets;
+- topology inicial é 1 Source → 1..N Destinations;
+- PackageDependency não faz parte do V1;
+- packages ficam fora de `apps/`.
 
-- secrets;
-- credential values;
-- Run state;
-- environment ownership;
-- arbitrary transformation expressions;
-- runtime PIDs/queues;
-- client-specific production data.
+## Ainda não canônico
 
-## Validation
+- JSON Schema completo;
+- field names;
+- semantic version constraints;
+- artifact hashes/signatures;
+- build metadata;
+- config schema embedding/reference;
+- validation CLI.
 
-- JSON Schema + JSV;
-- referenced Contracts valid;
-- modules known at build/startup;
-- dependencies resolvable;
-- no dynamic atom creation from untrusted input.
+Exemplos atuais não devem ser tratados como contract estável.

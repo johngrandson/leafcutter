@@ -1,31 +1,25 @@
-# Source Identity
+# Source identity
 
-- Status: Accepted baseline
+- Estado: RATIFICADO — NÃO MATERIALIZADO
 
-## Conhecida
-
-Connector/Operation conhecida define internamente como extrair a Source Identity.
-
-## Generic/custom
-
-Manifest declara forma simples:
-
-```json
-"identity": "id"
-```
-
-ou:
-
-```json
-"identity": ["company_id", "customer_id"]
-```
-
-Sem função Elixir customizada inicialmente.
-
-## Conceitos distintos
+## Conceitos
 
 ```text
-Record ID       internal occurrence
-Source Identity stable external entity
-Payload Hash    content fingerprint
+Record.id
+→ occurrence inside a Run
+
+SourceIdentity
+→ stable source entity identity
+
+PayloadHash
+→ content fingerprint
 ```
+
+SourceIdentity pode ser field simples ou composição determinística conforme PackageVersion/Operation.
+
+```text
+same SourceIdentity + different PayloadHash
+→ same entity, changed content
+```
+
+Ainda precisam ser fechados canonical encoding, composite keys, null handling, hashing algorithm e uniqueness constraints.

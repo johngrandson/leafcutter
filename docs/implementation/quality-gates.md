@@ -1,58 +1,53 @@
 # Quality gates
 
-## Gate local canônico
+## Gate agregado
 
 ```bash
 mix quality
 ```
 
-O alias roda, nesta ordem:
+O alias atual executa:
 
-```bash
+```text
 mix compile --warnings-as-errors
 mix format --check-formatted
 mix credo --strict
 mix test
-mix dialyzer # ou mix dialyzer --plt enquanto apps/ estiver vazio
+mix dialyzer
 ```
 
-O gate usa `MIX_ENV=test` para manter Credo e Dialyxir fora das dependências
-de runtime. As ferramentas ficam no umbrella root e verificam todas as child
-applications.
-
-Enquanto a umbrella não possui child applications, o gate executa
-`mix dialyzer --plt`, pois ainda não existem BEAMs do projeto para analisar.
-Depois que a primeira application for criada, o mesmo alias passa a executar
-`mix dialyzer` automaticamente.
-
-Não existe arquivo de exclusões do Dialyzer. Um warning só deve ser ignorado
-depois de confirmar que ele é um falso positivo e documentar o motivo.
-
-## Comandos adicionais
+## Mudanças com migration
 
 ```bash
-mix docs
+mix ecto.migrate
+MIX_ENV=test mix ecto.migrate
+mix quality
 ```
 
-`mix docs` exige `ex_doc` como dependency, ainda não adicionada.
+## Durante desenvolvimento
 
-O workflow de CI para executar `mix quality` será adicionado separadamente.
+Use o menor gate que produza feedback útil:
 
-## Runtime
+```bash
+mix format
+mix compile --warnings-as-errors
+mix test path/to/relevant_test.exs
+```
 
-Testes específicos devem validar:
+Antes do merge, execute o gate completo.
 
-- atomicidade Record/Deliveries/Checkpoint;
-- claim concorrente;
-- retries e `available_at`;
-- partial batch success;
-- stale generation;
-- crash/restart;
-- destination isolation.
+## Verificações documentais
 
-## Contracts
+Para mudanças arquiteturais, revisar manualmente:
 
-- schemas válidos;
-- fixtures válidas/inválidas;
-- manifest validado;
-- source/destination boundaries exercitadas.
+```text
+CURRENT.md
+architecture/estado-atual-e-visao-futura.md
+ADR related
+specification related
+public docs/examples
+```
+
+## Critério
+
+Não declarar conclusão com warning, skip desnecessário ou Dialyzer pendente. Falhas de banco/test environment devem ser reportadas explicitamente, não mascaradas.

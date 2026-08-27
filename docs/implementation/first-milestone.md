@@ -1,36 +1,38 @@
-# Primeiro marco - Foundation
+# Primeiro milestone — foundation confiável
 
-## Objetivo
+- Estado: CONCLUÍDO
 
-Criar uma base compilável e documentada sem antecipar o domínio.
+## Objetivo original
 
-## Inclui
+Estabelecer boundaries, persistência compartilhada, tenancy/RBAC e authority durável suficiente para iniciar Runs sem depender de estado efêmero.
 
-- umbrella vazia;
-- docs e ADRs no repositório;
-- `AGENTS.md` e checkpoint;
-- CI mínimo;
-- formatter configuration;
-- ratificação dos contexts/apps;
-- criação apenas das apps aprovadas;
-- smoke tests das applications;
-- ExDoc inicial.
+## Entregue
 
-## Não inclui
+```text
+four OTP applications
+one Repo + PubSub + Oban
+Organizations/RBAC
+RuntimeNode heartbeat
+Run ownership + generation
+local per-Run supervision
+automatic recovery
+quality gates and harness
+```
 
-- Integration domain completo;
-- Broadway pipelines;
-- Connector framework;
-- frontend;
-- fila externa;
-- cluster multi-node;
-- secrets production-grade.
+## Não fazia parte do milestone
 
-## Definition of done
+```text
+RunSnapshot
+Catalog
+Connections
+Integrations
+Connectors
+Broadway data plane
+OpenAPI product surface
+```
 
-- `mix format --check-formatted` passa;
-- `mix compile --warnings-as-errors` passa;
-- `mix test` passa;
-- `mix docs` gera documentação;
-- dependency graph está documentado;
-- `CURRENT.md` aponta o próximo vertical slice.
+Esses elementos continuam na arquitetura futura e não foram descartados.
+
+## Resultado
+
+O projeto possui control plane real e testado. O próximo milestone transforma Run de identity/ownership record em execução definida por snapshot imutável.

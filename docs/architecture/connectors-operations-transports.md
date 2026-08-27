@@ -1,107 +1,72 @@
 # Connectors, Operations e Transports
 
-## Responsabilidades
+> **Status: RATIFICADO — NÃO MATERIALIZADO.** `leafcutter_connectors` existe, mas os contracts executáveis abaixo ainda não foram implementados.
+
+## Separação
 
 ```text
 Connector
-→ entende o sistema externo
+→ conhece o sistema externo
 
 Operation
-→ entende uma ação específica
+→ conhece uma ação específica
 
 Transport
-→ entende o protocolo
+→ conhece o protocolo
 ```
+
+Catalog possuirá metadata e versões. `leafcutter_connectors` possuirá behaviours e implementações executáveis.
 
 ## Connector
 
-Conhece comportamento compartilhado:
+Responsabilidades planejadas:
 
-- auth scheme;
-- base URL conventions;
-- default headers/query params;
-- common error parsing;
+- conventions do sistema externo;
+- autenticação suportada;
+- headers e erros comuns;
 - rate-limit metadata;
 - Operations disponíveis.
 
-Não conhece cliente, Integration concreta ou Transformation.
+Não conhece Organization, Integration específica ou Transformation de Package.
 
-## Operation de leitura
+## Read Operation
 
-Contrato conceitual:
+Normalizará paginação para um contract independente de `page`, `offset`, cursor ou `next_url`.
 
-```elixir
-fetch(config, cursor)
+Resultado conceitual:
+
+```text
+records
+next_cursor
+done?
+metadata
 ```
 
-Resultado normalizado:
+## Write Operation
 
-```elixir
-{:ok,
- %{
-   records: [...],
-   next_cursor: cursor,
-   done?: false,
-   metadata: %{}
- }}
-```
-
-A Operation esconde paginação e formato externo.
-
-## Operation de escrita
-
-Recebe batch de payloads já transformados e validados.
-
-O resultado preserva sucesso parcial por item:
-
-```elixir
-{:ok,
- [
-   %{status: :success, destination_identity: "CRM-100"},
-   %{status: :error, error: operation_error}
- ]}
-```
-
-Falhas da request inteira retornam erro da operação.
+Receberá batch já transformado e validado e preservará resultado por item, inclusive sucesso parcial.
 
 ## Transport
 
-A primeira implementação é `Transport.HTTP`. O runtime não deve assumir que toda integração é HTTP.
+HTTP será o primeiro Transport. Database, SFTP e outros só entram com demanda real.
 
-Futuros Transports:
-
-- Database;
-- SFTP;
-- Kafka/RabbitMQ;
-- object storage;
-- SOAP-specific encoding sobre HTTP.
-
-## Generic HTTP
-
-Evita criar Custom Connector para APIs simples. Package configura apenas o que não pode ser inferido:
-
-- method/path;
-- response records path;
-- paginação declarativa simples;
-- identity field(s);
-- optional static rate limit.
-
-## Defaults e Interceptors
-
-Ordem previsível:
+## Error taxonomy ratificada
 
 ```text
-Connector defaults
-    ↓
-Operation overrides
-    ↓
-Package Interceptors
-    ↓
-Transport
+validation
+authentication
+rate_limited
+timeout
+temporary
+permanent
 ```
 
-## Source Identity
+A forma exata dos tipos e structs ainda será fechada na implementação.
 
-- Operation conhecida define identidade internamente.
-- Generic/custom Operation pode usar `identity: "id"` ou lista de fields no manifest.
-- Sem função Elixir customizada de identity inicialmente.
+## Restrições
+
+- não criar GenServer por Connector sem lifecycle real;
+- não esconder Transformation dentro da Operation;
+- não persistir secrets em Connector metadata;
+- não acoplar runtime genérico a detalhes de HTTP;
+- não implementar múltiplos transports por antecipação.

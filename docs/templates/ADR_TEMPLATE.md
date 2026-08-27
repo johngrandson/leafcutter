@@ -1,28 +1,34 @@
-# ADR-NNNN - Título
+# ADR-XXXX — Título
 
-- Status: Proposed
-- Date: YYYY-MM-DD
+- Status: Proposed | Accepted | Superseded | Deprecated
+- Estado de implementação: NÃO MATERIALIZADO | PARCIAL | MATERIALIZADO
+- Data: YYYY-MM-DD
 
 ## Contexto
 
-Qual problema exige decisão?
-
-## Opções avaliadas
-
-### Opção A
-
-### Opção B
+Qual problema exige uma decisão?
 
 ## Decisão
 
-O que foi decidido e por quê?
+Qual direção foi escolhida?
+
+## Alternativas consideradas
+
+- alternativa;
+- tradeoff.
+
+## Estado atual
+
+O que já existe no código/testes?
+
+## Futuro preservado
+
+Qual parte ratificada ainda não foi implementada?
 
 ## Consequências
 
-### Positivas
+Positivas, negativas e constraints.
 
-### Negativas
+## Evidência
 
-## Quando revisar
-
-Quais sinais justificam reabrir esta decisão?
+Arquivos, tests e specifications relacionadas.

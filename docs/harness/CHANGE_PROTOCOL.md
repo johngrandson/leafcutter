@@ -1,40 +1,34 @@
 # Protocolo de mudança
 
-## Unidade de trabalho
+## Mudança de código sem alteração arquitetural
 
-Preferir uma mudança por context/capability e um diff pequeno.
+1. confirmar owner e contract atual;
+2. implementar menor diff;
+3. testar;
+4. atualizar docs in-code;
+5. executar quality gates.
 
-## Fluxo
+## Materialização de arquitetura já ratificada
 
-```text
-understand
-→ decide owner
-→ verify ADR
-→ write Task Brief
-→ developer implements
-→ run focused tests
-→ review
-→ update docs/checkpoint
-→ commit
-```
+1. confirmar ADR e specification;
+2. implementar slice;
+3. atualizar estado de implementação no ADR/index;
+4. mover a capacidade de futura para materializada nos docs;
+5. preservar os estágios futuros restantes;
+6. atualizar `CURRENT.md`.
 
-## Mudança arquitetural
+## Nova decisão arquitetural
 
-Quando uma implementação contradiz ADR ou boundary:
+1. registrar contexto e alternativas;
+2. obter ratificação;
+3. criar/atualizar ADR;
+4. atualizar arquitetura/specification;
+5. somente então implementar.
 
-1. não contornar silenciosamente;
-2. documentar o conflito;
-3. propor nova decisão;
-4. ratificar;
-5. criar/supersede ADR;
-6. só então implementar.
+## Mudança de direção
 
-## Dependency
+Não apagar histórico. Criar ADR superseding ou documentar evolução explícita.
 
-Nova dependency exige nota com:
+## Proibição
 
-- problema resolvido;
-- alternativa nativa avaliada;
-- manutenção/maturidade;
-- impacto operacional;
-- caminho de remoção/troca.
+Não usar documentação para declarar concluído o que não passa nos testes/gates.
