@@ -33,6 +33,67 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
       refute :inserted_at in fields
       refute :updated_at in fields
     end
+
+    test "publishes the ratified format version contract" do
+      assert RunSnapshot.current_format_version() == 1
+      assert RunSnapshot.supported_format_versions() == [1]
+    end
+  end
+
+  describe "create_changeset/2" do
+    test "normalizes definition v1 and assigns the current format internally" do
+      run = insert_run()
+
+      definition =
+        definition_fixture()
+        |> Map.delete("effective_config")
+        |> Map.put(:effective_config, %{retry: %{enabled: true}})
+
+      changeset =
+        RunSnapshot.create_changeset(
+          %RunSnapshot{},
+          %{
+            run_id: run.id,
+            definition: definition,
+            format_version: 999
+          }
+        )
+
+      assert changeset.valid?
+      assert Changeset.get_change(changeset, :format_version) == 1
+
+      assert Changeset.get_change(changeset, :definition)[
+               "effective_config"
+             ] == %{
+               "retry" => %{"enabled" => true}
+             }
+    end
+
+    test "rejects an invalid definition and preserves its structural errors" do
+      run = insert_run()
+
+      invalid_definition =
+        definition_fixture()
+        |> Map.put("package_version_id", "not-a-uuid")
+
+      changeset =
+        RunSnapshot.create_changeset(
+          %RunSnapshot{},
+          %{run_id: run.id, definition: invalid_definition}
+        )
+
+      refute changeset.valid?
+
+      assert {"is invalid", options} =
+               Keyword.fetch!(changeset.errors, :definition)
+
+      assert options[:validation] == :run_snapshot_definition_v1
+
+      assert [{"is not a valid UUID", uuid_options}] =
+               options[:definition_errors].package_version_id
+
+      assert uuid_options[:validation] == :uuid
+    end
   end
 
   describe "database invariants" do
@@ -84,8 +145,12 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
         }
 
         assert {:error, changeset} =
-                 attrs
-                 |> snapshot_changeset()
+                 %RunSnapshot{}
+                 |> Changeset.change(attrs)
+                 |> Changeset.check_constraint(
+                   :format_version,
+                   name: :run_snapshots_format_version_positive
+                 )
                  |> Repo.insert()
 
         assert {:format_version, {_message, _options}} =
@@ -165,24 +230,8 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
       definition: definition_fixture()
     }
     |> Map.merge(attrs)
-    |> snapshot_changeset()
+    |> then(&RunSnapshot.create_changeset(%RunSnapshot{}, &1))
     |> Repo.insert()
-  end
-
-  @spec snapshot_changeset(map()) :: Changeset.t()
-  defp snapshot_changeset(attrs) do
-    %RunSnapshot{}
-    |> Changeset.change(attrs)
-    |> Changeset.foreign_key_constraint(:run_id)
-    |> Changeset.unique_constraint(:run_id, name: :run_snapshots_pkey)
-    |> Changeset.check_constraint(
-      :format_version,
-      name: :run_snapshots_format_version_positive
-    )
-    |> Changeset.check_constraint(
-      :definition,
-      name: :run_snapshots_definition_is_object
-    )
   end
 
   @spec definition_fixture() :: map()
