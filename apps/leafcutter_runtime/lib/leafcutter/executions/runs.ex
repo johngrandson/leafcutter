@@ -41,8 +41,7 @@ defmodule Leafcutter.Executions.Runs do
   @type release_error :: :run_not_found | :stale_ownership
 
   @typedoc "Error returned when a RunSnapshot cannot be fetched."
-  @type fetch_snapshot_error ::
-          :run_not_found | :run_snapshot_not_found
+  @type fetch_snapshot_error :: :run_not_found | :run_snapshot_not_found
 
   @typedoc "Error returned when a recovery batch cannot be claimed."
   @type recovery_claim_error ::
