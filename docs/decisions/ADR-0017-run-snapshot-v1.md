@@ -5,13 +5,13 @@
 
 ## Contexto
 
-`Run` materializa hoje lifecycle e ownership, mas não contém a definição necessária para executar uma integração. Por isso, uma Run `pending` ainda não pode entrar com segurança no recovery automático.
+`Run` materializa hoje lifecycle e ownership, mas não contém a definição necessária para executar uma integração. Por isso, uma Run `pending` ainda não pode entrar no recovery automático.
 
-Catalog, Connections e Integrations continuam ratificados para slices posteriores. A fundação de RunSnapshot deve permitir criar uma definição executável validada sem antecipar schemas ou ownership desses contexts.
+Catalog, Connections e Integrations continuam ratificados para slices posteriores. A fundação de RunSnapshot deve criar um contrato persistido e versionado sem antecipar schemas ou ownership desses contexts.
 
 ## Decisão
 
-`RunSnapshot` pertence ao context `Executions` e mantém uma relação 1:1 dependente de `Run`.
+`RunSnapshot` pertence ao context `Executions` e depende de `Run`.
 
 Persistência ratificada:
 
@@ -22,6 +22,12 @@ run_snapshots
 └── definition      JSONB object
 ```
 
+Cardinalidade:
+
+- uma Run legada pode possuir zero ou um snapshot;
+- toda nova Run criada pela API pública possui exatamente um snapshot;
+- um snapshot pertence a exatamente uma Run.
+
 Regras físicas:
 
 - `run_id` é a identidade do snapshot; não existe id independente;
@@ -29,20 +35,23 @@ Regras físicas:
 - a foreign key usa `ON DELETE CASCADE`;
 - `format_version > 0`;
 - `definition` é obrigatório e deve ser um JSON object;
-- um trigger no PostgreSQL rejeita `UPDATE` em `run_snapshots`;
-- não existe trigger de `DELETE`: a remoção acontece somente como consequência da futura retenção de `Run`.
+- um trigger no PostgreSQL rejeita `UPDATE` em `run_snapshots`.
+
+Não existe API pública de `DELETE`. A regra de lifecycle é remover o snapshot somente como consequência da futura retenção de `Run`, usando o cascade. Como não existe trigger de `DELETE`, privileged SQL continua capaz de remover e reinserir uma linha; esta decisão não afirma uma garantia absoluta contra administração direta do banco.
 
 `definition` não é um map arbitrário. A aplicação valida uma estrutura tipada e a serializa para JSONB. O formato v1 congela:
 
-- a `PackageVersion` executável;
+- a referência à `PackageVersion`;
 - uma source com `ref`, `ContractVersion` e Connection resolvida;
 - uma ou mais destinations com `ref`, `ContractVersion` e Connection resolvida;
 - config não sensível efetiva;
 - a referência exata à `SecretVersion`, quando existir.
 
-Raw secrets nunca entram no snapshot.
+`PackageVersion` permanece authority para ConnectorVersion, Operation, Transformation, Enrichment, Interceptor e SourceIdentity. O snapshot não duplica essa topologia. As referências copiadas são uma resolução congelada que o futuro resolver deve validar contra as authorities upstream.
 
-`PackageVersion` permanece authority para ConnectorVersion, Operation, Transformation, Enrichment, Interceptor e SourceIdentity. O snapshot não duplica essa topologia.
+`source.ref` e `destinations[].ref` são identifiers locais do formato do snapshot. Esta decisão não ratifica nomes de campos do Package Manifest, que continua DRAFT. A ordem do array de destinations não define prioridade de execução.
+
+Raw secrets nunca devem entrar no snapshot. No primeiro slice, essa é uma responsabilidade do caller confiável; validação estrutural de JSON não consegue provar que um valor arbitrário de config não contém material sensível. O futuro resolver de EnvironmentDeployment deve aplicar essa regra antes de chamar Executions.
 
 ## Criação e leitura públicas
 
@@ -51,6 +60,8 @@ A API pública ratificada é:
 ```elixir
 Leafcutter.Executions.Runs.create(definition_attrs)
 ```
+
+`definition_attrs` representa o próprio objeto lógico da definition v1. `format_version` é escolhido internamente e não é aceito do caller. A forma JSON persistida usa exatamente os campos definidos na specification; campos semânticos desconhecidos são rejeitados. Normalização de chaves de input é detalhe de implementação e não altera o formato persistido.
 
 Contrato:
 
@@ -79,7 +90,7 @@ Duas chamadas válidas de `create/1` criam duas Runs. Idempotency e deduplicatio
 
 ## Eligibility e recovery
 
-Uma Run `pending` é elegível para claim e recovery somente quando possui snapshot em formato suportado.
+Uma Run `pending` é elegível para claim e recovery no control plane somente quando possui snapshot em formato suportado. Essa regra não comprova ainda que as referências existem nem que o data plane consegue executar a definição.
 
 No primeiro formato:
 
@@ -93,7 +104,7 @@ RunSnapshot.supported_format_versions() == [1]
 - `pending` com snapshot v1: claim normal;
 - `pending` sem snapshot: `:run_snapshot_not_found`;
 - `pending` com formato não suportado: `:unsupported_run_snapshot_format`;
-- `running`: comportamento atual de ownership e fencing;
+- `running`: comportamento atual de ownership e fencing, independentemente de snapshot;
 - estado terminal: `:run_not_claimable`.
 
 `Runs.claim_recoverable/3` considera:
@@ -103,35 +114,44 @@ RunSnapshot.supported_format_versions() == [1]
 
 O claim muda `pending` para `running`, persiste owner e nova generation e somente depois do commit inicia a árvore local.
 
-Runs legadas `running` sem snapshot continuam recuperáveis. Runs legadas `pending` sem snapshot permanecem inelegíveis.
+A compatibilidade é assimétrica:
+
+- Runs legadas `running` sem snapshot continuam recuperáveis;
+- Runs legadas `pending` sem snapshot deixam de ser claimable;
+- Runs `running` continuam recuperáveis mesmo sem snapshot ou com formato desconhecido.
+
+Política de rolling upgrade e remoção futura de formatos suportados continua aberta.
 
 ## Versionamento e imutabilidade
 
 - formatos novos valem somente para novas Runs;
 - snapshot existente não é migrado nem reinterpretado in-place;
 - o decoder é selecionado por `format_version`;
+- um documento v1 já válido não pode se tornar inválido por endurecimento do mesmo decoder; mudança incompatível exige nova versão;
 - Runs existentes podem continuar sem snapshot;
 - novas Runs criadas pela API pública sempre possuem snapshot.
 
 ## Validação neste slice
 
-A validação inicial é estrutural. A existência semântica de PackageVersion, ContractVersion, Connection e SecretVersion será validada quando os contexts owners forem materializados.
+A validação inicial é estrutural. A existência e a compatibilidade semântica de PackageVersion, ContractVersion, Connection e SecretVersion serão validadas quando os contexts owners e o resolver forem materializados.
+
+O futuro workflow de resolução pertence à orchestration em `leafcutter_runtime`. `Executions.Runs.create/1` recebe uma definition já resolvida; Executions não consulta internals de Catalog, Connections ou Integrations.
 
 ## Consequências
 
-- uma Run nova nasce com definição executável completa para o formato conhecido;
-- o PostgreSQL protege atomicidade e imutabilidade;
-- o formato versionado evita depender do estado mutável das integrações;
-- recovery de `pending` deixa de inferir completude a partir da linha mínima de `Run`;
+- uma Run nova nasce com snapshot estruturalmente completo e identificado por versão;
+- o PostgreSQL protege atomicidade, unicidade e rejeição de update;
+- o formato versionado evita depender de configuração mutável;
+- recovery de `pending` deixa de inferir elegibilidade a partir da linha mínima de `Run`;
 - Catalog, Connections e Integrations não são antecipados;
 - Broadway, Record, Delivery e data plane continuam fora deste slice;
-- a futura criação a partir de `EnvironmentDeployment` resolverá as authorities upstream e chamará a API pública de Executions.
+- a futura criação a partir de `EnvironmentDeployment` resolve as authorities upstream fora de Executions e chama a API pública com a definition pronta.
 
 ## Fora do escopo
 
 O formato v1 não inclui organization, environment, integration ou deployment ids, revision, actor, invocation, input por Run, idempotency key, artifact digest, retry, batch ou concurrency policy.
 
-Lifecycle completo, terminalização, retenção, autenticação, secrets concretos e carregamento da definição no coordinator continuam decisões ou slices posteriores.
+Lifecycle completo, terminalização, retenção, autenticação, secrets concretos, rolling upgrade de formatos e carregamento da definição no coordinator continuam decisões ou slices posteriores.
 
 ## Alternativas rejeitadas
 
