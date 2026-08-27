@@ -17,17 +17,22 @@
 12. RunSupervisor + RunCoordinator
 13. automatic RunRecovery
 14. documentation present/future alignment
+15. RunSnapshot v1 contract ratification
 ```
 
 ## Próximo slice
 
 ```text
-RunSnapshot
+RunSnapshot v1 persistence + immutability
 +
-public Run creation workflow
+typed definition validation
 +
-pending eligibility
+public Run creation and snapshot fetch
++
+pending eligibility in claim and recovery
 ```
+
+O contrato deste slice está em `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`.
 
 ## Sequência ratificada posterior
 
@@ -35,7 +40,8 @@ pending eligibility
 Catalog/Contracts/Packages foundations
 → Connections/Secrets
 → Integrations/EnvironmentDeployment
-→ complete executable RunSnapshot
+→ EnvironmentDeployment resolver
+→ semantically resolved executable RunSnapshot
 → Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -43,4 +49,4 @@ Catalog/Contracts/Packages foundations
 → governance/notifications/audit
 ```
 
-A ordem fina pode mudar quando dependencies reais forem modeladas. Não pular RunSnapshot para criar Broadway com definição executável implícita.
+A ordem fina pode mudar quando dependencies reais forem modeladas. O próximo slice não deve antecipar schemas upstream. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
