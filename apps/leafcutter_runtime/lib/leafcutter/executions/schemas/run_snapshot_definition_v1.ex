@@ -24,6 +24,8 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
   @typedoc "A structurally valid v1 definition using canonical JSON string keys."
   @type normalized_definition :: %{required(String.t()) => term()}
 
+  @typep normalization_accumulator :: {map(), [String.t()], [atom()]}
+
   @typedoc "The embedded representation used while validating definition v1."
   @type t :: %__MODULE__{
           package_version_id: Ecto.UUID.t() | nil,
@@ -138,9 +140,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     |> normalized_cast(attrs, @endpoint_cast_fields, @endpoint_fields)
     |> validate_required(@endpoint_cast_fields)
     |> validate_uuid(:contract_version_id)
-    |> validate_format(:ref, ~r/\S/u,
-      message: "must contain a non-whitespace character"
-    )
+    |> validate_format(:ref, ~r/\S/u, message: "must contain a non-whitespace character")
     |> cast_embed(:connection, required: true, with: &connection_changeset/2)
   end
 
@@ -172,20 +172,38 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
         {Atom.to_string(field), field}
       end)
 
-    Enum.reduce(attrs, {%{}, [], []}, fn {key, value},
-                                        {params, unknown_fields, duplicate_fields} ->
-      case normalize_field(key, allowed_fields, fields_by_string) do
-        {:ok, field} ->
-          if Map.has_key?(params, field) do
-            {params, unknown_fields, [field | duplicate_fields]}
-          else
-            {Map.put(params, field, value), unknown_fields, duplicate_fields}
-          end
-
-        :error ->
-          {params, [inspect(key) | unknown_fields], duplicate_fields}
-      end
+    Enum.reduce(attrs, {%{}, [], []}, fn entry, accumulator ->
+      normalize_param(
+        entry,
+        accumulator,
+        allowed_fields,
+        fields_by_string
+      )
     end)
+  end
+
+  @spec normalize_param(
+          {term(), term()},
+          normalization_accumulator(),
+          [atom()],
+          %{String.t() => atom()}
+        ) :: normalization_accumulator()
+  defp normalize_param(
+         {key, value},
+         {params, unknown_fields, duplicate_fields},
+         allowed_fields,
+         fields_by_string
+       ) do
+    case normalize_field(key, allowed_fields, fields_by_string) do
+      {:ok, field} when is_map_key(params, field) ->
+        {params, unknown_fields, [field | duplicate_fields]}
+
+      {:ok, field} ->
+        {Map.put(params, field, value), unknown_fields, duplicate_fields}
+
+      :error ->
+        {params, [inspect(key) | unknown_fields], duplicate_fields}
+    end
   end
 
   @spec normalize_field(term(), [atom()], %{String.t() => atom()}) ::
@@ -343,8 +361,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     %{
       "package_version_id" => definition.package_version_id,
       "source" => endpoint_to_map(definition.source),
-      "destinations" =>
-        Enum.map(definition.destinations, &endpoint_to_map/1),
+      "destinations" => Enum.map(definition.destinations, &endpoint_to_map/1),
       "effective_config" => normalize_json_object(definition.effective_config)
     }
   end

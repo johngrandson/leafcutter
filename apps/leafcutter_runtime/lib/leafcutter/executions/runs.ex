@@ -292,7 +292,7 @@ defmodule Leafcutter.Executions.Runs do
     where(
       query,
       [run],
-      not (run.id in ^excluded_run_ids)
+      run.id not in ^excluded_run_ids
     )
   end
 
