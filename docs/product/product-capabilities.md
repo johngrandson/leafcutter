@@ -36,7 +36,7 @@
 - Connector/Operation/Transport;
 - Integration Packages;
 - Connections e Secrets;
-- Integrations e EnvironmentDeployments;
+- Integrations e EnvironmentDeployments.
 
 ### Data plane
 
