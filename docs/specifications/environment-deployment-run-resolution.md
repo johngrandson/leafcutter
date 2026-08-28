@@ -399,7 +399,7 @@ Falha confirmada causa rollback integral.
 ## Fora do escopo
 
 - Package Manifest JSON Schema;
-- ContractVersion schema e JSV;
+- conteúdo JSON Schema de ContractVersion e validação JSV;
 - package build/release;
 - Connector/Operation/Transport executáveis;
 - raw secret storage ou retrieval;

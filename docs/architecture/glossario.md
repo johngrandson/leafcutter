@@ -36,17 +36,19 @@
 
 **RunRecovery** — processo de polling que reconcilia ownership durável e árvores locais.
 
+**Connector** — identidade global de um Connector no Catalog; a implementação executável permanece futura.
+
+**ConnectorVersion** — metadata versionada e imutável publicada atomicamente com suas Operations.
+
+**Operation** — metadata de uma ação source ou destination pertencente a uma ConnectorVersion.
+
+**Contract** — identidade global de um data contract no Catalog.
+
+**ContractVersion** — identidade versionada, publicada e imutável de um Contract; o conteúdo JSON Schema permanece futuro.
+
 ## Ratificados para o futuro
 
-**Connector** — integração executável com um sistema externo.
-
-**ConnectorVersion** — versão imutável da implementação/metadata publicada.
-
-**Operation** — ação específica exposta por uma ConnectorVersion.
-
 **Transport** — execução de protocolo, inicialmente HTTP.
-
-**ContractVersion** — JSON Schema imutável usado em boundary de dados.
 
 **Package** — identidade reutilizável de uma integração.
 

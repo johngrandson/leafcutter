@@ -17,12 +17,12 @@ Esta pasta contém tanto a arquitetura **já materializada** quanto a arquitetur
 | `ambientes-rbac-homologacao.md` | PARCIALMENTE MATERIALIZADO | RBAC existente e governança futura. |
 | `modelo-conceitual.md` | PARCIALMENTE MATERIALIZADO | Entidades atuais e cadeia completa planejada. |
 
-## Documentos de capacidades futuras ratificadas
+## Documentos de capacidades parciais ou futuras ratificadas
 
 | Documento | Estado |
 |---|---|
 | `connectors-operations-transports.md` | RATIFICADO — NÃO MATERIALIZADO |
-| `contracts-json-schema.md` | RATIFICADO — NÃO MATERIALIZADO |
+| `contracts-json-schema.md` | PARCIALMENTE MATERIALIZADO |
 | `integration-packages.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `transformations-enrichments-interceptors.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `api-openapi.md` | PARCIALMENTE MATERIALIZADO |

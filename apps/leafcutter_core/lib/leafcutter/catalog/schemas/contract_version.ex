@@ -16,13 +16,16 @@ defmodule Leafcutter.Catalog.ContractVersion do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @typedoc "The identifier of one immutable ContractVersion identity."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when publishing a ContractVersion identity."
   @type publish_attrs :: %{
           required(:contract_id) => Contract.id(),
           required(:version) => String.t()
         }
 
+  @typedoc "An immutable published ContractVersion without executable schema content."
   @type t :: %__MODULE__{
           id: id() | nil,
           contract_id: Contract.id() | nil,
@@ -73,6 +76,15 @@ defmodule Leafcutter.Catalog.ContractVersion do
       ...>   DateTime
       ...> )
       true
+
+      iex> changeset =
+      ...>   Leafcutter.Catalog.ContractVersion.publish_changeset(
+      ...>     %Leafcutter.Catalog.ContractVersion{},
+      ...>     %{contract_id: Ecto.UUID.generate()}
+      ...>   )
+
+      iex> changeset.valid?
+      false
 
   ## Notes
 

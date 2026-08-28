@@ -16,12 +16,15 @@ defmodule Leafcutter.Catalog.Contract do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @typedoc "The stable identifier of a Contract identity."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when creating a Contract identity."
   @type create_attrs ::
           %{required(:name) => String.t()}
           | %{required(String.t()) => String.t()}
 
+  @typedoc "A global Contract identity with separately published versions."
   @type t :: %__MODULE__{
           id: id() | nil,
           name: String.t() | nil,

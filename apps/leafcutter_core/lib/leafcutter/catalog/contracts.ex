@@ -11,10 +11,12 @@ defmodule Leafcutter.Catalog.Contracts do
   alias Leafcutter.Catalog.{Contract, ContractVersion}
   alias Leafcutter.Repo
 
+  @typedoc "Attributes accepted when publishing an immutable ContractVersion identity."
   @type publish_version_attrs ::
           %{required(:version) => String.t()}
           | %{required(String.t()) => String.t()}
 
+  @typedoc "Error returned when a ContractVersion identity cannot be published."
   @type publish_error :: :contract_not_found | Changeset.t()
 
   @doc """
