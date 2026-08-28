@@ -84,14 +84,47 @@ defmodule Leafcutter.Executions.RunsRecoveryConcurrencyTest do
         )
 
       runs =
-        Enum.map(1..6, fn _index ->
-          %Run{}
-          |> Changeset.change(status: :running)
-          |> Repo.insert!()
+        Enum.map(1..6, fn index ->
+          if Integer.is_even(index) do
+            {:ok, run} = Runs.create(definition_fixture())
+            run
+          else
+            %Run{}
+            |> Changeset.change(status: :running)
+            |> Repo.insert!()
+          end
         end)
 
       {runs, first_runtime_node, second_runtime_node}
     end)
+  end
+
+  @spec definition_fixture() :: map()
+  defp definition_fixture do
+    %{
+      "package_version_id" => Ecto.UUID.generate(),
+      "source" => %{
+        "ref" => "source",
+        "contract_version_id" => Ecto.UUID.generate(),
+        "connection" => %{
+          "id" => Ecto.UUID.generate(),
+          "config" => %{},
+          "secret_version_id" => nil
+        }
+      },
+      "destinations" => [
+        %{
+          "ref" => "destination",
+          "contract_version_id" => Ecto.UUID.generate(),
+          "connection" => %{
+            "id" => Ecto.UUID.generate(),
+            "config" => %{},
+            "secret_version_id" => nil
+          }
+        }
+      ],
+      "effective_config" => %{}
+    }
   end
 
   @spec with_unboxed_connection((-> result)) :: result when result: term()
