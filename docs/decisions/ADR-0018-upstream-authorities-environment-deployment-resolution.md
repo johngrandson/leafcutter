@@ -74,9 +74,75 @@ Leafcutter.Catalog.Contracts
 Leafcutter.Catalog.Packages
 ```
 
+## Modelo mínimo de Connections
+
+O primeiro slice materializará:
+
+```text
+Environment
+├── Connection
+│   └── optional current SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+```
+
+Persistência mínima:
+
+```text
+Connection
+├── id
+├── organization_id
+├── environment_id
+├── connector_id
+├── name
+├── config
+├── secret_version_id | null
+└── disabled_at
+
+Secret
+├── id
+├── organization_id
+├── environment_id
+└── name
+
+SecretVersion
+├── id
+├── secret_id
+└── version
+```
+
+Regras aprovadas:
+
+- Connection, Secret e SecretVersion são environment-scoped, com Organization e Environment explícitos;
+- o PostgreSQL impede associação entre Organization e Environment incompatíveis;
+- Connection referencia a identidade estável de Connector, nunca ConnectorVersion;
+- `config` é um JSON object não sensível;
+- `secret_version_id` é opcional e representa o binding exato atualmente selecionado;
+- SecretVersion é imutável e sua versão é única dentro de Secret;
+- nenhum raw secret, ciphertext, provider locator ou credential é persistido neste slice;
+- Connection pode alterar config ou SecretVersion; mudanças afetam somente resoluções futuras;
+- snapshots existentes preservam a config e o SecretVersion anteriores;
+- Connection desabilitada não pode participar de novas resoluções;
+- Organization ou Environment desabilitado bloqueia criação, alteração e resolução;
+- não existe seleção implícita da última SecretVersion;
+- revogação, rotação, exclusão e retenção continuam abertas.
+
+APIs públicas:
+
+```text
+Leafcutter.Connections
+├── create/1
+├── get/1
+├── update/2
+└── disable/1
+
+Leafcutter.Connections.Secrets
+├── create/1
+└── create_version/1
+```
+
 ## Decisões ainda pendentes neste ADR
 
-- schemas e invariantes mínimos de Connection, Secret e SecretVersion;
 - schemas e lifecycle mínimos de Integration e EnvironmentDeployment;
 - representação dos bindings entre endpoints e Connections;
 - merge e precedence de config não sensível;
