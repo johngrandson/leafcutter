@@ -164,7 +164,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Catalog
 
-Planejado e ratificado:
+O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
 
 ```text
 Connector + ConnectorVersion
@@ -174,11 +174,11 @@ Package + PackageVersion
 publication and availability metadata
 ```
 
-Versões publicadas serão imutáveis.
+O primeiro slice usa identidades globais estáveis, versões nascidas publicadas, Operations pertencentes a ConnectorVersion e uma projeção relacional de endpoints de PackageVersion. Conteúdo versionado será imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
 ### Connections
 
-Planejado e ratificado:
+O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
 
 ```text
 Connection
@@ -188,11 +188,11 @@ OAuth durable state
 rotation metadata
 ```
 
-Raw secrets não entram em PackageVersion, RunSnapshot, logs, AuditEvent ou respostas de API.
+Connection será environment-scoped, referenciará Connector estável e manterá config não sensível e um binding opcional para SecretVersion imutável. Raw secrets não entram neste slice nem em PackageVersion, RunSnapshot, logs, AuditEvent ou respostas de API.
 
 ### Integrations
 
-Planejado e ratificado:
+O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
 
 ```text
 Integration
@@ -203,7 +203,7 @@ Promotion history
 IdentityMapping
 ```
 
-Promotion copia somente estado promovível; não copia secrets, Connections, Triggers ou config local do target.
+Integration será organization-scoped e ligada a um Package estável. EnvironmentDeployment persistirá PackageVersion, promotable/local config e bindings por endpoint. Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
 
 ### Executions completo
 
@@ -220,7 +220,7 @@ ExecutionEvent
 Enrichment execution state
 ```
 
-A criação futura a partir de `EnvironmentDeployment` resolverá as authorities upstream para o formato ratificado. Esse workflow pertence à orchestration em `leafcutter_runtime` e entregará a definition pronta a Executions. Seus schemas e o resolver semântico continuam para slices posteriores.
+A criação a partir de EnvironmentDeployment foi ratificada no ADR-0018 e em sua specification, mas ainda não foi materializada. O workflow pertence à orchestration em leafcutter_runtime, resolve as authorities upstream em uma transação e entrega a definition pronta a Executions.
 
 ### Data plane Broadway
 
@@ -282,8 +282,8 @@ A estratégia física para incluí-los na release continua aberta.
 
 Entre as principais:
 
-- schemas de Catalog, Connections e Integrations;
-- resolução semântica de EnvironmentDeployment para RunSnapshot v1;
+- lifecycle de availability/deprecation das versões do Catalog;
+- metadata ampliada das authorities upstream;
 - política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
@@ -306,16 +306,21 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O próximo slice deve ratificar as authorities upstream mínimas e o workflow que resolve uma definition v1:
+O próximo slice deve materializar a primeira authority upstream já ratificada:
 
 ```text
-Catalog + Connections + Integrations mínimos
+Catalog mínimo
+├── Connector + ConnectorVersion + Operation
+├── Contract + ContractVersion
+└── Package + PackageVersion + endpoints
 ↓
-EnvironmentDeployment persistido
-↓ orchestration em leafcutter_runtime
-definition v1 resolvida
+Connections
+↓
+Integrations + EnvironmentDeployment
+↓
+resolver em leafcutter_runtime
 ↓
 Executions.Runs.create/1
 ```
 
-RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam esses sub-slices. RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
