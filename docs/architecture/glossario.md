@@ -56,7 +56,6 @@
 
 **EnvironmentDeployment** — configuração executável da Integration em um Environment.
 
-
 **Record** — ocorrência de um item source dentro da Run.
 
 **Delivery** — obrigação durável de processar um Record para um destination.
