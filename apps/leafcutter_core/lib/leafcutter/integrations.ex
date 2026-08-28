@@ -24,6 +24,16 @@ defmodule Leafcutter.Integrations do
   @typedoc "Error returned while disabling an Integration."
   @type disable_error :: :not_found | organization_error() | Changeset.t()
 
+  @typedoc "Authority or lifecycle error returned while validating an active Integration."
+  @type active_integration_state_error ::
+          :integration_not_found
+          | :integration_scope_mismatch
+          | :integration_disabled
+
+  @typedoc "Error returned while locking an active Integration."
+  @type active_integration_error ::
+          :transaction_required | active_integration_state_error()
+
   @doc """
   Creates an Organization-scoped Integration.
 
@@ -96,6 +106,51 @@ defmodule Leafcutter.Integrations do
     case Repo.get(Integration, id) do
       %Integration{} = integration -> {:ok, integration}
       nil -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Locks and validates an active Integration in its expected Organization.
+
+  ## Parameters
+
+  * `id` - The Integration identifier to lock and validate
+  * `organization_id` - The Organization the Integration must belong to
+
+  ## Returns
+
+  * `{:ok, integration}` when the Integration exists, matches the scope, and is active
+  * `{:error, :transaction_required}` when no caller-owned transaction is active
+  * `{:error, :integration_not_found}` when the Integration does not exist
+  * `{:error, :integration_scope_mismatch}` when it belongs to another Organization
+  * `{:error, :integration_disabled}` when the Integration is disabled
+
+  ## Examples
+
+      iex> Leafcutter.Integrations.lock_active(
+      ...>   "00000000-0000-0000-0000-000000000000",
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :transaction_required}
+
+  ## Notes
+
+  * The caller must already own a Repo transaction.
+  * The caller is responsible for locking the Organization first.
+  * A shared row lock blocks Integration disable until commit.
+  * The operation is intended for EnvironmentDeployment and runtime workflows.
+  """
+  @spec lock_active(Integration.id(), Ecto.UUID.t()) ::
+          {:ok, Integration.t()} | {:error, active_integration_error()}
+  def lock_active(id, organization_id) do
+    if Repo.in_transaction?() do
+      Integration
+      |> where([integration], integration.id == ^id)
+      |> lock("FOR SHARE")
+      |> Repo.one()
+      |> classify_active_integration(organization_id)
+    else
+      {:error, :transaction_required}
     end
   end
 
@@ -178,6 +233,31 @@ defmodule Leafcutter.Integrations do
       nil -> {:error, :not_found}
     end
   end
+
+  @spec classify_active_integration(
+          Integration.t() | nil,
+          Ecto.UUID.t()
+        ) ::
+          {:ok, Integration.t()}
+          | {:error, active_integration_state_error()}
+  defp classify_active_integration(nil, _organization_id),
+    do: {:error, :integration_not_found}
+
+  defp classify_active_integration(
+         %Integration{organization_id: persisted_organization_id},
+         organization_id
+       )
+       when persisted_organization_id != organization_id,
+       do: {:error, :integration_scope_mismatch}
+
+  defp classify_active_integration(
+         %Integration{disabled_at: nil} = integration,
+         _organization_id
+       ),
+       do: {:ok, integration}
+
+  defp classify_active_integration(%Integration{}, _organization_id),
+    do: {:error, :integration_disabled}
 
   @spec lock_integration(Integration.id()) ::
           {:ok, Integration.t()} | {:error, :not_found}
