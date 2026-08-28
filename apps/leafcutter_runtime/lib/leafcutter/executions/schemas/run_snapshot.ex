@@ -52,8 +52,23 @@ defmodule Leafcutter.Executions.RunSnapshot do
   @doc """
   Returns the format version assigned to newly created RunSnapshots.
 
-  Persisted snapshots retain their original format version and are never
-  rewritten in place.
+  ## Parameters
+
+  This function does not accept parameters.
+
+  ## Returns
+
+  * The positive integer format version assigned to new snapshots
+
+  ## Examples
+
+      iex> Leafcutter.Executions.RunSnapshot.current_format_version()
+      1
+
+  ## Notes
+
+  * Persisted snapshots retain their original format version.
+  * Existing snapshots are never rewritten in place when this value changes.
   """
   @spec current_format_version() :: format_version()
   def current_format_version, do: @current_format_version
@@ -61,8 +76,23 @@ defmodule Leafcutter.Executions.RunSnapshot do
   @doc """
   Returns the RunSnapshot format versions understood by this runtime.
 
-  This list is used by the control plane to decide whether a pending Run is
-  eligible to start.
+  ## Parameters
+
+  This function does not accept parameters.
+
+  ## Returns
+
+  * A list of positive integer format versions accepted by this runtime
+
+  ## Examples
+
+      iex> Leafcutter.Executions.RunSnapshot.supported_format_versions()
+      [1]
+
+  ## Notes
+
+  * The control plane uses this list to decide whether a pending Run is eligible to start.
+  * Support for a format establishes structural compatibility, not semantic executability.
   """
   @spec supported_format_versions() :: [format_version()]
   def supported_format_versions, do: @supported_format_versions

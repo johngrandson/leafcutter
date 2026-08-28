@@ -76,7 +76,7 @@ Runs.list_owned_tokens/1
 Runs.claim_recoverable/3
 ```
 
-Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
+Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
 
 Supervision tree:
 
@@ -153,7 +153,7 @@ RunSnapshot v1 materialization
 
 ## Em andamento
 
-Validar a suíte integral, revisar o diff final e preparar o merge da feature branch de RunSnapshot v1.
+Revisão final e quality gate concluídos; preparar o merge da feature branch de RunSnapshot v1.
 
 ## Próxima tarefa concreta
 

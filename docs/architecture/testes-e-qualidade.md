@@ -37,6 +37,9 @@ Os testes atuais cobrem:
 - RuntimeNode heartbeat;
 - Run ownership, release e fencing;
 - claim concorrente;
+- validação, normalização e imutabilidade de RunSnapshot v1;
+- criação atômica de Run + RunSnapshot;
+- eligibility de Runs `pending` por formato suportado;
 - per-Run supervision;
 - RunRecovery, lotes concorrentes e shutdown.
 

@@ -7,6 +7,8 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
   alias Leafcutter.Executions.{Run, RunSnapshot}
   alias Leafcutter.Repo
 
+  import Leafcutter.Executions.RunFixtures, only: [definition_fixture: 0]
+
   setup do
     owner = Sandbox.start_owner!(Repo, shared: false)
     on_exit(fn -> Sandbox.stop_owner(owner) end)
@@ -230,33 +232,5 @@ defmodule Leafcutter.Executions.RunSnapshotTest do
     |> Map.merge(attrs)
     |> then(&RunSnapshot.create_changeset(%RunSnapshot{}, &1))
     |> Repo.insert()
-  end
-
-  @spec definition_fixture() :: map()
-  defp definition_fixture do
-    %{
-      "package_version_id" => Ecto.UUID.generate(),
-      "source" => %{
-        "ref" => "source",
-        "contract_version_id" => Ecto.UUID.generate(),
-        "connection" => %{
-          "id" => Ecto.UUID.generate(),
-          "config" => %{},
-          "secret_version_id" => nil
-        }
-      },
-      "destinations" => [
-        %{
-          "ref" => "destination",
-          "contract_version_id" => Ecto.UUID.generate(),
-          "connection" => %{
-            "id" => Ecto.UUID.generate(),
-            "config" => %{},
-            "secret_version_id" => nil
-          }
-        }
-      ],
-      "effective_config" => %{}
-    }
   end
 end

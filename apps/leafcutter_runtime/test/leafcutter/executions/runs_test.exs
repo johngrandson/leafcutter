@@ -6,6 +6,8 @@ defmodule Leafcutter.Executions.RunsTest do
   alias Leafcutter.Executions.{Nodes, Run, Runs, RunSnapshot, RuntimeNode}
   alias Leafcutter.Repo
 
+  import Leafcutter.Executions.RunFixtures, only: [definition_fixture: 0]
+
   @type run_fixture_attrs :: %{
           optional(:status) => Run.status(),
           optional(:owner_node_id) => RuntimeNode.id(),
@@ -45,6 +47,22 @@ defmodule Leafcutter.Executions.RunsTest do
       invalid_definition =
         definition_fixture()
         |> Map.put("package_version_id", "not-a-uuid")
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(invalid_definition)
+
+      refute changeset.valid?
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "returns a changeset and persists nothing for invalid UTF-8" do
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      invalid_definition =
+        definition_fixture()
+        |> put_in(["source", "ref"], <<255>>)
 
       assert {:error, %Changeset{} = changeset} =
                Runs.create(invalid_definition)
@@ -344,34 +362,6 @@ defmodule Leafcutter.Executions.RunsTest do
       assert {:owner_node_id, {_message, _options}} =
                List.keyfind(changeset.errors, :owner_node_id, 0)
     end
-  end
-
-  @spec definition_fixture() :: map()
-  defp definition_fixture do
-    %{
-      "package_version_id" => Ecto.UUID.generate(),
-      "source" => %{
-        "ref" => "source",
-        "contract_version_id" => Ecto.UUID.generate(),
-        "connection" => %{
-          "id" => Ecto.UUID.generate(),
-          "config" => %{},
-          "secret_version_id" => nil
-        }
-      },
-      "destinations" => [
-        %{
-          "ref" => "destination",
-          "contract_version_id" => Ecto.UUID.generate(),
-          "connection" => %{
-            "id" => Ecto.UUID.generate(),
-            "config" => %{},
-            "secret_version_id" => nil
-          }
-        }
-      ],
-      "effective_config" => %{}
-    }
   end
 
   @spec create_pending_run() :: Run.t()

@@ -48,6 +48,10 @@ node heartbeat expired
 
 `RunRecovery` usa polling, lotes e `FOR UPDATE SKIP LOCKED`.
 
+Runs `pending` com RunSnapshot em formato suportado também entram no scanner. Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis; Runs legadas `running` preservam recovery independentemente do snapshot.
+
+Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas de conexão ou operação PostgreSQL usam backoff global. Erros de programação encerram o processo e seguem a política do supervisor, em vez de serem mascarados como falhas retryable.
+
 ## Durabilidade futura do data plane
 
 Para um Record com dois destinos:
@@ -113,4 +117,4 @@ Fila externa entra somente se métricas demonstrarem que o backlog durável no P
 
 ## Recovery não significa criação de trabalho
 
-O scanner atual recupera apenas Runs `running`. Runs `pending` precisam de definição executável imutável antes de se tornarem elegíveis automaticamente.
+O scanner atual recupera Runs `running` elegíveis por ownership e inicia Runs `pending` quando a presença de um RunSnapshot em formato suportado prova eligibility estrutural. Isso ainda não prova executabilidade semântica nem cria trabalho do data plane.

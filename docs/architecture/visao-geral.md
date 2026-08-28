@@ -35,6 +35,8 @@ RuntimeNode heartbeat
         ↓
 Run ownership + generation
         ↓
+Run + immutable RunSnapshot
+        ↓
 RunRecovery
         ↓
 RunSupervisor
@@ -85,7 +87,8 @@ CONTROL PLANE MATERIALIZADO
 - claim/release
 - generation fencing
 - local per-Run supervision
-- polling recovery
+- polling recovery de Runs running e pending elegíveis
+- criação atômica de Run + RunSnapshot v1
 ```
 
 Futuro ratificado:

@@ -26,7 +26,9 @@ O relógio do PostgreSQL decide liveness. Reclaim incrementa generation. Release
 
 ## Recovery
 
-O scanner reconstrói árvores já owned sem incrementar generation e reclama Runs `running` sem owner ou com owner expirado.
+O scanner reconstrói árvores já owned sem incrementar generation, reclama Runs `running` sem owner ou com owner expirado e inicia Runs `pending` com RunSnapshot em formato suportado.
+
+Falhas operacionais representadas no contrato de recovery e exceções esperadas de conexão ou operação PostgreSQL entram no backoff global. Erros de programação não são convertidos em falhas retryable: o processo encerra e sua supervisão aplica a política de restart.
 
 ## Consequências
 

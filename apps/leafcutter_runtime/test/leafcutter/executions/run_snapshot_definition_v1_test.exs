@@ -150,6 +150,13 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1Test do
       end
     end
 
+    test "rejects endpoint references that are not valid UTF-8" do
+      attrs = put_in(valid_attrs(), [:source, :ref], <<255>>)
+
+      assert {:error, changeset} = DefinitionV1.validate(attrs)
+      assert validation_present?(changeset, :utf8)
+    end
+
     test "requires connection and effective configuration to be JSON objects" do
       attrs = valid_attrs()
 
@@ -172,6 +179,21 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1Test do
       for invalid_definition <- invalid_definitions do
         assert {:error, changeset} = DefinitionV1.validate(invalid_definition)
         refute changeset.valid?
+      end
+    end
+
+    test "rejects configuration keys and values that are not valid UTF-8" do
+      attrs = valid_attrs()
+
+      invalid_definitions = [
+        put_in(attrs, [:source, :connection, :config], %{<<255>> => true}),
+        put_in(attrs, [:source, :connection, :config], %{"value" => <<255>>}),
+        Map.put(attrs, :effective_config, %{"value" => <<255>>})
+      ]
+
+      for invalid_definition <- invalid_definitions do
+        assert {:error, changeset} = DefinitionV1.validate(invalid_definition)
+        assert validation_present?(changeset, :json_object)
       end
     end
 

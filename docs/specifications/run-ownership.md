@@ -88,7 +88,9 @@ Registry é local.
 - exclui pending sem snapshot ou com formato desconhecido;
 - usa `FOR UPDATE SKIP LOCKED`, batch 25, ordering `updated_at + id`;
 - inicia árvore após commit;
-- aplica backoff global e por Run;
+- aplica backoff por Run a falhas de startup;
+- aplica backoff global a erros retornados pelo contrato de recovery e a falhas esperadas de banco;
+- encerra o processo em erros de programação para permitir restart supervisionado;
 - tenta release best effort no shutdown normal.
 
 ## Fencing future writes

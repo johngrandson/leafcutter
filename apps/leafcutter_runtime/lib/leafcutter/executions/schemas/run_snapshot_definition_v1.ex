@@ -140,7 +140,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     |> normalized_cast(attrs, @endpoint_cast_fields, @endpoint_fields)
     |> validate_required(@endpoint_cast_fields)
     |> validate_uuid(:contract_version_id)
-    |> validate_format(:ref, ~r/\S/u, message: "must contain a non-whitespace character")
+    |> validate_ref()
     |> cast_embed(:connection, required: true, with: &connection_changeset/2)
   end
 
@@ -281,6 +281,24 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
     end
   end
 
+  @spec validate_ref(Changeset.t()) :: Changeset.t()
+  defp validate_ref(changeset) do
+    validate_change(changeset, :ref, fn :ref, ref ->
+      cond do
+        not String.valid?(ref) ->
+          [ref: {"must be valid UTF-8", validation: :utf8}]
+
+        String.trim(ref) == "" ->
+          [
+            ref: {"must contain a non-whitespace character", validation: :format}
+          ]
+
+        true ->
+          []
+      end
+    end)
+  end
+
   @spec validate_json_object(Changeset.t(), atom()) :: Changeset.t()
   defp validate_json_object(changeset, field) do
     case get_field(changeset, field) do
@@ -310,7 +328,7 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
       |> Enum.reject(&is_nil/1)
       |> Enum.map(& &1.ref)
       |> Enum.filter(fn ref ->
-        is_binary(ref) and String.trim(ref) != ""
+        is_binary(ref) and String.valid?(ref) and String.trim(ref) != ""
       end)
 
     if length(refs) == MapSet.size(MapSet.new(refs)) do
@@ -331,8 +349,8 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
   defp json_object?(value) when is_map(value) do
     normalized_keys =
       Enum.map(Map.keys(value), fn
-        key when is_binary(key) -> key
-        key when is_atom(key) -> Atom.to_string(key)
+        key when is_binary(key) -> valid_json_string(key)
+        key when is_atom(key) -> key |> Atom.to_string() |> valid_json_string()
         _key -> nil
       end)
 
@@ -345,9 +363,10 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
 
   @spec json_value?(term()) :: boolean()
   defp json_value?(value)
-       when is_nil(value) or is_boolean(value) or is_binary(value) or
-              is_number(value),
+       when is_nil(value) or is_boolean(value) or is_number(value),
        do: true
+
+  defp json_value?(value) when is_binary(value), do: String.valid?(value)
 
   defp json_value?(value) when is_list(value) do
     Enum.all?(value, &json_value?/1)
@@ -355,6 +374,11 @@ defmodule Leafcutter.Executions.RunSnapshot.DefinitionV1 do
 
   defp json_value?(value) when is_map(value), do: json_object?(value)
   defp json_value?(_value), do: false
+
+  @spec valid_json_string(binary()) :: binary() | nil
+  defp valid_json_string(value) do
+    if String.valid?(value), do: value
+  end
 
   @spec to_definition_map(t()) :: normalized_definition()
   defp to_definition_map(definition) do

@@ -28,7 +28,7 @@ Materialized / Partial / Not materialized
 | ADR-0014 | Desenvolvedor como autor principal e harness | MATERIALIZADO |
 | ADR-0015 | Harness multi-agente com contrato compartilhado | MATERIALIZADO |
 | ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
-| ADR-0017 | RunSnapshot v1 imutável e criação atômica | NÃO MATERIALIZADO |
+| ADR-0017 | RunSnapshot v1 imutável e criação atômica | MATERIALIZADO |
 
 ## Convenção de status decisório
 

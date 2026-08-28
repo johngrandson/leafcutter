@@ -35,4 +35,4 @@ Esses elementos continuam na arquitetura futura e não foram descartados.
 
 ## Resultado
 
-O projeto possui control plane real e testado. O próximo milestone transforma Run de identity/ownership record em execução definida por snapshot imutável.
+O projeto encerrou este milestone com um control plane real e testado. O milestone posterior, também concluído, transformou Run de identity/ownership record em execução definida por snapshot imutável.
