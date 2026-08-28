@@ -11,6 +11,14 @@ defmodule Leafcutter.Organizations do
   alias Leafcutter.Organizations.Organization
   alias Leafcutter.Repo
 
+  @typedoc "Authority or lifecycle error returned while validating an active Organization."
+  @type active_organization_state_error ::
+          :organization_not_found | :organization_disabled
+
+  @typedoc "Error returned while locking an active Organization."
+  @type active_organization_error ::
+          :transaction_required | active_organization_state_error()
+
   @doc """
   Creates an organization.
 
@@ -134,6 +142,49 @@ defmodule Leafcutter.Organizations do
     end)
   end
 
+  @doc """
+  Locks and validates an active Organization.
+
+  ## Parameters
+
+  * `id` - The Organization identifier to lock and validate
+
+  ## Returns
+
+  * `{:ok, organization}` when the Organization exists and is active
+  * `{:error, :transaction_required}` when no caller-owned transaction is active
+  * `{:error, :organization_not_found}` when the Organization does not exist
+  * `{:error, :organization_disabled}` when the Organization is disabled
+
+  ## Examples
+
+      iex> Leafcutter.Organizations.lock_active(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :transaction_required}
+
+  ## Notes
+
+  * The caller must already own a Repo transaction.
+  * A shared row lock blocks lifecycle updates until the caller commits.
+  * The lock is intended for cross-context workflows that require Organization authority.
+  """
+  @spec lock_active(Organization.id()) ::
+          {:ok, Organization.t()} | {:error, active_organization_error()}
+  def lock_active(id) do
+    if Repo.in_transaction?() do
+      Organization
+      |> where([organization], organization.id == ^id)
+      |> lock("FOR SHARE")
+      |> Repo.one()
+      |> classify_active()
+    else
+      {:error, :transaction_required}
+    end
+  end
+
+  @spec persist_disable(Organization.t() | nil) ::
+          Organization.t() | no_return()
   defp persist_disable(nil) do
     Repo.rollback(:not_found)
   end
@@ -150,4 +201,14 @@ defmodule Leafcutter.Organizations do
         Repo.rollback(changeset)
     end
   end
+
+  @spec classify_active(Organization.t() | nil) ::
+          {:ok, Organization.t()}
+          | {:error, active_organization_state_error()}
+  defp classify_active(nil), do: {:error, :organization_not_found}
+
+  defp classify_active(%Organization{disabled_at: nil} = organization),
+    do: {:ok, organization}
+
+  defp classify_active(%Organization{}), do: {:error, :organization_disabled}
 end
