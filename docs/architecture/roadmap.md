@@ -39,13 +39,14 @@
 - ConnectorVersion com versão opaca;
 - Operations source/destination;
 - publicação atômica e sealing no PostgreSQL;
-- conteúdo publicado protegido contra append, update e delete.
+- conteúdo publicado protegido contra append, update e delete;
+- Contract e ContractVersion identity-only, publicados e imutáveis.
 
 ## Próximo estágio: authorities upstream e resolução
 
 O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrerá em sub-slices ordenados.
 
-- Contract/ContractVersion e Package/PackageVersion/endpoints;
+- Package/PackageVersion/endpoints;
 - Connections e SecretVersion bindings mínimos;
 - Integration + EnvironmentDeployment persistidos;
 - resolver semântico de EnvironmentDeployment para definition v1;
