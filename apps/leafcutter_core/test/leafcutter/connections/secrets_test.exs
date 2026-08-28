@@ -291,8 +291,7 @@ defmodule Leafcutter.Connections.SecretsTest do
                  first_scope.environment.id
                )
 
-      assert {:error,
-              {:secret_version_scope_mismatch, second_version_id}} =
+      assert {:error, {:secret_version_scope_mismatch, second_version_id}} =
                Secrets.fetch_versions(
                  [second_version.id],
                  first_scope.organization.id,

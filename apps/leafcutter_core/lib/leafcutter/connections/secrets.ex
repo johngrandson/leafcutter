@@ -302,7 +302,8 @@ defmodule Leafcutter.Connections.Secrets do
            secret_version.secret.organization_id != organization_id or
              secret_version.secret.environment_id != environment_id
          end) do
-      nil -> :ok
+      nil ->
+        :ok
 
       secret_version ->
         {:error, {:secret_version_scope_mismatch, secret_version.id}}
