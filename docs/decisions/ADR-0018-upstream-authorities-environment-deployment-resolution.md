@@ -219,9 +219,39 @@ Leafcutter.Integrations.Deployments
 └── replace/2
 ```
 
+## Merge de configuração efetiva
+
+`effective_config` é derivada em memória e nunca persistida no EnvironmentDeployment:
+
+```text
+promotable_config
+        ↓
+recursive merge
+        ↑
+local_config wins
+        ↓
+effective_config
+```
+
+Regras aprovadas:
+
+- promotable config e local config são JSON objects;
+- o merge é determinístico e recursivo;
+- quando ambos os valores são objects, suas chaves são combinadas recursivamente;
+- em qualquer outro conflito, o valor local substitui integralmente o valor promovível;
+- arrays são substituídos e nunca concatenados;
+- `null` é um valor explícito de override e não significa remoção;
+- chaves presentes somente em um dos lados são preservadas;
+- Connection config não participa desse merge e é congelada separadamente por endpoint;
+- SecretVersion nunca participa de config;
+- Package defaults não entram neste slice;
+- RunSnapshot persiste somente effective config;
+- a provenance continua representada pelos dois campos separados no EnvironmentDeployment.
+
+Essa precedência preserva a promoção futura: somente promotable config será copiada, enquanto cada Environment manterá sua local config.
+
 ## Decisões ainda pendentes neste ADR
 
-- merge e precedence de config não sensível;
 - consistência transacional da resolução;
 - contrato público e erros de `create_from_deployment/1`;
 - comportamento de chamadas repetidas e fronteira de idempotency.
