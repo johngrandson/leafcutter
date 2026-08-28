@@ -88,7 +88,7 @@ leafcutter_runtime
 leafcutter_api
 ```
 
-Core hospeda Organizations, Repo, PubSub e Oban. Connectors é uma boundary ainda vazia. Runtime hospeda Executions foundation e OTP control plane. API é Phoenix API-only foundation.
+Core hospeda Organizations, o Catalog parcial, Repo, PubSub e Oban. Connectors é uma boundary ainda vazia. Runtime hospeda Executions foundation e OTP control plane. API é Phoenix API-only foundation.
 
 ## Organizations e autorização
 
@@ -110,9 +110,12 @@ Authorization recebe actor e scope explícitos. Não existe `Principal` persisti
 Connector
 └── ConnectorVersion
     └── Operation
+
+Contract
+└── ContractVersion
 ```
 
-ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. Contract, PackageVersion e seus endpoints permanecem no próximo sub-slice.
+ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. ContractVersion materializa somente uma identidade versionada, nasce publicada e também é imutável. PackageVersion e seus endpoints permanecem no próximo sub-slice.
 
 ## RuntimeNode
 
@@ -189,7 +192,7 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog já controla identidade, versões e Operations de Connectors. Contract, Packages e availability permanecem na evolução ratificada. Catalog não executará artefatos.
+Catalog já controla identidades e versões de Connectors e Contracts, além das Operations de ConnectorVersion. Packages e availability permanecem na evolução ratificada. Catalog não executará artefatos.
 
 ## Connections
 
@@ -292,7 +295,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Connector authorities materializam a primeira parte do Catalog; os demais sub-slices ainda não existem. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Connector e Contract authorities materializam os dois primeiros sub-slices do Catalog; PackageVersion e endpoints ainda não existem. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
