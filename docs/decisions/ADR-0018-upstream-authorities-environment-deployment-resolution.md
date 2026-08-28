@@ -1,7 +1,7 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR/CONNECTORVERSION/OPERATION
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR E CONTRACT AUTHORITIES
 - Data: 2026-08-28
 
 ## Contexto
@@ -393,11 +393,12 @@ Materializado:
 - eligibility e recovery de Runs `pending` com formato suportado;
 - `Connector`, `ConnectorVersion` e `Operation` no Catalog;
 - publicação transacional e sealing de ConnectorVersion com suas Operations;
-- imutabilidade de conteúdo e validação UTF-8 dessas authorities.
+- imutabilidade de conteúdo e validação UTF-8 dessas authorities;
+- `Contract` e `ContractVersion` identity-only no Catalog;
+- publicação imediata e imutabilidade de ContractVersion.
 
 Não materializado:
 
-- Contract e ContractVersion;
 - Package, PackageVersion e PackageVersionEndpoint;
 - Connections;
 - Integrations;
@@ -422,7 +423,7 @@ Continuam fora deste slice:
 - o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- ContractVersion e PackageVersion completam o próximo sub-slice do Catalog.
+- PackageVersion e seus endpoints completam o próximo sub-slice do Catalog.
 
 ## Evidência
 
