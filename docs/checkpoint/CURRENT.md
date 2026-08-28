@@ -6,7 +6,7 @@
 
 **Minimal Catalog materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. O primeiro sub-slice do Catalog, Connector/ConnectorVersion/Operation, está materializado nesta branch.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Os dois primeiros sub-slices do Catalog, Connector/ConnectorVersion/Operation e Contract/ContractVersion, estão materializados nesta branch.
 
 ## Estado materializado
 
@@ -67,12 +67,18 @@ Connector
 └── ConnectorVersion
     └── Operation
 
+Contract
+└── ContractVersion
+
 Catalog.Connectors.create/1
 Catalog.Connectors.get/1
 Catalog.Connectors.publish_version/2
+Catalog.Contracts.create/1
+Catalog.Contracts.get/1
+Catalog.Contracts.publish_version/2
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
 ### Executions e runtime
 
@@ -124,8 +130,6 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Contract
-ContractVersion
 Package
 PackageVersion
 PackageVersionEndpoint
@@ -171,11 +175,12 @@ RunSnapshot v1 contract ratification
 RunSnapshot v1 materialization
 Upstream authorities and deployment resolution contract ratification
 Catalog Connector authority materialization
+Catalog Contract authority materialization
 ```
 
 ## Em andamento
 
-Completar o Catalog mínimo ratificado com Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint.
+Completar o Catalog mínimo ratificado com Package/PackageVersion/PackageVersionEndpoint.
 
 ## Próxima tarefa concreta
 
@@ -183,8 +188,6 @@ Materializar o próximo sub-slice do ADR-0018:
 
 ```text
 Catalog
-├── Contract
-│   └── ContractVersion
 └── Package
     └── PackageVersion
         └── PackageVersionEndpoint
