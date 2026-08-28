@@ -90,9 +90,12 @@ O primeiro sub-slice do Catalog está materializado:
 Connector
 └── ConnectorVersion
     └── Operation
+
+Contract
+└── ContractVersion
 ```
 
-`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. Os identificadores textuais deste agregado rejeitam UTF-8 inválido antes da persistência.
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
 ### Runtime e Executions foundation
 
@@ -176,10 +179,9 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Catalog restante
 
-O modelo mínimo foi ratificado no ADR-0018. Connector, ConnectorVersion e Operation já estão materializados; permanecem pendentes:
+O modelo mínimo foi ratificado no ADR-0018. Connector, ConnectorVersion, Operation, Contract e ContractVersion já estão materializados; permanecem pendentes:
 
 ```text
-Contract + ContractVersion
 Package + PackageVersion
 PackageVersionEndpoint
 availability metadata
@@ -317,13 +319,13 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O próximo slice deve completar o Catalog mínimo ratificado. A authority de Connector já existe; Contract e Package permanecem pendentes:
+O próximo slice deve completar o Catalog mínimo ratificado. As authorities de Connector e Contract já existem; Package permanece pendente:
 
 ```text
 Catalog mínimo
 ├── Connector + ConnectorVersion + Operation (materializado)
-├── Contract + ContractVersion (próximo)
-└── Package + PackageVersion + endpoints
+├── Contract + ContractVersion (materializado)
+└── Package + PackageVersion + endpoints (próximo)
 ↓
 Connections
 ↓
