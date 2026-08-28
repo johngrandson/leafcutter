@@ -68,7 +68,7 @@ Package
 PackageVersion
 ```
 
-O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation já estão materializados com publicação atômica e sealing no PostgreSQL. Contract, PackageVersion e endpoints permanecem pendentes.
+O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation já estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion também estão materializados como identities publicadas e imutáveis. PackageVersion e endpoints permanecem pendentes.
 
 ## Integration e EnvironmentDeployment
 
