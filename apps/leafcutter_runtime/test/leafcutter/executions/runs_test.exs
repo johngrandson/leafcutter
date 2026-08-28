@@ -83,9 +83,35 @@ defmodule Leafcutter.Executions.RunsTest do
     end
   end
 
+  describe "fetch_snapshot/1" do
+    test "returns the immutable snapshot for a Run created publicly" do
+      assert {:ok, run} = Runs.create(definition_fixture())
+
+      assert {:ok, %RunSnapshot{} = snapshot} =
+               Runs.fetch_snapshot(run.id)
+
+      assert snapshot.run_id == run.id
+      assert snapshot.format_version == RunSnapshot.current_format_version()
+    end
+
+    test "distinguishes an existing legacy Run without a snapshot" do
+      run = insert_run()
+
+      assert {:error, :run_snapshot_not_found} =
+               Runs.fetch_snapshot(run.id)
+    end
+
+    test "returns run_not_found when the Run does not exist" do
+      assert {:error, :run_not_found} =
+               Runs.fetch_snapshot(
+                 "00000000-0000-0000-0000-000000000000"
+               )
+    end
+  end
+
   describe "claim/2" do
     test "claims a pending Run and returns generation one" do
-      run = insert_run()
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("first-claim")
       run_id = run.id
       runtime_node_id = runtime_node.id
@@ -105,8 +131,52 @@ defmodule Leafcutter.Executions.RunsTest do
       assert %DateTime{} = persisted_run.ownership_acquired_at
     end
 
-    test "is idempotent for the current active owner" do
+    test "rejects a pending legacy Run without a snapshot" do
       run = insert_run()
+      runtime_node = create_active_runtime_node("missing-snapshot")
+
+      assert {:error, :run_snapshot_not_found} =
+               Runs.claim(run.id, runtime_node.id)
+
+      persisted_run = Repo.get!(Run, run.id)
+
+      assert persisted_run.status == :pending
+      assert persisted_run.owner_node_id == nil
+      assert persisted_run.generation == 0
+    end
+
+    test "rejects a pending Run with an unsupported snapshot format" do
+      run = insert_run()
+      _snapshot = insert_snapshot(run, 999)
+      runtime_node = create_active_runtime_node("unsupported-snapshot")
+
+      assert {:error, :unsupported_run_snapshot_format} =
+               Runs.claim(run.id, runtime_node.id)
+
+      persisted_run = Repo.get!(Run, run.id)
+
+      assert persisted_run.status == :pending
+      assert persisted_run.owner_node_id == nil
+      assert persisted_run.generation == 0
+    end
+
+    test "preserves claims for running Runs regardless of snapshot state" do
+      missing_snapshot_run = insert_run(%{status: :running})
+      unsupported_snapshot_run = insert_run(%{status: :running})
+      _snapshot = insert_snapshot(unsupported_snapshot_run, 999)
+      runtime_node = create_active_runtime_node("running-compatibility")
+
+      for run <- [missing_snapshot_run, unsupported_snapshot_run] do
+        assert {:ok, ownership_token} =
+                 Runs.claim(run.id, runtime_node.id)
+
+        assert ownership_token.run_id == run.id
+        assert ownership_token.generation == 1
+      end
+    end
+
+    test "is idempotent for the current active owner" do
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("idempotent-claim")
 
       assert {:ok, first_token} = Runs.claim(run.id, runtime_node.id)
@@ -123,7 +193,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "rejects another active owner" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("active-owner")
       second_runtime_node = create_active_runtime_node("active-contender")
 
@@ -139,7 +209,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "reclaims a Run from an expired owner and increments generation" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("expired-owner")
       second_runtime_node = create_active_runtime_node("recovery-node")
 
@@ -158,7 +228,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "requires an existing active claimant runtime node" do
-      run = insert_run()
+      run = create_pending_run()
       missing_runtime_node_id = "00000000-0000-0000-0000-000000000000"
 
       assert {:error, :runtime_node_not_found} =
@@ -195,7 +265,7 @@ defmodule Leafcutter.Executions.RunsTest do
 
   describe "release/1" do
     test "clears ownership idempotently while preserving lifecycle and generation" do
-      run = insert_run()
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("release")
 
       assert {:ok, ownership_token} = Runs.claim(run.id, runtime_node.id)
@@ -211,7 +281,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "rejects an old token after another runtime node acquires a later generation" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("release-first")
       second_runtime_node = create_active_runtime_node("release-second")
 
@@ -304,6 +374,22 @@ defmodule Leafcutter.Executions.RunsTest do
       ],
       "effective_config" => %{}
     }
+  end
+
+  @spec create_pending_run() :: Run.t()
+  defp create_pending_run do
+    {:ok, run} = Runs.create(definition_fixture())
+    run
+  end
+
+  @spec insert_snapshot(Run.t(), pos_integer()) :: RunSnapshot.t()
+  defp insert_snapshot(run, format_version) do
+    %RunSnapshot{
+      run_id: run.id,
+      format_version: format_version,
+      definition: definition_fixture()
+    }
+    |> Repo.insert!()
   end
 
   @spec insert_run(run_fixture_attrs()) :: Run.t()
