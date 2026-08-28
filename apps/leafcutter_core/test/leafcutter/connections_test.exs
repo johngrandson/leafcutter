@@ -34,7 +34,7 @@ defmodule Leafcutter.ConnectionsTest do
                  connector_id: scope.connector.id,
                  name: "CRM",
                  config: %{
-                   base_url: "https://example.test",
+                   :base_url => "https://example.test",
                    "options" => [%{timeout: 30}]
                  },
                  secret_version_id: secret_version.id,
@@ -101,7 +101,7 @@ defmodule Leafcutter.ConnectionsTest do
         [],
         %URI{scheme: "https"},
         %{1 => "invalid key"},
-        %{key: 1, "key" => 2},
+        %{:key => 1, "key" => 2},
         %{"pid" => self()},
         %{"invalid_utf8" => <<255>>}
       ]

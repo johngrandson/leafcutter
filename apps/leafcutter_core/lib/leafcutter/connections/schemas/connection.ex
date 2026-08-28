@@ -139,7 +139,7 @@ defmodule Leafcutter.Connections.Connection do
     |> validate_required(@required_create_fields)
     |> validate_name()
     |> validate_json_object(:config)
-    |> constraints()
+    |> apply_constraints()
   end
 
   @doc """
@@ -189,7 +189,7 @@ defmodule Leafcutter.Connections.Connection do
     connection
     |> cast(attrs, @update_fields)
     |> validate_json_object(:config)
-    |> constraints()
+    |> apply_constraints()
   end
 
   @doc """
@@ -329,8 +329,8 @@ defmodule Leafcutter.Connections.Connection do
 
   defp normalize_json_value(_value), do: :error
 
-  @spec constraints(Ecto.Changeset.t()) :: Ecto.Changeset.t()
-  defp constraints(changeset) do
+  @spec apply_constraints(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  defp apply_constraints(changeset) do
     changeset
     |> foreign_key_constraint(:organization_id)
     |> foreign_key_constraint(:environment_id)
