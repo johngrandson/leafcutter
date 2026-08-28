@@ -34,9 +34,12 @@ Organization
 Connector
 └── immutable ConnectorVersion
     └── Operations
+
+Contract
+└── immutable ContractVersion
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Contract e Package permanecem como os próximos sub-slices do Catalog mínimo ratificado.
+ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. Package permanece como o próximo sub-slice do Catalog mínimo ratificado.
 
 ### Runtime
 
