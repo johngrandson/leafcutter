@@ -171,6 +171,7 @@ Leafcutter.Connections.lock_active/3
 
 Leafcutter.Connections.Secrets.create/1
 Leafcutter.Connections.Secrets.create_version/1
+Leafcutter.Connections.Secrets.fetch_versions/3
 ```
 
 ### Estado materializado
@@ -183,6 +184,7 @@ O modelo mínimo está materializado em `leafcutter_core`:
 - binding de Connection é opcional, exato e protegido contra cross-scope;
 - writes seguram locks compartilhados de Organization e Environment antes de Connection;
 - `lock_active/3` bloqueia Connections únicas em ordem de ID para workflows compostos;
+- `Secrets.fetch_versions/3` valida identities exatas e scope em batch, sem latest-version selection;
 - update substitui somente config e/ou SecretVersion; disable preserva um timestamp idempotente;
 - raw secret, ciphertext, provider locator, credential, OAuth, rotation e revocation não foram materializados.
 
@@ -255,6 +257,7 @@ Leafcutter.Integrations.lock_active/2
 Leafcutter.Integrations.Deployments.create/1
 Leafcutter.Integrations.Deployments.get/1
 Leafcutter.Integrations.Deployments.replace/2
+Leafcutter.Integrations.Deployments.lock_for_resolution/1
 ```
 
 ### Estado materializado
@@ -268,6 +271,7 @@ O modelo mínimo está materializado em `leafcutter_core`:
 - writes revalidam Organization, Environment, Integration, Connections e compatibilidade de PackageVersion/Connector sob locks determinísticos;
 - constraints e triggers protegem JSON objects, identidade, PackageVersion, cobertura e Connector compatibility;
 - `get/1` devolve bindings ordenados por ref;
+- `lock_for_resolution/1` mantém deployment e bindings sob shared locks até o fim da transação;
 - effective config e congelamento de SecretVersion continuam responsabilidades do resolver.
 
 ## Effective config

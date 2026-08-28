@@ -25,6 +25,7 @@
 20. Connections/Secret/SecretVersion materialization
 21. Integration identity materialization
 22. EnvironmentDeployment/EnvironmentDeploymentBinding materialization
+23. resolver-facing deployment lock and SecretVersion reads
 ```
 
 ## Próximo slice de implementação

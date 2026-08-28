@@ -238,6 +238,71 @@ defmodule Leafcutter.Connections.SecretsTest do
     end
   end
 
+  describe "fetch_versions/3" do
+    test "returns unique exact identities ordered by identifier with scope loaded" do
+      scope = scope_fixture()
+      {:ok, first_secret} = Secrets.create(secret_attrs(scope, name: "First"))
+      {:ok, second_secret} = Secrets.create(secret_attrs(scope, name: "Second"))
+
+      {:ok, first_version} =
+        Secrets.create_version(%{secret_id: first_secret.id, version: "1"})
+
+      {:ok, second_version} =
+        Secrets.create_version(%{secret_id: second_secret.id, version: "1"})
+
+      assert {:ok, secret_versions} =
+               Secrets.fetch_versions(
+                 [second_version.id, first_version.id, second_version.id],
+                 scope.organization.id,
+                 scope.environment.id
+               )
+
+      assert Enum.map(secret_versions, & &1.id) ==
+               [first_version.id, second_version.id] |> Enum.sort()
+
+      assert Enum.all?(secret_versions, fn secret_version ->
+               secret_version.secret.organization_id == scope.organization.id and
+                 secret_version.secret.environment_id == scope.environment.id
+             end)
+
+      assert {:ok, []} =
+               Secrets.fetch_versions(
+                 [],
+                 scope.organization.id,
+                 scope.environment.id
+               )
+    end
+
+    test "classifies missing and scope-incompatible versions deterministically" do
+      first_scope = scope_fixture("First")
+      second_scope = scope_fixture("Second")
+
+      {:ok, second_secret} = Secrets.create(secret_attrs(second_scope))
+
+      {:ok, second_version} =
+        Secrets.create_version(%{secret_id: second_secret.id, version: "1"})
+
+      missing_id = Ecto.UUID.generate()
+
+      assert {:error, {:secret_version_not_found, ^missing_id}} =
+               Secrets.fetch_versions(
+                 [missing_id],
+                 first_scope.organization.id,
+                 first_scope.environment.id
+               )
+
+      assert {:error,
+              {:secret_version_scope_mismatch, second_version_id}} =
+               Secrets.fetch_versions(
+                 [second_version.id],
+                 first_scope.organization.id,
+                 first_scope.environment.id
+               )
+
+      assert second_version_id == second_version.id
+    end
+  end
+
   describe "database invariants" do
     test "rejects SecretVersion update and delete operations" do
       scope = scope_fixture()

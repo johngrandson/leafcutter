@@ -402,6 +402,7 @@ Materializado:
 - `Connection`, `Secret` e `SecretVersion` no context Connections;
 - APIs públicas de create/get/update/disable de Connection e criação de Secret/SecretVersion;
 - API pública `Connections.lock_active/3` para leitura bloqueada em ordem determinística;
+- API pública `Connections.Secrets.fetch_versions/3` para identities exatas e scope-compatible;
 - scope explícito de Organization/Environment com FKs compostas;
 - validação de parents ativos sob locks compartilhados na ordem Organization → Environment;
 - config não sensível validada como JSON object;
@@ -415,6 +416,7 @@ Materializado:
 - imutabilidade de Organization, Package e identidade da Integration no PostgreSQL;
 - `EnvironmentDeployment` e `EnvironmentDeploymentBinding` com scope explícito;
 - APIs públicas `Integrations.Deployments.create/1`, `get/1` e `replace/2`;
+- API pública `Integrations.Deployments.lock_for_resolution/1` para proteger deployment e bindings;
 - um deployment completo por Integration/Environment com PackageVersion, configs separadas e bindings completos;
 - validação transacional de authorities ativas, PackageVersion, refs e compatibilidade de Connector;
 - locks ordenados de Organization, Environment, Integration, deployment e Connections;

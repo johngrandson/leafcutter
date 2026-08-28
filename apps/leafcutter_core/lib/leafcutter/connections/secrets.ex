@@ -6,6 +6,8 @@ defmodule Leafcutter.Connections.Secrets do
   secret material, encryption, provider locators, credentials, and rotation.
   """
 
+  import Ecto.Query
+
   alias Ecto.Changeset
 
   alias Leafcutter.Connections.{Secret, SecretVersion}
@@ -20,6 +22,11 @@ defmodule Leafcutter.Connections.Secrets do
 
   @typedoc "Error returned while creating an immutable SecretVersion identity."
   @type create_version_error :: :secret_not_found | scope_error() | Changeset.t()
+
+  @typedoc "Error returned while fetching exact SecretVersion identities for a scope."
+  @type fetch_versions_error ::
+          {:secret_version_not_found, SecretVersion.id()}
+          | {:secret_version_scope_mismatch, SecretVersion.id()}
 
   @doc """
   Creates an environment-scoped Secret identity.
@@ -151,6 +158,80 @@ defmodule Leafcutter.Connections.Secrets do
     end
   end
 
+  @doc """
+  Fetches and validates exact immutable SecretVersion identities for one scope.
+
+  ## Parameters
+
+  * `ids` - The exact SecretVersion identifiers required by the caller
+  * `organization_id` - The Organization every SecretVersion must belong to
+  * `environment_id` - The Environment every SecretVersion must belong to
+
+  ## Returns
+
+  * `{:ok, secret_versions}` with unique versions ordered by identifier
+  * `{:error, {:secret_version_not_found, id}}` when a requested version is absent
+  * `{:error, {:secret_version_scope_mismatch, id}}` when a version belongs to another scope
+
+  ## Examples
+
+  Given an immutable SecretVersion in the expected scope:
+
+      iex> {:ok, secret_versions} =
+      ...>   Leafcutter.Connections.Secrets.fetch_versions(
+      ...>     [secret_version.id],
+      ...>     organization.id,
+      ...>     environment.id
+      ...>   )
+
+      iex> Enum.map(secret_versions, & &1.id)
+      [secret_version.id]
+
+      iex> Leafcutter.Connections.Secrets.fetch_versions(
+      ...>   ["00000000-0000-0000-0000-000000000000"],
+      ...>   Ecto.UUID.generate(),
+      ...>   Ecto.UUID.generate()
+      ...> )
+      {:error,
+       {:secret_version_not_found,
+        "00000000-0000-0000-0000-000000000000"}}
+
+  ## Notes
+
+  * Duplicate identifiers are fetched once and do not duplicate the result.
+  * The returned Secret association is loaded as scope evidence.
+  * SecretVersions are immutable and therefore do not require row locks.
+  * No latest-version selection or secret material access occurs.
+  """
+  @spec fetch_versions(
+          [SecretVersion.id()],
+          Ecto.UUID.t(),
+          Ecto.UUID.t()
+        ) ::
+          {:ok, [SecretVersion.t()]}
+          | {:error, fetch_versions_error()}
+  def fetch_versions(ids, organization_id, environment_id) when is_list(ids) do
+    requested_ids = ids |> Enum.uniq() |> Enum.sort()
+
+    secret_versions =
+      SecretVersion
+      |> join(:inner, [secret_version], secret in assoc(secret_version, :secret))
+      |> where([secret_version], secret_version.id in ^requested_ids)
+      |> order_by([secret_version], asc: secret_version.id)
+      |> preload([_secret_version, secret], secret: secret)
+      |> Repo.all()
+
+    with :ok <- validate_versions_present(requested_ids, secret_versions),
+         :ok <-
+           validate_versions_scope(
+             secret_versions,
+             organization_id,
+             environment_id
+           ) do
+      {:ok, secret_versions}
+    end
+  end
+
   @spec create_with_active_scope(Changeset.t()) ::
           {:ok, Secret.t()} | {:error, create_error()}
   defp create_with_active_scope(changeset) do
@@ -191,6 +272,40 @@ defmodule Leafcutter.Connections.Secrets do
     case Repo.get(Secret, secret_id) do
       %Secret{} = secret -> {:ok, secret}
       nil -> {:error, :secret_not_found}
+    end
+  end
+
+  @spec validate_versions_present(
+          [SecretVersion.id()],
+          [SecretVersion.t()]
+        ) :: :ok | {:error, {:secret_version_not_found, SecretVersion.id()}}
+  defp validate_versions_present(requested_ids, secret_versions) do
+    persisted_ids = MapSet.new(secret_versions, & &1.id)
+
+    case Enum.find(requested_ids, &(not MapSet.member?(persisted_ids, &1))) do
+      nil -> :ok
+      missing_id -> {:error, {:secret_version_not_found, missing_id}}
+    end
+  end
+
+  @spec validate_versions_scope(
+          [SecretVersion.t()],
+          Ecto.UUID.t(),
+          Ecto.UUID.t()
+        ) :: :ok | {:error, {:secret_version_scope_mismatch, SecretVersion.id()}}
+  defp validate_versions_scope(
+         secret_versions,
+         organization_id,
+         environment_id
+       ) do
+    case Enum.find(secret_versions, fn secret_version ->
+           secret_version.secret.organization_id != organization_id or
+             secret_version.secret.environment_id != environment_id
+         end) do
+      nil -> :ok
+
+      secret_version ->
+        {:error, {:secret_version_scope_mismatch, secret_version.id}}
     end
   end
 

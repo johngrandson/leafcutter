@@ -303,6 +303,66 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
     end
   end
 
+  describe "lock_for_resolution/1" do
+    test "requires a caller-owned transaction" do
+      assert {:error, :transaction_required} =
+               Deployments.lock_for_resolution(Ecto.UUID.generate())
+    end
+
+    test "locks and returns the deployment with bindings ordered by ref" do
+      scope = deployment_scope()
+      {:ok, deployment} = Deployments.create(deployment_attrs(scope))
+      handler_id = {__MODULE__, make_ref()}
+      test_process = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:leafcutter, :repo, :query],
+          fn _event, _measurements, metadata, test_process ->
+            if self() == test_process and
+                 String.contains?(metadata.query, "FOR SHARE") do
+              send(test_process, {:shared_lock_query, metadata.query})
+            end
+          end,
+          test_process
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, {:ok, locked_deployment}} =
+               Repo.transaction(fn ->
+                 Deployments.lock_for_resolution(deployment.id)
+               end)
+
+      assert_receive {:shared_lock_query, deployment_query}
+      assert_receive {:shared_lock_query, bindings_query}
+      assert String.contains?(deployment_query, ~s(FROM "environment_deployments"))
+
+      assert String.contains?(
+               bindings_query,
+               ~s(FROM "environment_deployment_bindings")
+             )
+
+      assert locked_deployment.id == deployment.id
+
+      assert Enum.map(
+               locked_deployment.bindings,
+               &{&1.ref, &1.connection_id}
+             ) == [
+               {"crm", scope.destination_connection.id},
+               {"source", scope.source_connection.id}
+             ]
+    end
+
+    test "returns a named error when the deployment does not exist" do
+      assert {:ok, {:error, :not_found}} =
+               Repo.transaction(fn ->
+                 Deployments.lock_for_resolution(Ecto.UUID.generate())
+               end)
+    end
+  end
+
   describe "replace/2" do
     test "replaces PackageVersion, configs, and the complete binding set" do
       scope = deployment_scope()

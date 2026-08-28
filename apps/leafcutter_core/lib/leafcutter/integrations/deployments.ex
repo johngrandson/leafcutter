@@ -84,6 +84,9 @@ defmodule Leafcutter.Integrations.Deployments do
   @typedoc "Error returned while replacing an EnvironmentDeployment."
   @type replace_error :: :not_found | validation_error()
 
+  @typedoc "Error returned while locking an EnvironmentDeployment for resolution."
+  @type lock_for_resolution_error :: :transaction_required | :not_found
+
   @doc """
   Creates one complete EnvironmentDeployment and all endpoint bindings.
 
@@ -161,6 +164,59 @@ defmodule Leafcutter.Integrations.Deployments do
 
       nil ->
         {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Locks an EnvironmentDeployment and its complete binding set for resolution.
+
+  ## Parameters
+
+  * `id` - The EnvironmentDeployment identifier required by the caller-owned workflow
+
+  ## Returns
+
+  * `{:ok, deployment}` with bindings ordered by ref and protected by shared locks
+  * `{:error, :transaction_required}` when no caller-owned transaction is active
+  * `{:error, :not_found}` when no EnvironmentDeployment has the identifier
+
+  ## Examples
+
+  Given a persisted EnvironmentDeployment:
+
+      iex> {:ok, {:ok, locked_deployment}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Integrations.Deployments.lock_for_resolution(
+      ...>       deployment.id
+      ...>     )
+      ...>   end)
+
+      iex> locked_deployment.id == deployment.id
+      true
+
+      iex> Leafcutter.Integrations.Deployments.lock_for_resolution(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :transaction_required}
+
+  ## Notes
+
+  * The caller must already own a Repo transaction.
+  * The caller is responsible for locking Organization, Environment, and Integration first.
+  * The deployment row is locked before its binding rows.
+  * Shared locks allow concurrent resolvers and block replacement until commit.
+  * Lifecycle and cross-context semantic validation remain caller responsibilities.
+  """
+  @spec lock_for_resolution(EnvironmentDeployment.id()) ::
+          {:ok, EnvironmentDeployment.t()}
+          | {:error, lock_for_resolution_error()}
+  def lock_for_resolution(id) do
+    if Repo.in_transaction?() do
+      with {:ok, deployment} <- lock_deployment_for_resolution(id) do
+        {:ok, load_locked_bindings(deployment)}
+      end
+    else
+      {:error, :transaction_required}
     end
   end
 
@@ -292,7 +348,7 @@ defmodule Leafcutter.Integrations.Deployments do
                unlocked_deployment.integration_id,
                unlocked_deployment.organization_id
              ),
-           {:ok, deployment} <- lock_deployment(unlocked_deployment.id),
+           {:ok, deployment} <- lock_deployment_for_update(unlocked_deployment.id),
            {:ok, changeset} <- validate_replacement(deployment, attrs),
            package_version_id =
              Changeset.fetch_field!(changeset, :package_version_id),
@@ -555,15 +611,33 @@ defmodule Leafcutter.Integrations.Deployments do
     end
   end
 
-  @spec lock_deployment(EnvironmentDeployment.id()) ::
+  @spec lock_deployment_for_resolution(EnvironmentDeployment.id()) ::
           {:ok, EnvironmentDeployment.t()} | {:error, :not_found}
-  defp lock_deployment(id) do
+  defp lock_deployment_for_resolution(id) do
+    deployment =
+      EnvironmentDeployment
+      |> where([deployment], deployment.id == ^id)
+      |> lock("FOR SHARE")
+      |> Repo.one()
+
+    classify_deployment(deployment)
+  end
+
+  @spec lock_deployment_for_update(EnvironmentDeployment.id()) ::
+          {:ok, EnvironmentDeployment.t()} | {:error, :not_found}
+  defp lock_deployment_for_update(id) do
     deployment =
       EnvironmentDeployment
       |> where([deployment], deployment.id == ^id)
       |> lock("FOR UPDATE")
       |> Repo.one()
 
+    classify_deployment(deployment)
+  end
+
+  @spec classify_deployment(EnvironmentDeployment.t() | nil) ::
+          {:ok, EnvironmentDeployment.t()} | {:error, :not_found}
+  defp classify_deployment(deployment) do
     case deployment do
       %EnvironmentDeployment{} = deployment -> {:ok, deployment}
       nil -> {:error, :not_found}
@@ -628,16 +702,31 @@ defmodule Leafcutter.Integrations.Deployments do
 
   @spec load_bindings(EnvironmentDeployment.t()) :: EnvironmentDeployment.t()
   defp load_bindings(deployment) do
+    bindings = deployment.id |> bindings_query() |> Repo.all()
+
+    attach_bindings(deployment, bindings)
+  end
+
+  @spec load_locked_bindings(EnvironmentDeployment.t()) ::
+          EnvironmentDeployment.t()
+  defp load_locked_bindings(deployment) do
     bindings =
-      EnvironmentDeploymentBinding
-      |> where(
-        [binding],
-        binding.environment_deployment_id == ^deployment.id
-      )
-      |> order_by([binding], asc: binding.ref)
+      deployment.id
+      |> bindings_query()
+      |> lock("FOR SHARE")
       |> Repo.all()
 
     attach_bindings(deployment, bindings)
+  end
+
+  @spec bindings_query(EnvironmentDeployment.id()) :: Ecto.Query.t()
+  defp bindings_query(deployment_id) do
+    EnvironmentDeploymentBinding
+    |> where(
+      [binding],
+      binding.environment_deployment_id == ^deployment_id
+    )
+    |> order_by([binding], asc: binding.ref)
   end
 
   @spec attach_bindings(

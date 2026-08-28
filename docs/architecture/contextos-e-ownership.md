@@ -94,7 +94,7 @@ SecretVersion
 mutable config and exact binding lifecycle
 ```
 
-Connection referencia Connector identity, não ConnectorVersion. Connection e Secret possuem scope explícito de Organization/Environment; SecretVersion herda esse scope de Secret. Config é não sensível e o binding opcional seleciona uma versão exata. A boundary pública valida parents ativos com locks compartilhados, enquanto o PostgreSQL protege scope, JSON object, binding compatível e imutabilidade de SecretVersion.
+Connection referencia Connector identity, não ConnectorVersion. Connection e Secret possuem scope explícito de Organization/Environment; SecretVersion herda esse scope de Secret. Config é não sensível e o binding opcional seleciona uma versão exata. A boundary pública valida parents ativos com locks compartilhados e expõe leitura batch das SecretVersions exatas por scope, enquanto o PostgreSQL protege scope, JSON object, binding compatível e imutabilidade de SecretVersion.
 
 Continuam futuros OAuth durable state, providers/encryption, rotation, revocation e retention. Raw secret storage permanece fora do slice.
 
@@ -111,7 +111,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê e substitui atomicamente um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. O resolver transacional permanece em `leafcutter_runtime`.
+Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê, substitui atomicamente e bloqueia para resolução um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. O resolver transacional permanece em `leafcutter_runtime`.
 
 ## Executions
 
