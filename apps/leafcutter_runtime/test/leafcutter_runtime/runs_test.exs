@@ -293,7 +293,36 @@ defmodule LeafcutterRuntime.RunsTest do
 
   @spec insert_run() :: Run.t()
   defp insert_run do
-    Repo.insert!(%Run{})
+    {:ok, run} = DurableRuns.create(definition_fixture())
+    run
+  end
+
+  @spec definition_fixture() :: map()
+  defp definition_fixture do
+    %{
+      "package_version_id" => Ecto.UUID.generate(),
+      "source" => %{
+        "ref" => "source",
+        "contract_version_id" => Ecto.UUID.generate(),
+        "connection" => %{
+          "id" => Ecto.UUID.generate(),
+          "config" => %{},
+          "secret_version_id" => nil
+        }
+      },
+      "destinations" => [
+        %{
+          "ref" => "destination",
+          "contract_version_id" => Ecto.UUID.generate(),
+          "connection" => %{
+            "id" => Ecto.UUID.generate(),
+            "config" => %{},
+            "secret_version_id" => nil
+          }
+        }
+      ],
+      "effective_config" => %{}
+    }
   end
 
   @spec create_runtime_node(String.t()) :: RuntimeNode.t()
