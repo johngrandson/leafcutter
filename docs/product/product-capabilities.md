@@ -32,13 +32,14 @@
 - Connector e ConnectorVersion;
 - Operations source/destination;
 - publicação atômica de versão e Operations;
-- sealing e imutabilidade no PostgreSQL.
+- sealing e imutabilidade no PostgreSQL;
+- Contract e ContractVersion identity-only.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Contract, Package e suas versões/endpoints;
+- Package e suas versões/endpoints;
 - Contracts JSON Schema;
 - Connector/Operation/Transport;
 - Integration Packages;
