@@ -54,9 +54,7 @@ defmodule Leafcutter.Repo.Migrations.CreateCatalogConnectors do
     )
 
     create(
-      constraint(:operations, :operations_role_valid,
-        check: "role IN ('source', 'destination')"
-      )
+      constraint(:operations, :operations_role_valid, check: "role IN ('source', 'destination')")
     )
 
     execute(

@@ -104,6 +104,16 @@ Roles podem ser organization-wide ou environment-scoped. User e ServiceAccount p
 
 Authorization recebe actor e scope explícitos. Não existe `Principal` persistido.
 
+## Catalog parcial
+
+```text
+Connector
+└── ConnectorVersion
+    └── Operation
+```
+
+ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. Contract, PackageVersion e seus endpoints permanecem no próximo sub-slice.
+
 ## RuntimeNode
 
 Cada startup da application runtime gera uma nova identidade UUID. Restart isolado do heartbeat preserva a identidade; restart da application cria nova incarnação.
@@ -179,7 +189,7 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog controlará identidade, versões, publicação e disponibilidade de Connectors, Contracts e Packages. Não executará artefatos.
+Catalog já controla identidade, versões e Operations de Connectors. Contract, Packages e availability permanecem na evolução ratificada. Catalog não executará artefatos.
 
 ## Connections
 
@@ -282,7 +292,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018 e ainda não estão materializados. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Connector authorities materializam a primeira parte do Catalog; os demais sub-slices ainda não existem. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 

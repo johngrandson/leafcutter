@@ -6,7 +6,7 @@
 
 **Minimal Catalog materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018 e ainda não possuem implementação. A fase atual começa pela materialização isolada do Catalog mínimo.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. O primeiro sub-slice do Catalog, Connector/ConnectorVersion/Operation, está materializado nesta branch.
 
 ## Estado materializado
 
@@ -58,6 +58,22 @@ environment.manage
 access.manage
 ```
 
+### Catalog
+
+Materializado:
+
+```text
+Connector
+└── ConnectorVersion
+    └── Operation
+
+Catalog.Connectors.create/1
+Catalog.Connectors.get/1
+Catalog.Connectors.publish_version/2
+```
+
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+
 ### Executions e runtime
 
 Materializado:
@@ -108,7 +124,11 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Catalog
+Contract
+ContractVersion
+Package
+PackageVersion
+PackageVersionEndpoint
 Connections
 Integrations
 Notifications
@@ -150,21 +170,19 @@ Documentation present/future alignment
 RunSnapshot v1 contract ratification
 RunSnapshot v1 materialization
 Upstream authorities and deployment resolution contract ratification
+Catalog Connector authority materialization
 ```
 
 ## Em andamento
 
-Materializar somente o Catalog mínimo ratificado: Connector/ConnectorVersion/Operation, Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint, com publicação atômica, imutabilidade e testes.
+Completar o Catalog mínimo ratificado com Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint.
 
 ## Próxima tarefa concreta
 
-Materializar o primeiro sub-slice do ADR-0018:
+Materializar o próximo sub-slice do ADR-0018:
 
 ```text
 Catalog
-├── Connector
-│   └── ConnectorVersion
-│       └── Operation
 ├── Contract
 │   └── ContractVersion
 └── Package
@@ -172,7 +190,7 @@ Catalog
         └── PackageVersionEndpoint
 ```
 
-O sub-slice inclui migrations centralizadas em core, schemas no diretório canônico, APIs públicas de criação/publicação/leitura, constraints de cardinalidade e imutabilidade, testes de banco e documentação in-code.
+O sub-slice inclui migrations centralizadas em core, schemas no diretório canônico, APIs públicas de criação/publicação/leitura, constraints de cardinalidade e imutabilidade, testes de banco e documentação in-code. O sealing de ConnectorVersion permanece como padrão físico para agregados versionados com filhos.
 
 Não implementar ainda Connections, Integrations, resolver, Package Manifest, JSON Schema/JSV ou contracts executáveis de connectors.
 

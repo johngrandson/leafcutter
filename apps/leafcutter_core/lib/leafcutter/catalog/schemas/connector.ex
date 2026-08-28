@@ -25,8 +25,7 @@ defmodule Leafcutter.Catalog.Connector do
   @type t :: %__MODULE__{
           id: id() | nil,
           name: String.t() | nil,
-          versions:
-            [ConnectorVersion.t()] | Ecto.Association.NotLoaded.t(),
+          versions: [ConnectorVersion.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -74,7 +73,7 @@ defmodule Leafcutter.Catalog.Connector do
 
   ## Notes
 
-  * The name is required and may contain at most 255 characters.
+  * The name is required, must be valid UTF-8, and may contain at most 255 characters.
   * Connector identities are global and do not belong to an Organization.
   * Versions and Operations are excluded from this changeset.
   * Lifecycle and availability metadata are outside the initial Catalog slice.
@@ -84,6 +83,18 @@ defmodule Leafcutter.Catalog.Connector do
     connector
     |> cast(attrs, [:name])
     |> validate_required([:name])
+    |> validate_utf8(:name)
     |> validate_length(:name, max: 255)
+  end
+
+  @spec validate_utf8(Ecto.Changeset.t(), atom()) :: Ecto.Changeset.t()
+  defp validate_utf8(changeset, field) do
+    validate_change(changeset, field, fn ^field, value ->
+      if String.valid?(value) do
+        []
+      else
+        [{field, {"must be valid UTF-8", validation: :utf8}}]
+      end
+    end)
   end
 end

@@ -1,6 +1,7 @@
 defmodule Leafcutter.Catalog.ConnectorsTest do
   use Leafcutter.DataCase, async: true
 
+  alias Ecto.Adapters.SQL
   alias Ecto.Changeset
 
   alias Leafcutter.Catalog.{
@@ -36,6 +37,16 @@ defmodule Leafcutter.Catalog.ConnectorsTest do
         assert {:error, changeset} = Connectors.create(attrs)
         assert %{name: [_ | _]} = errors_on(changeset)
       end
+    end
+
+    test "rejects a name that is not valid UTF-8" do
+      assert {:error, changeset} =
+               Connectors.create(%{name: <<255>>})
+
+      assert {"must be valid UTF-8", options} =
+               Keyword.fetch!(changeset.errors, :name)
+
+      assert options[:validation] == :utf8
     end
   end
 
@@ -125,6 +136,43 @@ defmodule Leafcutter.Catalog.ConnectorsTest do
         refute changeset.valid?
       end
 
+      assert Repo.aggregate(ConnectorVersion, :count) == 0
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "rejects a version that is not valid UTF-8" do
+      connector = connector_fixture()
+
+      assert {:error, changeset} =
+               Connectors.publish_version(connector.id, %{
+                 version: <<255>>
+               })
+
+      assert {"must be valid UTF-8", options} =
+               Keyword.fetch!(changeset.errors, :version)
+
+      assert options[:validation] == :utf8
+      assert Repo.aggregate(ConnectorVersion, :count) == 0
+    end
+
+    test "rolls back an Operation ref that is not valid UTF-8" do
+      connector = connector_fixture()
+
+      assert {:error, changeset} =
+               Connectors.publish_version(
+                 connector.id,
+                 %{
+                   version: "1",
+                   operations: [
+                     %{ref: <<255>>, role: :source}
+                   ]
+                 }
+               )
+
+      assert {"must be valid UTF-8", options} =
+               Keyword.fetch!(changeset.errors, :ref)
+
+      assert options[:validation] == :utf8
       assert Repo.aggregate(ConnectorVersion, :count) == 0
       assert Repo.aggregate(Operation, :count) == 0
     end
@@ -231,6 +279,80 @@ defmodule Leafcutter.Catalog.ConnectorsTest do
 
       assert Repo.get!(ConnectorVersion, connector_version.id).version == "1"
       assert Repo.get!(Operation, operation.id).ref == "read"
+    end
+
+    test "rejects adding an Operation after publication" do
+      connector = connector_fixture()
+
+      assert {:ok, connector_version} =
+               Connectors.publish_version(
+                 connector.id,
+                 %{
+                   version: "1",
+                   operations: [
+                     %{ref: "read", role: :source}
+                   ]
+                 }
+               )
+
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              %Operation{}
+              |> Operation.publish_changeset(%{
+                connector_version_id: connector_version.id,
+                ref: "late_write",
+                role: :destination
+              })
+              |> Repo.insert!()
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert error.postgres.message ==
+               "operations cannot be added after ConnectorVersion publication"
+
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+
+    test "rejects an unsealed ConnectorVersion at the transaction boundary" do
+      connector = connector_fixture()
+      {:ok, dumped_connector_id} = Ecto.UUID.dump(connector.id)
+      {:ok, dumped_version_id} = Ecto.UUID.dump(Ecto.UUID.generate())
+
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              SQL.query!(
+                Repo,
+                """
+                INSERT INTO connector_versions (
+                  id,
+                  connector_id,
+                  version,
+                  published_at,
+                  inserted_at
+                )
+                VALUES ($1, $2, 'unsealed', NULL, clock_timestamp())
+                """,
+                [dumped_version_id, dumped_connector_id]
+              )
+
+              SQL.query!(
+                Repo,
+                "SET CONSTRAINTS connector_versions_require_publication IMMEDIATE",
+                []
+              )
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert error.postgres.message ==
+               "connector_versions must be published before commit"
     end
   end
 

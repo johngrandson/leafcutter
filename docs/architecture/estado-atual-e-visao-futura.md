@@ -82,6 +82,18 @@ Scopes:
 
 Assignment organization-wide herda para Environments da mesma Organization. Assignment environment-scoped não herda para Organization nem para outro Environment.
 
+### Catalog parcial
+
+O primeiro sub-slice do Catalog está materializado:
+
+```text
+Connector
+└── ConnectorVersion
+    └── Operation
+```
+
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. Os identificadores textuais deste agregado rejeitam UTF-8 inválido antes da persistência.
+
 ### Runtime e Executions foundation
 
 Persistência atual:
@@ -162,19 +174,18 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ## Arquitetura ratificada ainda não materializada
 
-### Catalog
+### Catalog restante
 
-O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
+O modelo mínimo foi ratificado no ADR-0018. Connector, ConnectorVersion e Operation já estão materializados; permanecem pendentes:
 
 ```text
-Connector + ConnectorVersion
-Operation metadata
 Contract + ContractVersion
 Package + PackageVersion
-publication and availability metadata
+PackageVersionEndpoint
+availability metadata
 ```
 
-O primeiro slice usa identidades globais estáveis, versões nascidas publicadas, Operations pertencentes a ConnectorVersion e uma projeção relacional de endpoints de PackageVersion. Conteúdo versionado será imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
+O slice ratificado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. O conteúdo versionado é imutável no agregado já materializado e seguirá a mesma regra nos agregados restantes. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
 ### Connections
 
@@ -306,12 +317,12 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O próximo slice deve materializar a primeira authority upstream já ratificada:
+O próximo slice deve completar o Catalog mínimo ratificado. A authority de Connector já existe; Contract e Package permanecem pendentes:
 
 ```text
 Catalog mínimo
-├── Connector + ConnectorVersion + Operation
-├── Contract + ContractVersion
+├── Connector + ConnectorVersion + Operation (materializado)
+├── Contract + ContractVersion (próximo)
 └── Package + PackageVersion + endpoints
 ↓
 Connections

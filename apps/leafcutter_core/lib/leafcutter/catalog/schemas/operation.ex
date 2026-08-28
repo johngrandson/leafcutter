@@ -28,8 +28,7 @@ defmodule Leafcutter.Catalog.Operation do
   @type t :: %__MODULE__{
           id: id() | nil,
           connector_version_id: ConnectorVersion.id() | nil,
-          connector_version:
-            ConnectorVersion.t() | Ecto.Association.NotLoaded.t(),
+          connector_version: ConnectorVersion.t() | Ecto.Association.NotLoaded.t(),
           ref: String.t() | nil,
           role: role() | nil,
           inserted_at: DateTime.t() | nil
@@ -87,7 +86,7 @@ defmodule Leafcutter.Catalog.Operation do
 
   ## Notes
 
-  * The reference is required, local to one ConnectorVersion, and at most 255 characters.
+  * The reference is required, valid UTF-8, local to one ConnectorVersion, and at most 255 characters.
   * References are unique inside one ConnectorVersion.
   * The role is persisted as either `source` or `destination`.
   * Published rows are protected against update and delete by PostgreSQL.
@@ -97,6 +96,7 @@ defmodule Leafcutter.Catalog.Operation do
     operation
     |> cast(attrs, [:connector_version_id, :ref, :role])
     |> validate_required([:connector_version_id, :ref, :role])
+    |> validate_utf8(:ref)
     |> validate_length(:ref, max: 255)
     |> foreign_key_constraint(:connector_version_id)
     |> unique_constraint(
@@ -104,5 +104,16 @@ defmodule Leafcutter.Catalog.Operation do
       name: :operations_connector_version_id_ref_index
     )
     |> check_constraint(:role, name: :operations_role_valid)
+  end
+
+  @spec validate_utf8(Ecto.Changeset.t(), atom()) :: Ecto.Changeset.t()
+  defp validate_utf8(changeset, field) do
+    validate_change(changeset, field, fn ^field, value ->
+      if String.valid?(value) do
+        []
+      else
+        [{field, {"must be valid UTF-8", validation: :utf8}}]
+      end
+    end)
   end
 end

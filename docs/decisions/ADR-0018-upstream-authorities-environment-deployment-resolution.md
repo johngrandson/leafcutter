@@ -1,16 +1,16 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: NÃO MATERIALIZADO
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR/CONNECTORVERSION/OPERATION
 - Data: 2026-08-28
 
 ## Contexto
 
 RunSnapshot v1 já materializa o destino estrutural, versionado e imutável de uma resolução executável. A próxima fronteira precisa persistir as authorities mínimas de Catalog, Connections e Integrations e compô-las em `leafcutter_runtime` sem antecipar Package Manifest, data plane ou secrets concretos.
 
-Os schemas, APIs e a semântica do resolver continuam abertos em `docs/architecture/decisoes-em-aberto.md`. Este ADR permanece `Proposed` até que o contract completo do slice seja ratificado.
+Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. A implementação avança em sub-slices ordenados, começando pelas authorities do Catalog.
 
-## Decisão aprovada até agora
+## Decisão
 
 ### Topologia interna de PackageVersion
 
@@ -390,11 +390,15 @@ Materializado:
 - `Run` e `RunSnapshot`;
 - `RunSnapshot.DefinitionV1`;
 - criação atômica por `Executions.Runs.create/1`;
-- eligibility e recovery de Runs `pending` com formato suportado.
+- eligibility e recovery de Runs `pending` com formato suportado;
+- `Connector`, `ConnectorVersion` e `Operation` no Catalog;
+- publicação transacional e sealing de ConnectorVersion com suas Operations;
+- imutabilidade de conteúdo e validação UTF-8 dessas authorities.
 
 Não materializado:
 
-- Catalog;
+- Contract e ContractVersion;
+- Package, PackageVersion e PackageVersionEndpoint;
 - Connections;
 - Integrations;
 - resolver de EnvironmentDeployment.
@@ -414,11 +418,11 @@ Continuam fora deste slice:
 
 ## Consequências
 
-- Catalog poderá validar a topologia sem transformar o manifest aberto em contract persistido;
+- Catalog já publica ConnectorVersion e Operations sem transformar o manifest aberto em contract persistido;
 - o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- o ADR precisa continuar evoluindo de forma explícita até a ratificação completa.
+- ContractVersion e PackageVersion completam o próximo sub-slice do Catalog.
 
 ## Evidência
 

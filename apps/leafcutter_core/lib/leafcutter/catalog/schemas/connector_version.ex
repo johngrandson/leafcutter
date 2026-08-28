@@ -54,7 +54,7 @@ defmodule Leafcutter.Catalog.ConnectorVersion do
 
   ## Returns
 
-  * A valid changeset with an internally assigned publication timestamp
+  * A valid changeset containing the Connector identity and opaque version
   * An invalid changeset when required attributes or database constraints fail
 
   ## Examples
@@ -71,19 +71,14 @@ defmodule Leafcutter.Catalog.ConnectorVersion do
       iex> changeset.valid?
       true
 
-      iex> is_struct(
-      ...>   Ecto.Changeset.get_change(changeset, :published_at),
-      ...>   DateTime
-      ...> )
-      true
-
   ## Notes
 
-  * The version is opaque, required, and may contain at most 255 characters.
+  * The version is opaque, required, valid UTF-8, and may contain at most 255 characters.
   * Version values are unique within one Connector.
   * Semantic Versioning is not interpreted.
-  * `published_at` is selected internally and cannot be supplied by callers.
-  * Operations are persisted separately in the same transaction.
+  * `published_at` is deliberately excluded from the cast.
+  * The capability API sets `published_at` only after every Operation is persisted.
+  * A deferred database constraint prevents an unpublished version from being committed.
   * Published rows are protected against update and delete by PostgreSQL.
   """
   @spec publish_changeset(t(), publish_attrs()) :: Ecto.Changeset.t()
@@ -91,12 +86,23 @@ defmodule Leafcutter.Catalog.ConnectorVersion do
     connector_version
     |> cast(attrs, [:connector_id, :version])
     |> validate_required([:connector_id, :version])
+    |> validate_utf8(:version)
     |> validate_length(:version, max: 255)
-    |> put_change(:published_at, DateTime.utc_now(:microsecond))
     |> foreign_key_constraint(:connector_id)
     |> unique_constraint(
       [:connector_id, :version],
       name: :connector_versions_connector_id_version_index
     )
+  end
+
+  @spec validate_utf8(Ecto.Changeset.t(), atom()) :: Ecto.Changeset.t()
+  defp validate_utf8(changeset, field) do
+    validate_change(changeset, field, fn ^field, value ->
+      if String.valid?(value) do
+        []
+      else
+        [{field, {"must be valid UTF-8", validation: :utf8}}]
+      end
+    end)
   end
 end

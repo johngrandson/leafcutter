@@ -33,11 +33,19 @@
 - eligibility segura de Run `pending`;
 - references/config congeladas sem raw secrets.
 
+### Catalog parcial
+
+- Connector como identidade global;
+- ConnectorVersion com versão opaca;
+- Operations source/destination;
+- publicação atômica e sealing no PostgreSQL;
+- conteúdo publicado protegido contra append, update e delete.
+
 ## Próximo estágio: authorities upstream e resolução
 
 O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrerá em sub-slices ordenados.
 
-- Catalog mínimo;
+- Contract/ContractVersion e Package/PackageVersion/endpoints;
 - Connections e SecretVersion bindings mínimos;
 - Integration + EnvironmentDeployment persistidos;
 - resolver semântico de EnvironmentDeployment para definition v1;

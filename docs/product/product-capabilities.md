@@ -27,11 +27,18 @@
 - Phoenix API foundation;
 - quality gates e harness.
 
+### Catalog parcial
+
+- Connector e ConnectorVersion;
+- Operations source/destination;
+- publicação atômica de versão e Operations;
+- sealing e imutabilidade no PostgreSQL.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Catalog;
+- Contract, Package e suas versões/endpoints;
 - Contracts JSON Schema;
 - Connector/Operation/Transport;
 - Integration Packages;

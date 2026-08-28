@@ -31,8 +31,7 @@ defmodule Leafcutter.Catalog.Connectors do
             optional(:operations) => [operation_attrs()]
           }
           | %{
-              required(String.t()) =>
-                String.t() | [operation_attrs()]
+              required(String.t()) => String.t() | [operation_attrs()]
             }
 
   @type publish_error :: :connector_not_found | Changeset.t()
@@ -150,7 +149,9 @@ defmodule Leafcutter.Catalog.Connectors do
   * The version string is opaque and unique within one Connector.
   * Operations may be empty because endpoint cardinality belongs to PackageVersion.
   * Operation refs are unique within the published ConnectorVersion.
-  * Publication uses one database transaction and rolls back every row on failure.
+  * Publication seals the version after inserting its Operations in one transaction.
+  * An unsealed ConnectorVersion cannot cross the transaction boundary.
+  * Any publication failure rolls back every row.
   * Published version and Operation rows cannot be updated or deleted.
   """
   @spec publish_version(
@@ -206,7 +207,8 @@ defmodule Leafcutter.Catalog.Connectors do
         )
       end
 
-      connector_version = insert_connector_version_or_rollback(version_changeset)
+      connector_version =
+        insert_unpublished_connector_version_or_rollback(version_changeset)
 
       operations =
         Enum.map(operation_attrs, fn attrs ->
@@ -219,20 +221,42 @@ defmodule Leafcutter.Catalog.Connectors do
           |> insert_operation_or_rollback()
         end)
 
+      published_connector_version =
+        publish_connector_version_or_rollback(connector_version)
+
       %{
-        connector_version
+        published_connector_version
         | connector: connector,
           operations: operations
       }
     end)
   end
 
-  @spec insert_connector_version_or_rollback(Changeset.t()) ::
+  @spec insert_unpublished_connector_version_or_rollback(Changeset.t()) ::
           ConnectorVersion.t() | no_return()
-  defp insert_connector_version_or_rollback(changeset) do
+  defp insert_unpublished_connector_version_or_rollback(changeset) do
     case Repo.insert(changeset) do
       {:ok, %ConnectorVersion{} = connector_version} ->
         connector_version
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
+  @spec publish_connector_version_or_rollback(ConnectorVersion.t()) ::
+          ConnectorVersion.t() | no_return()
+  defp publish_connector_version_or_rollback(connector_version) do
+    connector_version
+    |> Changeset.change()
+    |> Changeset.put_change(
+      :published_at,
+      DateTime.utc_now(:microsecond)
+    )
+    |> Repo.update()
+    |> case do
+      {:ok, %ConnectorVersion{} = published_connector_version} ->
+        published_connector_version
 
       {:error, changeset} ->
         Repo.rollback(changeset)

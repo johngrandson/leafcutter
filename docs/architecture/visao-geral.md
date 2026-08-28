@@ -28,6 +28,16 @@ Organization
 └── Roles + Permissions + scoped assignments
 ```
 
+### Catalog parcial
+
+```text
+Connector
+└── immutable ConnectorVersion
+    └── Operations
+```
+
+ConnectorVersion e suas Operations são publicadas atomicamente. Contract e Package permanecem como os próximos sub-slices do Catalog mínimo ratificado.
+
 ### Runtime
 
 ```text
@@ -48,7 +58,7 @@ PostgreSQL decide ownership e recovery. Registry e processos OTP representam som
 ### Applications
 
 ```text
-core       → Organizations + Repo + PubSub + Oban
+core       → Organizations + Catalog parcial + Repo + PubSub + Oban
 connectors → boundary executável ainda vazia
 runtime    → Executions foundation + OTP runtime
 api        → Phoenix API-only foundation
