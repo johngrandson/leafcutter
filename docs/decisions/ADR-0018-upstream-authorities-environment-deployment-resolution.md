@@ -1,6 +1,6 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
-- Status: Proposed
+- Status: Accepted
 - Estado de implementação: NÃO MATERIALIZADO
 - Data: 2026-08-28
 
@@ -303,12 +303,71 @@ Regras aprovadas:
 - RunRecovery continua responsável por claim e startup;
 - o formato v1 permanece sem Organization, Environment, Integration ou Deployment IDs.
 
-## Decisões ainda pendentes neste ADR
+## Contrato público e erros
 
-- contrato público e erros de `create_from_deployment/1`;
-- comportamento de chamadas repetidas e fronteira de idempotency.
+A API retorna:
 
-Nenhuma migration ou API relativa a essas decisões deve ser implementada enquanto elas permanecerem abertas.
+```elixir
+@spec create_from_deployment(EnvironmentDeployment.id()) ::
+        {:ok, Run.t()}
+        | {:error, create_from_deployment_error()}
+```
+
+Tipos ratificados:
+
+```elixir
+@type create_from_deployment_error ::
+        :environment_deployment_not_found
+        | {:environment_deployment_not_executable,
+           deployment_not_executable_reason()}
+        | Ecto.Changeset.t()
+
+@type deployment_not_executable_reason ::
+        :organization_disabled
+        | :environment_disabled
+        | :integration_disabled
+        | :package_version_mismatch
+        | {:binding_mismatch,
+           %{
+             missing_refs: [String.t()],
+             unexpected_refs: [String.t()]
+           }}
+        | {:connection_not_found, Connection.id()}
+        | {:connection_disabled, Connection.id()}
+        | {:connection_scope_mismatch, Connection.id()}
+        | {:connector_mismatch, String.t()}
+        | {:secret_version_not_found, SecretVersion.id()}
+        | {:secret_version_scope_mismatch, SecretVersion.id()}
+```
+
+Regras aprovadas:
+
+- refs em erros são ordenadas para manter retorno determinístico;
+- IDs e refs podem aparecer nos erros;
+- config e material sensível nunca aparecem;
+- violations estruturais finais de RunSnapshot retornam Ecto.Changeset;
+- erros operacionais de banco continuam como exceções;
+- tradução HTTP permanece fora deste slice.
+
+## Repetição e idempotency
+
+Duas chamadas bem-sucedidas para o mesmo EnvironmentDeployment criam duas Runs e dois RunSnapshots distintos.
+
+Não existem neste slice:
+
+- idempotency key;
+- invocation record;
+- deduplicação;
+- vínculo de provenance em Run;
+- EnvironmentDeployment ID no formato RunSnapshot v1.
+
+Chamadas concorrentes podem criar Runs distintas a partir do mesmo estado coerente. Uma repetição após timeout ambíguo pode duplicar a Run. Idempotência futura deverá ser explícita e não inferida pelo deployment ID.
+
+Uma falha confirmada causa rollback e não deixa Run ou snapshot parcial.
+
+## Ratificação
+
+Todas as decisões necessárias para materializar este slice foram ratificadas. A implementação deve seguir a specification relacionada e não ampliar o escopo sem novo registro decisório.
 
 ## Alternativas consideradas para a topologia
 
