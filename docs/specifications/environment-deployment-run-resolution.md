@@ -1,7 +1,7 @@
 # EnvironmentDeployment → RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR/CONNECTORVERSION/OPERATION
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR E CONTRACT AUTHORITIES
 - ADR: `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 
 ## Objetivo
@@ -405,7 +405,7 @@ Falha confirmada causa rollback integral.
 - raw secret storage ou retrieval;
 - OAuth, rotation, revocation e retention;
 - deployment revision, history, promotion e rollback;
-- triggers;
+- event, schedule, webhook ou ingestion triggers;
 - actor, invocation e idempotency key;
 - vínculo de provenance na Run;
 - carregamento do snapshot no RunCoordinator;
