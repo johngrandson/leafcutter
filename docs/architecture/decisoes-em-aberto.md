@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1 está materializado. As authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 foram ratificados no ADR-0018. Catalog, Connections e a identidade Integration estão materializados. EnvironmentDeployment e seus bindings formam a próxima fronteira.
+RunSnapshot v1 e todas as authorities upstream mínimas estão materializados. O workflow EnvironmentDeployment → definition v1 foi ratificado no ADR-0018 e forma a próxima fronteira.
 
 ## Domínio
 

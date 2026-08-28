@@ -8,7 +8,7 @@
 
 Definir o contrato persistido, imutável e versionado que acompanha uma `Run` desde sua criação pública.
 
-Neste slice, o control plane usa a presença e a versão suportada do snapshot como prova de eligibility de uma Run `pending`. Isso não comprova ainda que as referências existem nem que a Run é semanticamente executável. A resolução a partir de `EnvironmentDeployment`, o carregamento no coordinator e a execução no data plane pertencem a slices posteriores.
+Neste slice, o control plane usa a presença e a versão suportada do snapshot como prova de eligibility de uma Run `pending`. Isso não comprova ainda que as referências existem nem que a Run é semanticamente executável. EnvironmentDeployment já está persistido; sua resolução para RunSnapshot, o carregamento no coordinator e a execução no data plane pertencem a slices posteriores.
 
 ## Ownership e boundary
 
@@ -16,7 +16,7 @@ Neste slice, o control plane usa a presença e a versão suportada do snapshot c
 
 `Leafcutter.Executions.Runs.create/1` recebe uma definition já resolvida. O futuro workflow de `EnvironmentDeployment → definition v1` pertence à orchestration em `leafcutter_runtime`; Executions não consulta internals de Catalog, Connections ou Integrations.
 
-O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. Catalog e Connections mínimos já materializam PackageVersion, ContractVersion, endpoints, Connection e SecretVersion; Integrations já materializa a identidade Integration, enquanto EnvironmentDeployment permanece pendente. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
+O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. Catalog, Connections e Integrations já materializam PackageVersion, ContractVersion, endpoints, Connection, SecretVersion, Integration e EnvironmentDeployment. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
 
 ## Persistência
 
@@ -189,7 +189,7 @@ A validação deste slice é estrutural:
 - strings, chaves e valores de config em UTF-8 válido;
 - `secret_version_id` como UUID ou null.
 
-Catalog, Connections e a identidade Integration já conseguem provar existência isolada, integridade local e suas invariantes materializadas. Permanecem para EnvironmentDeployment e para o resolver futuro:
+Todas as authorities upstream mínimas já conseguem provar existência isolada, integridade local e suas invariantes materializadas. Permanecem para o resolver futuro:
 
 - composição semântica das referências de Connection e SecretVersion;
 - compatibilidade PackageVersion/ContractVersion/Connection;

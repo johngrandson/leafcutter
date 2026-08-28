@@ -1,14 +1,14 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG + CONNECTIONS + INTEGRATION IDENTITY
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE
 - Data: 2026-08-28
 
 ## Contexto
 
 RunSnapshot v1 já materializa o destino estrutural, versionado e imutável de uma resolução executável. A próxima fronteira precisa persistir as authorities mínimas de Catalog, Connections e Integrations e compô-las em `leafcutter_runtime` sem antecipar Package Manifest, data plane ou secrets concretos.
 
-Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog, Connections e a identidade de Integration já foram materializados em sub-slices ordenados; EnvironmentDeployment e o resolver permanecem posteriores.
+Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings já foram materializados em sub-slices ordenados; o resolver permanece posterior.
 
 ## Decisão
 
@@ -401,6 +401,7 @@ Materializado:
 - leitura pública da projeção imutável por PackageVersion;
 - `Connection`, `Secret` e `SecretVersion` no context Connections;
 - APIs públicas de create/get/update/disable de Connection e criação de Secret/SecretVersion;
+- API pública `Connections.lock_active/3` para leitura bloqueada em ordem determinística;
 - scope explícito de Organization/Environment com FKs compostas;
 - validação de parents ativos sob locks compartilhados na ordem Organization → Environment;
 - config não sensível validada como JSON object;
@@ -409,11 +410,17 @@ Materializado:
 - ausência de raw secret, ciphertext, provider locator e credential na persistência;
 - identidade `Integration` organization-scoped ligada a uma Package estável;
 - APIs públicas `Integrations.create/1`, `get/1` e `disable/1`;
+- API pública `Integrations.lock_active/2` para workflows compostos;
 - validação de Organization ativa sob lock compartilhado e disable idempotente;
-- imutabilidade de Organization, Package e identidade da Integration no PostgreSQL.
+- imutabilidade de Organization, Package e identidade da Integration no PostgreSQL;
+- `EnvironmentDeployment` e `EnvironmentDeploymentBinding` com scope explícito;
+- APIs públicas `Integrations.Deployments.create/1`, `get/1` e `replace/2`;
+- um deployment completo por Integration/Environment com PackageVersion, configs separadas e bindings completos;
+- validação transacional de authorities ativas, PackageVersion, refs e compatibilidade de Connector;
+- locks ordenados de Organization, Environment, Integration, deployment e Connections;
+- constraints e triggers protegendo identidade, JSON objects, cobertura, PackageVersion e Connector compatibility.
 
 Não materializado:
-- EnvironmentDeployment e EnvironmentDeploymentBinding;
 - resolver de EnvironmentDeployment.
 
 ## Futuro preservado
@@ -435,7 +442,7 @@ Continuam fora deste slice:
 - o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- EnvironmentDeployment e seus bindings formam o próximo sub-slice.
+- o resolver de EnvironmentDeployment forma o próximo sub-slice.
 
 ## Evidência
 
@@ -445,4 +452,7 @@ Continuam fora deste slice:
 - `docs/architecture/modelo-conceitual.md`;
 - `docs/architecture/integration-packages.md`;
 - `docs/specifications/package-manifest-v1.md`;
+- `apps/leafcutter_core/lib/leafcutter/integrations/deployments.ex`;
+- `apps/leafcutter_core/priv/repo/migrations/20260828090000_create_environment_deployments.exs`;
+- `apps/leafcutter_core/test/leafcutter/integrations/deployments_test.exs`;
 - `docs/checkpoint/CURRENT.md`.

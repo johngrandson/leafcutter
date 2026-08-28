@@ -1,7 +1,7 @@
 # EnvironmentDeployment → RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG + CONNECTIONS MÍNIMOS
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE
 - ADR: `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 
 ## Objetivo
@@ -167,6 +167,7 @@ Leafcutter.Connections.create/1
 Leafcutter.Connections.get/1
 Leafcutter.Connections.update/2
 Leafcutter.Connections.disable/1
+Leafcutter.Connections.lock_active/3
 
 Leafcutter.Connections.Secrets.create/1
 Leafcutter.Connections.Secrets.create_version/1
@@ -181,6 +182,7 @@ O modelo mínimo está materializado em `leafcutter_core`:
 - SecretVersion contém somente identidade/version, é única dentro de Secret e imutável;
 - binding de Connection é opcional, exato e protegido contra cross-scope;
 - writes seguram locks compartilhados de Organization e Environment antes de Connection;
+- `lock_active/3` bloqueia Connections únicas em ordem de ID para workflows compostos;
 - update substitui somente config e/ou SecretVersion; disable preserva um timestamp idempotente;
 - raw secret, ciphertext, provider locator, credential, OAuth, rotation e revocation não foram materializados.
 
@@ -248,11 +250,25 @@ Essas validações são repetidas na criação da Run porque deployment e Connec
 Leafcutter.Integrations.create/1
 Leafcutter.Integrations.get/1
 Leafcutter.Integrations.disable/1
+Leafcutter.Integrations.lock_active/2
 
 Leafcutter.Integrations.Deployments.create/1
 Leafcutter.Integrations.Deployments.get/1
 Leafcutter.Integrations.Deployments.replace/2
 ```
+
+### Estado materializado
+
+O modelo mínimo está materializado em `leafcutter_core`:
+
+- Integration é organization-scoped, referencia Package estável e possui lifecycle mínimo;
+- EnvironmentDeployment possui identidade imutável e é único por Integration/Environment;
+- create e replace persistem PackageVersion, configs separadas e todos os bindings atomicamente;
+- bindings cobrem exatamente os endpoints e guardam somente ref + Connection ID;
+- writes revalidam Organization, Environment, Integration, Connections e compatibilidade de PackageVersion/Connector sob locks determinísticos;
+- constraints e triggers protegem JSON objects, identidade, PackageVersion, cobertura e Connector compatibility;
+- `get/1` devolve bindings ordenados por ref;
+- effective config e congelamento de SecretVersion continuam responsabilidades do resolver.
 
 ## Effective config
 
@@ -423,4 +439,3 @@ Falha confirmada causa rollback integral.
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway;
 - HTTP/API translation.
-

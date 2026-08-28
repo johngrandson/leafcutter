@@ -56,6 +56,17 @@ Environment
 
 Connection referencia Connector estável, mantém config não sensível e pode selecionar uma SecretVersion exata. APIs públicas protegem scope ativo com locks compartilhados; constraints compostas e triggers preservam Organization/Environment, config JSON object, binding compatível e imutabilidade de SecretVersion.
 
+### Integrations mínimo
+
+```text
+Organization
+└── Integration
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+```
+
+Integration referencia Package estável. EnvironmentDeployment seleciona PackageVersion, promotable/local config e o conjunto completo de Connections por endpoint. Create e replace validam authorities ativas sob locks determinísticos e persistem o agregado atomicamente.
+
 ### Runtime
 
 ```text
@@ -76,7 +87,7 @@ PostgreSQL decide ownership e recovery. Registry e processos OTP representam som
 ### Applications
 
 ```text
-core       → Organizations + Catalog mínimo + Connections mínimo + Integration identity + Repo + PubSub + Oban
+core       → Organizations + Catalog mínimo + Connections mínimo + Integrations mínimo + Repo + PubSub + Oban
 connectors → boundary executável ainda vazia
 runtime    → Executions foundation + OTP runtime
 api        → Phoenix API-only foundation

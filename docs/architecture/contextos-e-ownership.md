@@ -38,7 +38,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
 | Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e endpoints | availability, manifest e build |
 | Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
-| Integrations | PARCIALMENTE MATERIALIZADO | Integration identity e lifecycle mínimo | EnvironmentDeployment, promotion, homologation, IdentityMapping |
+| Integrations | MATERIALIZADO — SLICE MÍNIMO | Integration, EnvironmentDeployment, bindings e lifecycle mínimo | promotion, homologation, Triggers, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
 | Notifications | RATIFICADO — NÃO MATERIALIZADO | Oban compartilhado como infraestrutura | rules, recipients e durable deliveries |
 | Audit | RATIFICADO — NÃO MATERIALIZADO | — | append-only AuditEvent |
@@ -100,7 +100,7 @@ Continuam futuros OAuth durable state, providers/encryption, rotation, revocatio
 
 ## Integrations
 
-O modelo mínimo e suas APIs foram ratificados no ADR-0018. A identidade Integration e seu lifecycle mínimo estão materializados. Owns:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018 e estão materializados. Owns:
 
 ```text
 Integration
@@ -111,7 +111,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê e desabilita essa identidade. EnvironmentDeployment, ainda não materializado, conterá PackageVersion, promotable/local config e bindings locais de Connection. O resolver transacional pertence a leafcutter_runtime.
+Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê e substitui atomicamente um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. O resolver transacional permanece em `leafcutter_runtime`.
 
 ## Executions
 

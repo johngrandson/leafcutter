@@ -48,6 +48,15 @@
 - locks contra disable concorrente e integridade relacional no PostgreSQL;
 - nenhum raw secret, ciphertext, provider locator ou credential persistido.
 
+### Integrations mínimo
+
+- Integration organization-scoped ligada a Package estável;
+- lifecycle create/get/disable e lock ativo para workflows compostos;
+- um EnvironmentDeployment completo por Integration/Environment;
+- PackageVersion, promotable/local config e bindings completos por endpoint;
+- create/get/replace atômicos;
+- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
@@ -56,7 +65,7 @@
 - Connector/Operation/Transport;
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
-- Integrations e EnvironmentDeployments.
+- lifecycle ampliado de Integrations, Triggers, promotion e homologation.
 
 ### Data plane
 
@@ -93,4 +102,3 @@
 - external queue;
 - multi-source joins;
 - SDKs após API estabilizada.
-

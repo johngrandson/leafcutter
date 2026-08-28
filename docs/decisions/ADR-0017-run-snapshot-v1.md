@@ -133,13 +133,13 @@ Política de rolling upgrade e remoção futura de formatos suportados continua 
 
 ## Validação neste slice
 
-A validação inicial é estrutural. A existência e a compatibilidade semântica de PackageVersion, ContractVersion, Connection e SecretVersion serão validadas quando os contexts owners e o resolver forem materializados.
+A validação inicial é estrutural. Os contexts owners e EnvironmentDeployment agora materializam existência e invariantes locais; a composição semântica cross-context continua responsabilidade do resolver.
 
 O futuro workflow de resolução pertence à orchestration em `leafcutter_runtime`. `Executions.Runs.create/1` recebe uma definition já resolvida; Executions não consulta internals de Catalog, Connections ou Integrations.
 
 ## Evolução posterior
 
-Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections com Connection, Secret e SecretVersion e pela identidade Integration. O formato RunSnapshot v1 permaneceu inalterado. EnvironmentDeployment e o resolver semântico continuam pendentes; por isso a consistência cross-context ainda não é comprovada por `Executions.Runs.create/1`.
+Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections, Integration e EnvironmentDeployment com seus bindings. O formato RunSnapshot v1 permaneceu inalterado. O resolver semântico continua pendente; por isso a consistência cross-context ainda não é comprovada por `Executions.Runs.create/1`.
 
 ## Consequências
 

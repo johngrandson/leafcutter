@@ -6,7 +6,7 @@
 
 **Upstream authority materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog, Connections e a identidade de Integration estão materializados nesta branch; EnvironmentDeployment e o resolver permanecem pendentes.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings estão materializados nesta branch; o resolver permanece pendente.
 
 ## Estado materializado
 
@@ -103,11 +103,12 @@ Connections.create/1
 Connections.get/1
 Connections.update/2
 Connections.disable/1
+Connections.lock_active/3
 Connections.Secrets.create/1
 Connections.Secrets.create_version/1
 ```
 
-Connection referencia Connector estável, guarda config JSON object não sensível e pode selecionar uma SecretVersion exata do mesmo Organization/Environment. Writes validam parents ativos sob locks compartilhados na ordem Organization → Environment; updates e disable lockam a Connection depois. FKs compostas, constraint de JSON object e trigger de binding protegem integridade no PostgreSQL. SecretVersion é única dentro de Secret e rejeita update/delete. Nenhum raw secret, ciphertext, provider locator ou credential é persistido.
+Connection referencia Connector estável, guarda config JSON object não sensível e pode selecionar uma SecretVersion exata do mesmo Organization/Environment. Writes validam parents ativos sob locks compartilhados na ordem Organization → Environment; updates e disable lockam a Connection depois. `lock_active/3` oferece leitura bloqueada, única e ordenada por ID para workflows compostos. FKs compostas, constraint de JSON object e trigger de binding protegem integridade no PostgreSQL. SecretVersion é única dentro de Secret e rejeita update/delete. Nenhum raw secret, ciphertext, provider locator ou credential é persistido.
 
 ### Integrations
 
@@ -116,13 +117,21 @@ Materializado:
 ```text
 Organization
 └── Integration
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
 
 Integrations.create/1
 Integrations.get/1
 Integrations.disable/1
+Integrations.lock_active/2
+Integrations.Deployments.create/1
+Integrations.Deployments.get/1
+Integrations.Deployments.replace/2
 ```
 
-Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration. EnvironmentDeployment, bindings e resolver ainda não estão materializados.
+Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration.
+
+EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs e compatibilidade de Connector. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
 
 ### Executions e runtime
 
@@ -174,7 +183,6 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-EnvironmentDeployment e bindings
 Notifications
 Audit
 Record
@@ -219,26 +227,30 @@ Catalog Contract authority materialization
 Catalog Package topology materialization
 Connections + SecretVersion binding materialization
 Integration identity materialization
+EnvironmentDeployment + binding materialization
 ```
 
 ## Em andamento
 
-Materializar EnvironmentDeployment e seus bindings mínimos ratificados no ADR-0018.
+Materializar o resolver transacional de EnvironmentDeployment ratificado no ADR-0018.
 
 ## Próxima tarefa concreta
 
-Materializar o próximo sub-slice:
+Implementar o próximo sub-slice em `leafcutter_runtime`:
 
 ```text
-Integrations
-└── Integration (materialized)
-    └── EnvironmentDeployment
-        └── EnvironmentDeploymentBinding
+LeafcutterRuntime.Runs.create_from_deployment/1
+→ uma transação compartilhada
+→ locks via APIs públicas na ordem ratificada
+→ revalidação semântica das authorities
+→ deep merge de promotable_config + local_config
+→ definition v1 congelando Connection config e SecretVersion ID
+→ Executions.Runs.create/1
 ```
 
-O sub-slice inclui um EnvironmentDeployment completo por Integration/Environment, PackageVersion, promotable/local config e o conjunto completo de bindings por endpoint.
+O resolver deve ordenar destinations pela posição do PackageVersionEndpoint e fazer rollback integral em qualquer falha. Duas chamadas bem-sucedidas continuam criando Runs distintas.
 
-Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation ou o resolver.
+Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation, actor, invocation, idempotency, carregamento no coordinator ou data plane.
 
 ## Principais decisões abertas
 

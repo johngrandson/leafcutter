@@ -24,17 +24,19 @@
 19. Catalog Package/PackageVersion/PackageVersionEndpoint materialization
 20. Connections/Secret/SecretVersion materialization
 21. Integration identity materialization
+22. EnvironmentDeployment/EnvironmentDeploymentBinding materialization
 ```
 
 ## Próximo slice de implementação
 
 ```text
-EnvironmentDeployment + EnvironmentDeploymentBinding
-→ scope Integration/Environment
-→ PackageVersion, configs e bindings completos
+LeafcutterRuntime.Runs.create_from_deployment/1
+→ resolve authorities upstream em uma transação
+→ congela definition v1
+→ Executions.Runs.create/1
 ```
 
-O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Catalog, Connections e a identidade Integration estão materializados. O próximo sub-slice materializa EnvironmentDeployment e seus bindings; o resolver permanece posterior.
+O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Todas as authorities upstream mínimas estão materializadas. O próximo sub-slice implementa o resolver transacional sem ampliar o formato RunSnapshot v1.
 
 ## Sequência ratificada posterior
 
@@ -42,7 +44,7 @@ O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/s
 minimal Catalog authorities (materialized)
 → Connections + SecretVersion bindings (materialized)
 → Integration identity (materialized)
-→ EnvironmentDeployment + bindings
+→ EnvironmentDeployment + bindings (materialized)
 → EnvironmentDeployment resolver
 → Contracts/JSV + Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
@@ -51,4 +53,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem dos quatro primeiros sub-slices está ratificada pelo ADR-0018. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
+A ordem dos cinco primeiros sub-slices está ratificada pelo ADR-0018. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.

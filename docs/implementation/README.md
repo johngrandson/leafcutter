@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. Catalog, Connections e a identidade Integration estão materializados. EnvironmentDeployment e seus bindings formam o próximo sub-slice; o resolver permanece posterior.
+A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings estão materializados. O resolver transacional forma o próximo sub-slice.
 
 ## Documentos
 

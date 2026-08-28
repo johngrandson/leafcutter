@@ -8,8 +8,13 @@
 Organization
 └── Environment
     ├── Connection
-    └── Secret
-        └── SecretVersion
+    ├── Secret
+    │   └── SecretVersion
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+
+Organization
+└── Integration
 
 User
 └── Membership
@@ -55,7 +60,7 @@ Attempt
 
 `Organization` é a fronteira de tenancy. `Environment` é scope operacional configurável. O lifecycle básico e o RBAC desses conceitos estão implementados.
 
-Connections já carregam referências explícitas de Organization/Environment. EnvironmentDeployments, Runs e IdentityMappings receberão scope explícito conforme seu ownership e os slices ratificados.
+Connections e EnvironmentDeployments já carregam referências explícitas de Organization/Environment. Runs e IdentityMappings receberão scope explícito conforme seu ownership e os slices ratificados.
 
 ## Catalog
 
@@ -91,16 +96,16 @@ Connection pode alterar somente config e binding para resoluções futuras; disa
 
 ## Integration e EnvironmentDeployment
 
-`Integration` é uma identidade lógica materializada de uma Organization vinculada a um Package estável. Seu lifecycle mínimo expõe create, get e disable.
+`Integration` é uma identidade lógica materializada de uma Organization vinculada a um Package estável. Seu lifecycle mínimo expõe create, get, disable e lock ativo para workflows compostos.
 
-O modelo mínimo ratificado usa no máximo um EnvironmentDeployment por Integration e Environment. O deployment guarda estado executável atual e mutável:
+O modelo mínimo ratificado está materializado e usa no máximo um EnvironmentDeployment por Integration e Environment. O deployment guarda estado executável atual e mutável:
 
 - PackageVersion;
 - source/destination Connection bindings por ref;
 - promotable config;
 - local config.
 
-Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
+Create e replace persistem o estado completo e todos os bindings atomicamente. O banco protege identidade, JSON objects, PackageVersion compatível, cobertura exata de endpoints e compatibilidade de Connector. Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
 
 ## Run e RunSnapshot
 

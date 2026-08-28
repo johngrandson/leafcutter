@@ -6,7 +6,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 |---|---|
 | `run-ownership.md` | MATERIALIZADO |
 | `run-snapshot-v1.md` | MATERIALIZADO |
-| `environment-deployment-run-resolution.md` | PARCIAL — CATALOG + CONNECTIONS MÍNIMOS MATERIALIZADOS |
+| `environment-deployment-run-resolution.md` | PARCIAL — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE |
 | `durable-fanout.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `operation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |
@@ -15,4 +15,3 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 | `transformation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |
 
 Specification não substitui ADR nem código. Quando uma specification futura é materializada, tests e typespecs passam a ser a prova executável do contract.
-

@@ -29,7 +29,7 @@ Materialized / Partial / Not materialized
 | ADR-0015 | Harness multi-agente com contrato compartilhado | MATERIALIZADO |
 | ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
 | ADR-0017 | RunSnapshot v1 imutável e criação atômica | MATERIALIZADO |
-| ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | PARCIAL — CATALOG + CONNECTIONS + INTEGRATION IDENTITY MATERIALIZADOS |
+| ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | PARCIAL — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE |
 
 ## Convenção de status decisório
 

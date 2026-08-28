@@ -55,18 +55,20 @@
 - locks de scope e constraints de integridade no PostgreSQL;
 - SecretVersion imutável e única dentro de Secret.
 
-### Integrations parcial
+### Integrations mínimo
 
 - Integration organization-scoped ligada a Package estável;
 - identidade protegida contra mudança de Organization, Package e name;
-- create/get/disable com validação de Organization ativa;
-- locks na ordem Organization → Integration e disable idempotente.
+- create/get/disable com validação de Organization ativa e disable idempotente;
+- um EnvironmentDeployment completo por Integration/Environment;
+- PackageVersion, promotable/local config e bindings completos por endpoint;
+- create/get/replace atômicos com cobertura exata e compatibilidade de Connector;
+- locks ordenados de Organization, Environment, Integration, deployment e Connections.
 
 ## Próximo estágio: authorities upstream e resolução
 
-O contract deste estágio foi ratificado no ADR-0018. Catalog, Connections e a identidade de Integration já foram materializados; os sub-slices restantes seguem a ordem ratificada.
+O contract deste estágio foi ratificado no ADR-0018. Todas as authorities upstream mínimas estão materializadas; resta compô-las no resolver ratificado.
 
-- EnvironmentDeployment e bindings persistidos;
 - resolver semântico de EnvironmentDeployment para definition v1;
 - criação de Run a partir da definition resolvida.
 

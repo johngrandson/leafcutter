@@ -115,9 +115,11 @@ Environment
 
 Writes validam Organization e Environment ativos por uma API pública do owner que segura locks compartilhados na ordem Organization → Environment. FKs compostas impedem scope incompatível, um trigger protege o binding de SecretVersion cross-scope e PostgreSQL rejeita update/delete de SecretVersion. Raw secret, ciphertext, provider locator, credential, OAuth e rotation permanecem fora do slice.
 
-### Integrations parcial
+### Integrations mínimo
 
 `Leafcutter.Integrations` cria, lê e desabilita identidades Integration organization-scoped ligadas a uma Package estável. Organization, Package e name são imutáveis depois da criação. Writes validam a Organization ativa sob lock compartilhado, e disable preserva um único timestamp sob locks na ordem Organization → Integration.
+
+`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
 
 ### Runtime e Executions foundation
 
@@ -226,17 +228,16 @@ Raw secrets continuam fora de PackageVersion, RunSnapshot, logs, AuditEvent e re
 
 ### Integrations futuro
 
-O restante do modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
+O modelo mínimo de Integration, EnvironmentDeployment e bindings está materializado. Permanecem posteriores:
 
 ```text
-EnvironmentDeployment
 Triggers
 HomologationRequest
 Promotion history
 IdentityMapping
 ```
 
-EnvironmentDeployment persistirá PackageVersion, promotable/local config e bindings por endpoint. Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
+Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
 
 ### Executions completo
 
@@ -339,7 +340,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections e a identidade de Integration estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration e EnvironmentDeployment estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -348,7 +349,7 @@ Connections + SecretVersion bindings (materializado)
 ↓
 Integration identity (materialized)
 ↓
-EnvironmentDeployment + bindings
+EnvironmentDeployment + bindings (materialized)
 ↓
 resolver em leafcutter_runtime
 ↓

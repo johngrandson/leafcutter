@@ -88,7 +88,7 @@ leafcutter_runtime
 leafcutter_api
 ```
 
-Core hospeda Organizations, o Catalog parcial, Repo, PubSub e Oban. Connectors é uma boundary ainda vazia. Runtime hospeda Executions foundation e OTP control plane. API é Phoenix API-only foundation.
+Core hospeda Organizations, Catalog, Connections e Integrations mínimos, além de Repo, PubSub e Oban. Connectors é uma boundary ainda vazia. Runtime hospeda Executions foundation e OTP control plane. API é Phoenix API-only foundation.
 
 ## Organizations e autorização
 
@@ -192,7 +192,7 @@ Run
 → concrete execution
 ```
 
-Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica. A fundação de RunSnapshot v1 está ratificada no ADR-0017; o futuro resolver de EnvironmentDeployment continua em slice posterior.
+Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica. RunSnapshot v1 e EnvironmentDeployment estão materializados; o resolver transacional continua no próximo slice.
 
 ## Catalog
 
@@ -204,7 +204,7 @@ Connections já controla acesso configurado mínimo a sistemas externos por Conn
 
 ## Integrations
 
-Integration já é uma identidade lógica materializada dentro da Organization. EnvironmentDeployment selecionará PackageVersion, bindings, configs e Triggers por Environment.
+Integration já é uma identidade lógica materializada dentro da Organization. EnvironmentDeployment seleciona PackageVersion, promotable/local config e bindings completos por Environment. Triggers continuam futuros.
 
 Promotion levará estado promovível aprovado sem copiar credenciais ou config local.
 
@@ -299,18 +299,17 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Catalog, Connections e a identidade Integration estão materializados; EnvironmentDeployment e o resolver transacional permanecem nos próximos sub-slices. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 e todas as authorities upstream mínimas estão materializados. O resolver transacional e o merge de config foram ratificados no ADR-0018 e formam o próximo slice. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
-O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, identidade Integration e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages, EnvironmentDeployments e Records já existem.
+O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, Integrations, EnvironmentDeployments e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages e Records já existem.
 
 ```text
 present
-→ RBAC + Catalog mínimo + Connections mínimo + ownership + supervision + recovery + RunSnapshot v1
+→ RBAC + authorities upstream mínimas + ownership + supervision + recovery + RunSnapshot v1
 
 next
-→ Integrations + EnvironmentDeployment
 → EnvironmentDeployment resolver
 
 future
