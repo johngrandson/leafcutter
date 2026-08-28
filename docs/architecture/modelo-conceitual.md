@@ -68,20 +68,20 @@ Package
 PackageVersion
 ```
 
-Ainda não existe implementação do Catalog.
+O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Ainda não existe implementação do Catalog.
 
 ## Integration e EnvironmentDeployment
 
 `Integration` será identidade lógica de uma Organization vinculada a um Package estável.
 
-`EnvironmentDeployment` será a configuração executável por Environment:
+O modelo mínimo ratificado usa no máximo um EnvironmentDeployment por Integration e Environment. O deployment guarda estado executável atual e mutável:
 
 - PackageVersion;
-- source/destination Connection bindings;
+- source/destination Connection bindings por ref;
 - promotable config;
-- local config;
-- Triggers;
-- lifecycle.
+- local config.
+
+Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
 
 ## Run e RunSnapshot
 
@@ -98,7 +98,7 @@ resolved PackageVersion
 
 Runs legadas podem não possuir snapshot. Runs `pending` só são elegíveis no control plane quando possuem snapshot em formato suportado.
 
-Raw secrets permanecem fora do snapshot.
+Raw secrets permanecem fora do snapshot. O resolver transacional ratificado no ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1.
 
 ## Record, Delivery e Attempt
 
