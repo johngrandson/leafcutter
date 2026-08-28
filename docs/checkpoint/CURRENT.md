@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Upstream authorities and EnvironmentDeployment resolution ratification**
+**Minimal Catalog materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi materializado e integrado à `main` pela PR #16. A fase atual está restrita à ratificação das authorities upstream mínimas e do workflow que resolverá um `EnvironmentDeployment` persistido para a definition v1.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018 e ainda não possuem implementação. A fase atual começa pela materialização isolada do Catalog mínimo.
 
 ## Estado materializado
 
@@ -149,34 +149,35 @@ Automatic RunRecovery bootstrap
 Documentation present/future alignment
 RunSnapshot v1 contract ratification
 RunSnapshot v1 materialization
+Upstream authorities and deployment resolution contract ratification
 ```
 
 ## Em andamento
 
-Ratificar ownership, schemas, invariantes e APIs públicas mínimas de Catalog, Connections e Integrations, além do contrato do resolver `EnvironmentDeployment → definition v1`. Nenhuma migration ou API desses contexts deve ser implementada antes dessa ratificação.
+Materializar somente o Catalog mínimo ratificado: Connector/ConnectorVersion/Operation, Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint, com publicação atômica, imutabilidade e testes.
 
 ## Próxima tarefa concreta
 
-Fechar e registrar o menor contract upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido:
+Materializar o primeiro sub-slice do ADR-0018:
 
 ```text
-Catalog authorities mínimas
-+ Connections e SecretVersion bindings mínimos
-+ Integration e EnvironmentDeployment persistidos
-↓
-resolver na orchestration de leafcutter_runtime
-↓
-definition v1 resolvida
-↓
-Executions.Runs.create/1
+Catalog
+├── Connector
+│   └── ConnectorVersion
+│       └── Operation
+├── Contract
+│   └── ContractVersion
+└── Package
+    └── PackageVersion
+        └── PackageVersionEndpoint
 ```
 
-A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts antes de implementar `create_from_deployment/1`. Não carregar o snapshot no RunCoordinator nem antecipar Broadway, Record ou Delivery.
+O sub-slice inclui migrations centralizadas em core, schemas no diretório canônico, APIs públicas de criação/publicação/leitura, constraints de cardinalidade e imutabilidade, testes de banco e documentação in-code.
+
+Não implementar ainda Connections, Integrations, resolver, Package Manifest, JSON Schema/JSV ou contracts executáveis de connectors.
 
 ## Principais decisões abertas
 
-- schemas/APIs de Catalog, Connections e Integrations;
-- resolução semântica de EnvironmentDeployment para a definition v1;
 - Package Manifest e build de packages;
 - Connector/Operation/Transport contracts;
 - data plane e durable fan-out;
@@ -190,6 +191,7 @@ A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts 
 ## Leitura relevante
 
 - `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
+- `docs/specifications/environment-deployment-run-resolution.md`
 - `docs/decisions/ADR-0017-run-snapshot-v1.md`
 - `docs/specifications/run-snapshot-v1.md`
 - `docs/architecture/estado-atual-e-visao-futura.md`
