@@ -20,18 +20,18 @@
 15. RunSnapshot v1 contract ratification
 16. RunSnapshot v1 materialization
 17. Catalog Connector/ConnectorVersion/Operation materialization
+18. Catalog Contract/ContractVersion materialization
 ```
 
 ## Próximo slice de implementação
 
 ```text
-Contract + ContractVersion
 Package + PackageVersion + PackageVersionEndpoint
 → publicação atômica
 → versões imutáveis
 ```
 
-O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Connector authorities já estão materializadas. O próximo sub-slice completa somente Catalog; Connections, Integrations e o resolver permanecem posteriores.
+O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Connector e Contract authorities já estão materializadas. O próximo sub-slice completa somente Catalog; Connections, Integrations e o resolver permanecem posteriores.
 
 ## Sequência ratificada posterior
 
