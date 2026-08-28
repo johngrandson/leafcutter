@@ -27,16 +27,19 @@ defmodule Leafcutter.Catalog.Packages do
             required(:operation_id) => Operation.id(),
             required(:contract_version_id) => ContractVersion.id()
           }
-          | %{required(String.t()) => term()}
+          | %{required(String.t()) => String.t()}
 
   @typedoc "Attributes accepted when publishing an immutable PackageVersion."
   @type publish_version_attrs ::
           %{
             required(:version) => String.t(),
             required(:source) => endpoint_attrs(),
-            required(:destinations) => [endpoint_attrs()]
+            required(:destinations) => nonempty_list(endpoint_attrs())
           }
-          | %{required(String.t()) => term()}
+          | %{
+              required(String.t()) =>
+                String.t() | endpoint_attrs() | nonempty_list(endpoint_attrs())
+            }
 
   @typedoc "Error returned when a PackageVersion cannot be published."
   @type publish_error :: :package_not_found | Changeset.t()

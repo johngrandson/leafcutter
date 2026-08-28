@@ -32,8 +32,7 @@ defmodule Leafcutter.Catalog.PackageVersion do
           package: Package.t() | Ecto.Association.NotLoaded.t(),
           version: String.t() | nil,
           published_at: DateTime.t() | nil,
-          endpoints:
-            [PackageVersionEndpoint.t()] | Ecto.Association.NotLoaded.t(),
+          endpoints: [PackageVersionEndpoint.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil
         }
 

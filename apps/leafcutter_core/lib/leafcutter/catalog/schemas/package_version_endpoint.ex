@@ -40,16 +40,14 @@ defmodule Leafcutter.Catalog.PackageVersionEndpoint do
   @type t :: %__MODULE__{
           id: id() | nil,
           package_version_id: PackageVersion.id() | nil,
-          package_version:
-            PackageVersion.t() | Ecto.Association.NotLoaded.t(),
+          package_version: PackageVersion.t() | Ecto.Association.NotLoaded.t(),
           ref: String.t() | nil,
           role: role() | nil,
           position: integer() | nil,
           operation_id: Operation.id() | nil,
           operation: Operation.t() | Ecto.Association.NotLoaded.t(),
           contract_version_id: ContractVersion.id() | nil,
-          contract_version:
-            ContractVersion.t() | Ecto.Association.NotLoaded.t(),
+          contract_version: ContractVersion.t() | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil
         }
 

@@ -1,13 +1,14 @@
 defmodule Leafcutter.Catalog.PackagesTest do
   use Leafcutter.DataCase, async: true
 
+  alias Ecto.Adapters.SQL
   alias Ecto.Changeset
 
   alias Leafcutter.Catalog.{
-    ConnectorVersion,
     Connectors,
-    ContractVersion,
+    ConnectorVersion,
     Contracts,
+    ContractVersion,
     Operation,
     Package,
     Packages,
@@ -323,9 +324,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
 
     test "returns a named error when the PackageVersion does not exist" do
       assert {:error, :not_found} =
-               Packages.get_version(
-                 "00000000-0000-0000-0000-000000000000"
-               )
+               Packages.get_version("00000000-0000-0000-0000-000000000000")
     end
   end
 
@@ -416,7 +415,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
               })
               |> Repo.insert!()
 
-              Ecto.Adapters.SQL.query!(
+              SQL.query!(
                 Repo,
                 "SET CONSTRAINTS package_versions_require_complete_publication IMMEDIATE",
                 []
@@ -458,9 +457,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
               |> Repo.insert!()
 
               package_version
-              |> Changeset.change(
-                published_at: DateTime.utc_now(:microsecond)
-              )
+              |> Changeset.change(published_at: DateTime.utc_now(:microsecond))
               |> Repo.update!()
             end,
             mode: :savepoint
@@ -500,8 +497,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
     %{
       source_operation: Map.fetch!(operations_by_ref, "read"),
       first_destination_operation: Map.fetch!(operations_by_ref, "write_crm"),
-      second_destination_operation:
-        Map.fetch!(operations_by_ref, "write_warehouse"),
+      second_destination_operation: Map.fetch!(operations_by_ref, "write_warehouse"),
       contract_version: contract_version
     }
   end
