@@ -15,8 +15,9 @@
 - identity/liveness de runtime nodes;
 - Run lifecycle mínimo;
 - ownership e generation fencing;
+- criação atômica de Run + RunSnapshot v1;
 - per-Run supervision;
-- automatic recovery de Runs `running`;
+- automatic recovery de Runs `running` e `pending` elegíveis;
 - concorrência distribuída baseada em PostgreSQL.
 
 ### Plataforma
@@ -36,7 +37,6 @@
 - Integration Packages;
 - Connections e Secrets;
 - Integrations e EnvironmentDeployments;
-- immutable RunSnapshot.
 
 ### Data plane
 
