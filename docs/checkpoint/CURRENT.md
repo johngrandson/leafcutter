@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**RunSnapshot v1 materialization closure**
+**Upstream authorities and EnvironmentDeployment resolution ratification**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 também está materializado na feature branch, com fechamento condicionado à suíte integral e ao merge.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi materializado e integrado à `main` pela PR #16. A fase atual está restrita à ratificação das authorities upstream mínimas e do workflow que resolverá um `EnvironmentDeployment` persistido para a definition v1.
 
 ## Estado materializado
 
@@ -153,7 +153,7 @@ RunSnapshot v1 materialization
 
 ## Em andamento
 
-Revisão final e quality gate concluídos; preparar o merge da feature branch de RunSnapshot v1.
+Ratificar ownership, schemas, invariantes e APIs públicas mínimas de Catalog, Connections e Integrations, além do contrato do resolver `EnvironmentDeployment → definition v1`. Nenhuma migration ou API desses contexts deve ser implementada antes dessa ratificação.
 
 ## Próxima tarefa concreta
 
