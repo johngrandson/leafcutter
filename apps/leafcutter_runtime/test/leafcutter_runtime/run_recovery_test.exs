@@ -35,27 +35,39 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     {:ok, runtime_node: runtime_node}
   end
 
-  test "recovers unowned running Runs without starting pending Runs", %{
+  test "starts running and eligible pending Runs while skipping ineligible pending Runs", %{
     runtime_node: runtime_node
   } do
     running_run = insert_run(%{status: :running})
-    pending_run = insert_run()
+    eligible_pending_run = pending_run_fixture()
+    missing_snapshot_pending_run = insert_run()
 
     register_cleanup(running_run.id)
-    register_cleanup(pending_run.id)
+    register_cleanup(eligible_pending_run.id)
+    register_cleanup(missing_snapshot_pending_run.id)
 
     recovery_pid = start_recovery(runtime_node.id)
     send(recovery_pid, :scan)
 
-    local_run = wait_for_local_run(running_run.id, 100)
+    local_running_run = wait_for_local_run(running_run.id, 100)
+    local_pending_run = wait_for_local_run(eligible_pending_run.id, 100)
 
-    assert local_run.ownership_token.runtime_node_id == runtime_node.id
-    assert local_run.ownership_token.generation == 1
-    assert Runs.lookup(pending_run.id) == :error
+    assert local_running_run.ownership_token.runtime_node_id ==
+             runtime_node.id
 
-    persisted_pending_run = Repo.get!(Run, pending_run.id)
-    assert persisted_pending_run.status == :pending
-    assert persisted_pending_run.owner_node_id == nil
+    assert local_running_run.ownership_token.generation == 1
+    assert local_pending_run.ownership_token.runtime_node_id == runtime_node.id
+    assert local_pending_run.ownership_token.generation == 1
+    assert Runs.lookup(missing_snapshot_pending_run.id) == :error
+
+    persisted_eligible_run = Repo.get!(Run, eligible_pending_run.id)
+    assert persisted_eligible_run.status == :running
+    assert persisted_eligible_run.owner_node_id == runtime_node.id
+
+    persisted_missing_snapshot_run = Repo.get!(Run, missing_snapshot_pending_run.id)
+
+    assert persisted_missing_snapshot_run.status == :pending
+    assert persisted_missing_snapshot_run.owner_node_id == nil
   end
 
   test "reconstructs an already-owned Run without incrementing generation", %{

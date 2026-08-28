@@ -2,6 +2,7 @@ defmodule Leafcutter.Executions.RunsRecoveryConcurrencyTest do
   use ExUnit.Case, async: false
 
   import Ecto.Query
+  import Leafcutter.Executions.RunFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
@@ -84,14 +85,21 @@ defmodule Leafcutter.Executions.RunsRecoveryConcurrencyTest do
         )
 
       runs =
-        Enum.map(1..6, fn _index ->
-          %Run{}
-          |> Changeset.change(status: :running)
-          |> Repo.insert!()
-        end)
+        Enum.map(1..6, &insert_recoverable_run/1)
 
       {runs, first_runtime_node, second_runtime_node}
     end)
+  end
+
+  @spec insert_recoverable_run(pos_integer()) :: Run.t()
+  defp insert_recoverable_run(index) when rem(index, 2) == 0 do
+    pending_run_fixture()
+  end
+
+  defp insert_recoverable_run(_index) do
+    %Run{}
+    |> Changeset.change(status: :running)
+    |> Repo.insert!()
   end
 
   @spec with_unboxed_connection((-> result)) :: result when result: term()
