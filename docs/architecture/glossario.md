@@ -24,7 +24,9 @@
 
 **RuntimeNode** — uma incarnação específica da application runtime, identificada por UUID.
 
-**Run** — identidade durável de uma execução; atualmente possui lifecycle mínimo e ownership, ainda sem definição executável completa.
+**Run** — identidade durável de uma execução, com lifecycle mínimo, ownership e uma definição executável congelada nas novas criações públicas.
+
+**RunSnapshot** — definição executável estruturalmente validada, versionada e imutável criada atomicamente com uma nova Run; Runs legadas podem não possuir snapshot.
 
 **Generation** — fencing token monotônico de ownership de Run.
 
@@ -34,27 +36,29 @@
 
 **RunRecovery** — processo de polling que reconcilia ownership durável e árvores locais.
 
+**Connector** — identidade global de um Connector no Catalog; a implementação executável permanece futura.
+
+**ConnectorVersion** — metadata versionada e imutável publicada atomicamente com suas Operations.
+
+**Operation** — metadata de uma ação source ou destination pertencente a uma ConnectorVersion.
+
+**Contract** — identidade global de um data contract no Catalog.
+
+**ContractVersion** — identidade versionada, publicada e imutável de um Contract; o conteúdo JSON Schema permanece futuro.
+
+**Package** — identidade global reutilizável de uma integração no Catalog.
+
+**PackageVersion** — topologia relacional publicada e imutável com exatamente uma source e uma ou mais destinations.
+
+**PackageVersionEndpoint** — endpoint imutável que pinna uma Operation e uma ContractVersion; positions ordenam destinations.
+
 ## Ratificados para o futuro
 
-**Connector** — integração executável com um sistema externo.
-
-**ConnectorVersion** — versão imutável da implementação/metadata publicada.
-
-**Operation** — ação específica exposta por uma ConnectorVersion.
-
 **Transport** — execução de protocolo, inicialmente HTTP.
-
-**ContractVersion** — JSON Schema imutável usado em boundary de dados.
-
-**Package** — identidade reutilizável de uma integração.
-
-**PackageVersion** — definição executável publicada e imutável.
 
 **Integration** — identidade lógica de uma Organization ligada a um Package.
 
 **EnvironmentDeployment** — configuração executável da Integration em um Environment.
-
-**RunSnapshot** — definição imutável resolvida para uma Run.
 
 **Record** — ocorrência de um item source dentro da Run.
 

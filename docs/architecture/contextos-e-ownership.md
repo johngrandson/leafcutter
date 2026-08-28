@@ -36,9 +36,9 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Context | Estado | Materializado | Preservado para o futuro |
 |---|---|---|---|
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
-| Catalog | RATIFICADO — NÃO MATERIALIZADO | — | connectors, contracts, packages e versões publicadas |
-| Connections | RATIFICADO — NÃO MATERIALIZADO | — | Connection, Secret, SecretVersion, OAuth state |
-| Integrations | RATIFICADO — NÃO MATERIALIZADO | — | Integration, EnvironmentDeployment, promotion, homologation, IdentityMapping |
+| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e endpoints | availability, manifest e build |
+| Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
+| Integrations | MATERIALIZADO — SLICE MÍNIMO | Integration, EnvironmentDeployment, bindings e lifecycle mínimo | promotion, homologation, Triggers, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
 | Notifications | RATIFICADO — NÃO MATERIALIZADO | Oban compartilhado como infraestrutura | rules, recipients e durable deliveries |
 | Audit | RATIFICADO — NÃO MATERIALIZADO | — | append-only AuditEvent |
@@ -71,7 +71,7 @@ Não existe `Principal` persistido. User recebe Role por Membership; ServiceAcco
 
 ## Catalog
 
-Owns futuramente:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018 e estão materializados. Owns:
 
 ```text
 Connector metadata + ConnectorVersion
@@ -81,25 +81,26 @@ Package + PackageVersion
 publication and availability
 ```
 
-Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. Versões publicadas são imutáveis.
+Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. ConnectorVersion e Operations são publicados atomicamente e protegidos contra append, update e delete após o sealing. ContractVersion materializa uma identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais igualmente imutáveis.
 
 ## Connections
 
-Owns futuramente:
+O modelo mínimo e suas APIs ratificados no ADR-0018 estão materializados. Owns:
 
 ```text
 Connection
 Secret
 SecretVersion
-OAuth durable state
-rotation metadata
+mutable config and exact binding lifecycle
 ```
 
-Connection referencia Connector identity, não ConnectorVersion. PackageVersion fixa a versão executável.
+Connection referencia Connector identity, não ConnectorVersion. Connection e Secret possuem scope explícito de Organization/Environment; SecretVersion herda esse scope de Secret. Config é não sensível e o binding opcional seleciona uma versão exata. A boundary pública valida parents ativos com locks compartilhados e expõe leitura batch das SecretVersions exatas por scope, enquanto o PostgreSQL protege scope, JSON object, binding compatível e imutabilidade de SecretVersion.
+
+Continuam futuros OAuth durable state, providers/encryption, rotation, revocation e retention. Raw secret storage permanece fora do slice.
 
 ## Integrations
 
-Owns futuramente:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018 e estão materializados. Owns:
 
 ```text
 Integration
@@ -110,7 +111,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica e organization-scoped. EnvironmentDeployment contém configuração executável local de cada Environment.
+Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê, substitui atomicamente e bloqueia para resolução um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. A capability também expõe uma descoberta restrita aos parent IDs imutáveis para ordenar locks sem antecipar a leitura dos bindings. O resolver transacional está materializado em `leafcutter_runtime`.
 
 ## Executions
 
@@ -135,6 +136,8 @@ ExecutionEvent
 ```
 
 Runtime OTP infrastructure — Registry, supervisors, heartbeat, recovery e Broadway — pertence à application `leafcutter_runtime`, não ao ownership conceitual do context.
+
+O workflow `LeafcutterRuntime.Runs.create_from_deployment/1` também pertence a essa application: compõe somente APIs públicas de Organizations, Catalog, Connections, Integrations e Executions sem mover ownership entre contexts.
 
 ## Notifications
 

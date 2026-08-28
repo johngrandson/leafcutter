@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial e RunSnapshot v1 já foram concluídos. A sequência atual começa na ratificação das authorities upstream mínimas e do resolver de `EnvironmentDeployment` para uma definition v1.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O próximo estágio arquitetural aponta para Contracts/JSV e Connector/Operation/Transport executáveis; o menor recorte vertical deve ser ratificado antes de nova implementação.
 
 ## Documentos
 

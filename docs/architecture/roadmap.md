@@ -33,15 +33,50 @@
 - eligibility segura de Run `pending`;
 - references/config congeladas sem raw secrets.
 
-## Próximo estágio: authorities upstream e resolução
+### Catalog parcial
 
-- Catalog mínimo;
-- Connections e SecretVersion bindings mínimos;
-- Integration + EnvironmentDeployment persistidos;
-- resolver semântico de EnvironmentDeployment para definition v1;
-- criação de Run a partir da definition resolvida.
+- Connector como identidade global;
+- ConnectorVersion com versão opaca;
+- Operations source/destination;
+- publicação atômica e sealing no PostgreSQL;
+- conteúdo publicado protegido contra append, update e delete;
+- Contract e ContractVersion identity-only, publicados e imutáveis;
+- Package e PackageVersion com topologia relacional 1 Source → 1..N Destinations;
+- endpoints ordenados pinando Operation e ContractVersion;
+- cardinalidade, compatibilidade e imutabilidade protegidas no PostgreSQL.
 
-## Reliable integration core
+### Connections mínimo
+
+- Connection ligada a Organization, Environment e Connector estável;
+- config não sensível validada como JSON object;
+- Secret e SecretVersion identities sem material secreto;
+- binding opcional e exato para SecretVersion do mesmo scope;
+- update de config/binding e disable idempotente;
+- locks de scope e constraints de integridade no PostgreSQL;
+- SecretVersion imutável e única dentro de Secret.
+
+### Integrations mínimo
+
+- Integration organization-scoped ligada a Package estável;
+- identidade protegida contra mudança de Organization, Package e name;
+- create/get/disable com validação de Organization ativa e disable idempotente;
+- um EnvironmentDeployment completo por Integration/Environment;
+- PackageVersion, promotable/local config e bindings completos por endpoint;
+- create/get/replace atômicos com cobertura exata e compatibilidade de Connector;
+- locks ordenados de Organization, Environment, Integration, deployment e Connections.
+
+### Resolução executável
+
+- descoberta preliminar somente dos parent IDs imutáveis;
+- resolução transacional por APIs públicas dos contexts;
+- revalidação de lifecycle, scope, PackageVersion, bindings, Connectors e SecretVersions;
+- deep merge de promotable/local config;
+- congelamento de definition v1 e criação atômica de Run + RunSnapshot;
+- chamadas repetidas criando Runs distintas.
+
+## Próximo estágio: reliable integration core
+
+O contract do estágio upstream foi materializado integralmente conforme o ADR-0018. A próxima fronteira precisa começar pela revisão e ratificação do menor recorte vertical de contracts e execução:
 
 - Contracts + JSON Schema/JSV;
 - Connector/Operation/Transport contracts;

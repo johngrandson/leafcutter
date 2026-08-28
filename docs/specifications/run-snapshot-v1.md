@@ -8,15 +8,15 @@
 
 Definir o contrato persistido, imutável e versionado que acompanha uma `Run` desde sua criação pública.
 
-Neste slice, o control plane usa a presença e a versão suportada do snapshot como prova de eligibility de uma Run `pending`. Isso não comprova ainda que as referências existem nem que a Run é semanticamente executável. A resolução a partir de `EnvironmentDeployment`, o carregamento no coordinator e a execução no data plane pertencem a slices posteriores.
+Neste slice, o control plane usa a presença e a versão suportada do snapshot como prova de eligibility de uma Run `pending`. Isoladamente, isso não comprova que as referências existem nem que a Run é semanticamente executável. A resolução de EnvironmentDeployment para RunSnapshot foi materializada posteriormente pelo ADR-0018; o carregamento no coordinator e a execução no data plane continuam pertencendo a slices posteriores.
 
 ## Ownership e boundary
 
 `RunSnapshot` pertence a `Leafcutter.Executions`.
 
-`Leafcutter.Executions.Runs.create/1` recebe uma definition já resolvida. O futuro workflow de `EnvironmentDeployment → definition v1` pertence à orchestration em `leafcutter_runtime`; Executions não consulta internals de Catalog, Connections ou Integrations.
+`Leafcutter.Executions.Runs.create/1` recebe uma definition já resolvida. O workflow `EnvironmentDeployment → definition v1` está materializado em `LeafcutterRuntime.Runs.create_from_deployment/1`; Executions não consulta internals de Catalog, Connections ou Integrations.
 
-O snapshot referencia identifiers owned por contexts futuros sem assumir seus schemas físicos. `PackageVersion` continua authority da topologia executável; o snapshot não cria authorities paralelas.
+O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. Catalog, Connections e Integrations já materializam PackageVersion, ContractVersion, endpoints, Connection, SecretVersion, Integration e EnvironmentDeployment. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
 
 ## Persistência
 
@@ -142,7 +142,7 @@ SourceIdentity
 
 Esses elementos não são copiados para o formato v1.
 
-As referências de PackageVersion, ContractVersion, Connection e SecretVersion são uma resolução congelada. Sua consistência com as authorities upstream será verificada pelo futuro resolver; o primeiro slice não consegue comprová-la semanticamente.
+As referências de PackageVersion, ContractVersion, Connection e SecretVersion são uma resolução congelada. O resolver materializado pelo ADR-0018 verifica sua composição antes da criação a partir de EnvironmentDeployment; `Executions.Runs.create/1` permanece uma validação estrutural.
 
 `source.ref` e `destinations[].ref` são nomes do formato RunSnapshot v1. Eles não ratificam field names do Package Manifest, que continua DRAFT.
 
@@ -150,7 +150,7 @@ As referências de PackageVersion, ContractVersion, Connection e SecretVersion s
 
 Raw secrets nunca devem ser armazenados em `definition`.
 
-A validação estrutural consegue verificar que `config` e `effective_config` são objects, mas não consegue provar que seus valores não contêm material sensível. Até existir o resolver de EnvironmentDeployment, essa regra é responsabilidade do caller confiável de `Runs.create/1`. O resolver futuro deve separar config não sensível de `SecretVersion` antes da chamada.
+A validação estrutural consegue verificar que `config` e `effective_config` são objects, mas não consegue provar que seus valores não contêm material sensível. Callers diretos de `Runs.create/1` continuam responsáveis por essa regra. O resolver de EnvironmentDeployment compõe somente config declarada não sensível e `SecretVersion.id`, sem copiar payload de secret para a definition.
 
 A opção `secret_version_id: UUID | null` define apenas o binding do snapshot v1; não fecha o modelo completo de Connections, rotação, revogação ou retenção de SecretVersion.
 
@@ -189,14 +189,15 @@ A validação deste slice é estrutural:
 - strings, chaves e valores de config em UTF-8 válido;
 - `secret_version_id` como UUID ou null.
 
-Ficam para os contexts owners e para o resolver futuro:
+Todas as authorities upstream mínimas conseguem provar existência isolada, integridade local e suas invariantes materializadas. O resolver do ADR-0018 acrescenta:
 
-- existência das referências;
-- compatibilidade PackageVersion/ContractVersion;
-- validade dos bindings de Connection;
-- lifecycle de SecretVersion;
-- merge e provenance de config;
-- enforcement semântico de ausência de raw secrets.
+- composição semântica das referências de PackageVersion, ContractVersion, Connection e SecretVersion;
+- compatibilidade PackageVersion/Integration e Connection/Connector;
+- revalidação dos bindings mutáveis de Connection sob locks determinísticos;
+- merge recursivo de promotable config com local config;
+- separação entre config declarada não sensível e a referência exata à SecretVersion.
+
+Lifecycle ampliado de SecretVersion, schema enforcement de config e provenance explícita continuam fora do formato v1.
 
 ## Criação pública
 
@@ -343,6 +344,8 @@ O RunCoordinator ainda não carrega nem executa a definition. Eligibility neste 
 - testes existentes de ownership, fencing e recovery continuam passando.
 
 ## Fora deste slice
+
+Esta lista delimita o slice original do ADR-0017. `create_from_deployment/1`, o resolver e as authorities upstream foram materializados posteriormente pelo ADR-0018 sem alterar o formato RunSnapshot v1.
 
 Não adicionar:
 

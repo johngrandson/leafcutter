@@ -15,8 +15,11 @@
 - identity/liveness de runtime nodes;
 - Run lifecycle mínimo;
 - ownership e generation fencing;
+- criação atômica de Run + RunSnapshot v1;
+- criação transacional de Run a partir de EnvironmentDeployment;
+- congelamento de PackageVersion, ContractVersions, destination order, effective config, Connections e SecretVersion IDs;
 - per-Run supervision;
-- automatic recovery de Runs `running`;
+- automatic recovery de Runs `running` e `pending` elegíveis;
 - concorrência distribuída baseada em PostgreSQL.
 
 ### Plataforma
@@ -26,17 +29,46 @@
 - Phoenix API foundation;
 - quality gates e harness.
 
+### Catalog parcial
+
+- Connector e ConnectorVersion;
+- Operations source/destination;
+- publicação atômica de versão e Operations;
+- sealing e imutabilidade no PostgreSQL;
+- Contract e ContractVersion identity-only;
+- Package, PackageVersion e endpoints relacionais;
+- topologia 1 Source → 1..N Destinations publicada atomicamente;
+- ordem, references, role compatibility e imutabilidade protegidas no banco.
+
+### Connections mínimo
+
+- Connection environment-scoped ligada a Connector estável;
+- config não sensível como JSON object;
+- binding opcional e exato de SecretVersion;
+- Secret e SecretVersion scoped por Organization/Environment;
+- update de config/binding e disable idempotente;
+- locks contra disable concorrente e integridade relacional no PostgreSQL;
+- nenhum raw secret, ciphertext, provider locator ou credential persistido.
+
+### Integrations mínimo
+
+- Integration organization-scoped ligada a Package estável;
+- lifecycle create/get/disable e lock ativo para workflows compostos;
+- um EnvironmentDeployment completo por Integration/Environment;
+- PackageVersion, promotable/local config e bindings completos por endpoint;
+- create/get/replace atômicos;
+- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos.
+- descoberta de scope imutável e locks de resolução por APIs públicas.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Catalog;
 - Contracts JSON Schema;
 - Connector/Operation/Transport;
 - Integration Packages;
-- Connections e Secrets;
-- Integrations e EnvironmentDeployments;
-- immutable RunSnapshot.
+- lifecycle ampliado de Connections, OAuth, rotation e secret providers;
+- lifecycle ampliado de Integrations, Triggers, promotion e homologation.
 
 ### Data plane
 

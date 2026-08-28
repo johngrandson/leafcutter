@@ -28,14 +28,59 @@ Organization
 └── Roles + Permissions + scoped assignments
 ```
 
+### Catalog parcial
+
+```text
+Connector
+└── immutable ConnectorVersion
+    └── Operations
+
+Contract
+└── immutable ContractVersion
+
+Package
+└── immutable PackageVersion
+    └── ordered PackageVersionEndpoints
+```
+
+ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis.
+
+### Connections mínimo
+
+```text
+Environment
+├── Connections
+└── Secrets
+    └── immutable SecretVersions
+```
+
+Connection referencia Connector estável, mantém config não sensível e pode selecionar uma SecretVersion exata. APIs públicas protegem scope ativo com locks compartilhados; constraints compostas e triggers preservam Organization/Environment, config JSON object, binding compatível e imutabilidade de SecretVersion.
+
+### Integrations mínimo
+
+```text
+Organization
+└── Integration
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+```
+
+Integration referencia Package estável. EnvironmentDeployment seleciona PackageVersion, promotable/local config e o conjunto completo de Connections por endpoint. Create e replace validam authorities ativas sob locks determinísticos e persistem o agregado atomicamente.
+
+`LeafcutterRuntime.Runs.create_from_deployment/1` resolve esse estado por APIs públicas dentro de uma única transação e congela PackageVersion, ContractVersions, destination order, effective config, Connection configs e SecretVersion IDs em uma nova RunSnapshot v1.
+
 ### Runtime
 
 ```text
-RuntimeNode heartbeat
+EnvironmentDeployment
         ↓
-Run ownership + generation
+transactional resolution
         ↓
 Run + immutable RunSnapshot
+        ↓
+claim against active RuntimeNode heartbeat
+        ↓
+Run ownership + generation
         ↓
 RunRecovery
         ↓
@@ -48,9 +93,9 @@ PostgreSQL decide ownership e recovery. Registry e processos OTP representam som
 ### Applications
 
 ```text
-core       → Organizations + Repo + PubSub + Oban
+core       → Organizations + Catalog mínimo + Connections mínimo + Integrations mínimo + Repo + PubSub + Oban
 connectors → boundary executável ainda vazia
-runtime    → Executions foundation + OTP runtime
+runtime    → Executions foundation + deployment resolution + OTP runtime
 api        → Phoenix API-only foundation
 ```
 
@@ -89,6 +134,7 @@ CONTROL PLANE MATERIALIZADO
 - local per-Run supervision
 - polling recovery de Runs running e pending elegíveis
 - criação atômica de Run + RunSnapshot v1
+- criação transacional de Run a partir de EnvironmentDeployment
 ```
 
 Futuro ratificado:

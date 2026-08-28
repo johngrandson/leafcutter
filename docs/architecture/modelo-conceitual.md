@@ -7,6 +7,14 @@
 ```text
 Organization
 └── Environment
+    ├── Connection
+    ├── Secret
+    │   └── SecretVersion
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+
+Organization
+└── Integration
 
 User
 └── Membership
@@ -25,7 +33,7 @@ Run
 └── RunSnapshot
 ```
 
-`Run` existe hoje como identidade de lifecycle e authority de ownership. `RunSnapshot` congela a definition estruturalmente validada e versionada criada com a Run; a resolução semântica upstream e a execução dessa definition ainda não estão materializadas.
+`Run` existe hoje como identidade de lifecycle e authority de ownership. `RunSnapshot` congela a definition estruturalmente validada e versionada criada com a Run. A resolução semântica upstream a partir de EnvironmentDeployment está materializada; a execução dessa definition ainda não.
 
 ## Relação principal planejada
 
@@ -52,7 +60,7 @@ Attempt
 
 `Organization` é a fronteira de tenancy. `Environment` é scope operacional configurável. O lifecycle básico e o RBAC desses conceitos estão implementados.
 
-No futuro, Connections, EnvironmentDeployments, Runs e IdentityMappings carregarão referências explícitas de Organization/Environment conforme seu ownership.
+Connections e EnvironmentDeployments já carregam referências explícitas de Organization/Environment. Runs e IdentityMappings receberão scope explícito conforme seu ownership e os slices ratificados.
 
 ## Catalog
 
@@ -68,20 +76,36 @@ Package
 PackageVersion
 ```
 
-Ainda não existe implementação do Catalog.
+O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion materializam identities publicadas e imutáveis. Package, PackageVersion e seus endpoints relacionais completam o Catalog mínimo com cardinalidade, referências, ordem e imutabilidade protegidas no banco.
+
+## Connections
+
+O modelo mínimo ratificado está materializado:
+
+```text
+Environment
+├── Connection
+│   ├── stable Connector reference
+│   ├── non-sensitive config
+│   └── optional exact SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+```
+
+Connection pode alterar somente config e binding para resoluções futuras; disable é idempotente. Organization e Environment ativos são validados sob locks compartilhados. SecretVersion não contém material secreto e permanece imutável. Provider, encryption, OAuth, rotation, revocation e retention continuam posteriores.
 
 ## Integration e EnvironmentDeployment
 
-`Integration` será identidade lógica de uma Organization vinculada a um Package estável.
+`Integration` é uma identidade lógica materializada de uma Organization vinculada a um Package estável. Seu lifecycle mínimo expõe create, get, disable e lock ativo para workflows compostos.
 
-`EnvironmentDeployment` será a configuração executável por Environment:
+O modelo mínimo ratificado está materializado e usa no máximo um EnvironmentDeployment por Integration e Environment. O deployment guarda estado executável atual e mutável:
 
 - PackageVersion;
-- source/destination Connection bindings;
+- source/destination Connection bindings por ref;
 - promotable config;
-- local config;
-- Triggers;
-- lifecycle.
+- local config.
+
+Create e replace persistem o estado completo e todos os bindings atomicamente. O banco protege identidade, JSON objects, PackageVersion compatível, cobertura exata de endpoints e compatibilidade de Connector. Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
 
 ## Run e RunSnapshot
 
@@ -98,7 +122,7 @@ resolved PackageVersion
 
 Runs legadas podem não possuir snapshot. Runs `pending` só são elegíveis no control plane quando possuem snapshot em formato suportado.
 
-Raw secrets permanecem fora do snapshot.
+Raw secrets permanecem fora do snapshot. O resolver transacional materializado pelo ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1.
 
 ## Record, Delivery e Attempt
 

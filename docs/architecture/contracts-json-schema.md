@@ -1,6 +1,19 @@
 # Contracts e JSON Schema
 
-> **Status: RATIFICADO — NÃO MATERIALIZADO.**
+> **Status: PARCIALMENTE MATERIALIZADO.** Contract e ContractVersion existem somente como identidades; conteúdo JSON Schema e validação JSV permanecem ratificados para um estágio posterior.
+
+## Estado materializado
+
+O Catalog já possui a autoridade de identidade necessária para resolução:
+
+```text
+Contract
+└── immutable ContractVersion
+    ├── version
+    └── published_at
+```
+
+`Leafcutter.Catalog.Contracts` cria e lê identidades Contract e publica identidades ContractVersion. O conteúdo executável do contract não é aceito nem persistido neste slice.
 
 ## Decisão
 
@@ -24,6 +37,8 @@ Contract
 
 Nova versão não altera Runs históricos nem PackageVersions publicadas.
 
+A identidade versionada já está materializada. O conteúdo JSON Schema associado a cada ContractVersion permanece futuro.
+
 ## Source e destination
 
 Source validation protege o runtime contra dados externos inesperados. Destination validation protege o sistema externo contra erros do Package.
@@ -38,7 +53,7 @@ JSON Schema valida estrutura e constraints declarativas. Não será transformado
 
 ## Ainda aberto
 
-- schema físico de Contract/ContractVersion;
+- persistência e versionamento do conteúdo JSON Schema de ContractVersion;
 - cache/compilation strategy;
 - resolução de `$ref`;
 - error representation pública;

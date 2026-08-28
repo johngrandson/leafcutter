@@ -82,6 +82,45 @@ Scopes:
 
 Assignment organization-wide herda para Environments da mesma Organization. Assignment environment-scoped não herda para Organization nem para outro Environment.
 
+### Catalog parcial
+
+O Catalog mínimo ratificado está materializado:
+
+```text
+Connector
+└── ConnectorVersion
+    └── Operation
+
+Contract
+└── ContractVersion
+
+Package
+└── PackageVersion
+    └── PackageVersionEndpoint
+```
+
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
+
+### Connections mínimo
+
+```text
+Environment
+├── Connection
+│   └── optional SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+```
+
+`Leafcutter.Connections` cria, lê, atualiza config/binding e desabilita Connections. `Leafcutter.Connections.Secrets` cria Secret e SecretVersion identities sem armazenar material secreto. Connection referencia Connector estável; config é um JSON object não sensível; o binding é opcional, exato e precisa pertencer ao mesmo Organization/Environment.
+
+Writes validam Organization e Environment ativos por uma API pública do owner que segura locks compartilhados na ordem Organization → Environment. FKs compostas impedem scope incompatível, um trigger protege o binding de SecretVersion cross-scope e PostgreSQL rejeita update/delete de SecretVersion. Raw secret, ciphertext, provider locator, credential, OAuth e rotation permanecem fora do slice.
+
+### Integrations mínimo
+
+`Leafcutter.Integrations` cria, lê e desabilita identidades Integration organization-scoped ligadas a uma Package estável. Organization, Package e name são imutáveis depois da criação. Writes validam a Organization ativa sob lock compartilhado, e disable preserva um único timestamp sob locks na ordem Organization → Integration.
+
+`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
+
 ### Runtime e Executions foundation
 
 Persistência atual:
@@ -116,6 +155,8 @@ cancelled
 Ownership é serializado no PostgreSQL. `generation` é o fencing token monotônico.
 
 `RunSnapshot` usa o id de `Run` como primary key, congela a definition v1 estruturalmente validada e rejeita updates no PostgreSQL. `Runs.create/1` persiste Run `pending` e snapshot atomicamente. `Runs.fetch_snapshot/1` fornece leitura explícita.
+
+`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, calcula effective config e cria Run + RunSnapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
 
 ### Supervision e recovery atuais
 
@@ -162,48 +203,43 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ## Arquitetura ratificada ainda não materializada
 
-### Catalog
+### Catalog futuro
 
-Planejado e ratificado:
+O modelo mínimo ratificado no ADR-0018 está materializado. Permanecem posteriores:
 
 ```text
-Connector + ConnectorVersion
-Operation metadata
-Contract + ContractVersion
-Package + PackageVersion
-publication and availability metadata
+availability/deprecation metadata
+Package Manifest e build
+ContractVersion JSON Schema/JSV
 ```
 
-Versões publicadas serão imutáveis.
+O slice materializado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. Todo o conteúdo versionado do Catalog mínimo é imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
-### Connections
+### Connections futuro
 
-Planejado e ratificado:
+O modelo mínimo de Connection, Secret e SecretVersion está materializado. Permanecem ratificados ou abertos para slices posteriores:
 
 ```text
-Connection
-Secret
-SecretVersion
 OAuth durable state
-rotation metadata
+secret provider/encryption
+rotation and revocation metadata
+retention lifecycle
 ```
 
-Raw secrets não entram em PackageVersion, RunSnapshot, logs, AuditEvent ou respostas de API.
+Raw secrets continuam fora de PackageVersion, RunSnapshot, logs, AuditEvent e respostas de API. Provider, encryption, OAuth, rotation, revocation e retention exigem decisões próprias antes de implementação.
 
-### Integrations
+### Integrations futuro
 
-Planejado e ratificado:
+O modelo mínimo de Integration, EnvironmentDeployment e bindings está materializado. Permanecem posteriores:
 
 ```text
-Integration
-EnvironmentDeployment
 Triggers
 HomologationRequest
 Promotion history
 IdentityMapping
 ```
 
-Promotion copia somente estado promovível; não copia secrets, Connections, Triggers ou config local do target.
+Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
 
 ### Executions completo
 
@@ -220,7 +256,7 @@ ExecutionEvent
 Enrichment execution state
 ```
 
-A criação futura a partir de `EnvironmentDeployment` resolverá as authorities upstream para o formato ratificado. Esse workflow pertence à orchestration em `leafcutter_runtime` e entregará a definition pronta a Executions. Seus schemas e o resolver semântico continuam para slices posteriores.
+A criação a partir de EnvironmentDeployment está materializada conforme o ADR-0018 e sua specification. O workflow pertence à orchestration em leafcutter_runtime, resolve as authorities upstream em uma transação e entrega a definition pronta a Executions. O carregamento e a execução dessa definition pelo RunCoordinator continuam posteriores.
 
 ### Data plane Broadway
 
@@ -282,8 +318,8 @@ A estratégia física para incluí-los na release continua aberta.
 
 Entre as principais:
 
-- schemas de Catalog, Connections e Integrations;
-- resolução semântica de EnvironmentDeployment para RunSnapshot v1;
+- lifecycle de availability/deprecation das versões do Catalog;
+- metadata ampliada das authorities upstream;
 - política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
@@ -306,16 +342,20 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O próximo slice deve ratificar as authorities upstream mínimas e o workflow que resolve uma definition v1:
+Catalog, Connections, Integration, EnvironmentDeployment e seu resolver transacional estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
-Catalog + Connections + Integrations mínimos
+Catalog mínimo (materializado)
 ↓
-EnvironmentDeployment persistido
-↓ orchestration em leafcutter_runtime
-definition v1 resolvida
+Connections + SecretVersion bindings (materializado)
 ↓
-Executions.Runs.create/1
+Integration identity (materialized)
+↓
+EnvironmentDeployment + bindings (materialized)
+↓
+resolver em leafcutter_runtime (materialized)
+↓
+Contracts/JSV + Connector/Operation/Transport
 ```
 
-RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone concluído. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O próximo recorte executável precisa ser ratificado antes de materialização. O carregamento no coordinator e a execução Broadway permanecem posteriores.

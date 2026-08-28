@@ -233,4 +233,143 @@ defmodule Leafcutter.Organizations.Environments do
         Repo.rollback(changeset)
     end
   end
+
+  @typedoc "An active Organization and Environment pair locked for a caller-owned transaction."
+  @type active_scope :: %{
+          organization: Organization.t(),
+          environment: Environment.t()
+        }
+
+  @typedoc "Authority or lifecycle error returned while validating an active scope."
+  @type active_scope_state_error ::
+          :organization_not_found
+          | :organization_disabled
+          | :environment_not_found
+          | :environment_scope_mismatch
+          | :environment_disabled
+
+  @typedoc "Error returned while locking an active Organization and Environment scope."
+  @type active_scope_error ::
+          :transaction_required
+          | active_scope_state_error()
+
+  @doc """
+  Locks and validates an active Organization and Environment scope.
+
+  ## Parameters
+
+  * `organization_id` - The expected Organization identifier
+  * `environment_id` - The Environment identifier expected to belong to the Organization
+
+  ## Returns
+
+  * `{:ok, scope}` with the active Organization and Environment rows
+  * `{:error, :transaction_required}` when no caller-owned transaction is active
+  * `{:error, :organization_not_found}` when the Organization does not exist
+  * `{:error, :organization_disabled}` when the Organization is disabled
+  * `{:error, :environment_not_found}` when the Environment does not exist
+  * `{:error, :environment_scope_mismatch}` when the Environment belongs to another Organization
+  * `{:error, :environment_disabled}` when the Environment is disabled
+
+  ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Active Scope Example"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, {:ok, scope}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Organizations.Environments.lock_active_scope(
+      ...>       organization.id,
+      ...>       environment.id
+      ...>     )
+      ...>   end)
+
+      iex> {scope.organization.id, scope.environment.id}
+      {organization.id, environment.id}
+
+      iex> Leafcutter.Organizations.Environments.lock_active_scope(
+      ...>   "00000000-0000-0000-0000-000000000000",
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :transaction_required}
+
+  ## Notes
+
+  * The caller must already own a Repo transaction.
+  * The Organization is locked before the Environment.
+  * Shared row locks allow concurrent readers and block lifecycle updates until commit.
+  * The locks are intended for cross-context workflows that must prevent concurrent disable.
+  """
+  @spec lock_active_scope(Organization.id(), Environment.id()) ::
+          {:ok, active_scope()} | {:error, active_scope_error()}
+  def lock_active_scope(organization_id, environment_id) do
+    if Repo.in_transaction?() do
+      with {:ok, organization} <- lock_active_organization(organization_id),
+           {:ok, environment} <-
+             lock_active_environment(environment_id, organization_id) do
+        {:ok, %{organization: organization, environment: environment}}
+      end
+    else
+      {:error, :transaction_required}
+    end
+  end
+
+  @spec lock_active_organization(Organization.id()) ::
+          {:ok, Organization.t()}
+          | {:error, :organization_not_found | :organization_disabled}
+  defp lock_active_organization(organization_id) do
+    organization =
+      Organization
+      |> where([organization], organization.id == ^organization_id)
+      |> lock("FOR SHARE")
+      |> Repo.one()
+
+    case organization do
+      nil ->
+        {:error, :organization_not_found}
+
+      %Organization{disabled_at: nil} = organization ->
+        {:ok, organization}
+
+      %Organization{} ->
+        {:error, :organization_disabled}
+    end
+  end
+
+  @spec lock_active_environment(Environment.id(), Organization.id()) ::
+          {:ok, Environment.t()}
+          | {:error,
+             :environment_not_found
+             | :environment_scope_mismatch
+             | :environment_disabled}
+  defp lock_active_environment(environment_id, organization_id) do
+    environment =
+      Environment
+      |> where([environment], environment.id == ^environment_id)
+      |> lock("FOR SHARE")
+      |> Repo.one()
+
+    case environment do
+      nil ->
+        {:error, :environment_not_found}
+
+      %Environment{organization_id: persisted_organization_id}
+      when persisted_organization_id != organization_id ->
+        {:error, :environment_scope_mismatch}
+
+      %Environment{disabled_at: nil} = environment ->
+        {:ok, environment}
+
+      %Environment{} ->
+        {:error, :environment_disabled}
+    end
+  end
 end

@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**RunSnapshot v1 materialization closure**
+**EnvironmentDeployment → RunSnapshot v1 materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 também está materializado na feature branch, com fechamento condicionado à suíte integral e ao merge.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. O ADR-0018 agora está materializado de ponta a ponta nesta branch: Catalog, Connections, Integration, EnvironmentDeployment, bindings e o resolver transacional `EnvironmentDeployment → definition v1`.
 
 ## Estado materializado
 
@@ -58,6 +58,84 @@ environment.manage
 access.manage
 ```
 
+### Catalog
+
+Materializado:
+
+```text
+Connector
+└── ConnectorVersion
+    └── Operation
+
+Contract
+└── ContractVersion
+
+Package
+└── PackageVersion
+    └── PackageVersionEndpoint
+
+Catalog.Connectors.create/1
+Catalog.Connectors.get/1
+Catalog.Connectors.publish_version/2
+Catalog.Contracts.create/1
+Catalog.Contracts.get/1
+Catalog.Contracts.publish_version/2
+Catalog.Packages.create/1
+Catalog.Packages.get/1
+Catalog.Packages.publish_version/2
+Catalog.Packages.get_version/1
+```
+
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+
+### Connections
+
+Materializado:
+
+```text
+Environment
+├── Connection
+│   └── optional exact SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+
+Connections.create/1
+Connections.get/1
+Connections.update/2
+Connections.disable/1
+Connections.lock_active/3
+Connections.Secrets.create/1
+Connections.Secrets.create_version/1
+Connections.Secrets.fetch_versions/3
+```
+
+Connection referencia Connector estável, guarda config JSON object não sensível e pode selecionar uma SecretVersion exata do mesmo Organization/Environment. Writes validam parents ativos sob locks compartilhados na ordem Organization → Environment; updates e disable lockam a Connection depois. `lock_active/3` oferece leitura bloqueada, única e ordenada por ID para workflows compostos. `Secrets.fetch_versions/3` retorna identities imutáveis exatas, únicas e ordenadas após validar o scope. FKs compostas, constraint de JSON object e trigger de binding protegem integridade no PostgreSQL. SecretVersion é única dentro de Secret e rejeita update/delete. Nenhum raw secret, ciphertext, provider locator ou credential é persistido.
+
+### Integrations
+
+Materializado:
+
+```text
+Organization
+└── Integration
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+
+Integrations.create/1
+Integrations.get/1
+Integrations.disable/1
+Integrations.lock_active/2
+Integrations.Deployments.create/1
+Integrations.Deployments.get/1
+Integrations.Deployments.replace/2
+Integrations.Deployments.fetch_resolution_scope/1
+Integrations.Deployments.lock_for_resolution/1
+```
+
+Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration.
+
+EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs e compatibilidade de Connector. `fetch_resolution_scope/1` descobre somente os parent IDs imutáveis sem ler bindings; `lock_for_resolution/1` protege deployment e bindings com shared locks dentro da transação do caller. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
+
 ### Executions e runtime
 
 Materializado:
@@ -74,9 +152,10 @@ Runs.claim/2
 Runs.release/1
 Runs.list_owned_tokens/1
 Runs.claim_recoverable/3
+LeafcutterRuntime.Runs.create_from_deployment/1
 ```
 
-Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
+Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. `create_from_deployment/1` resolve authorities por APIs públicas dentro de uma única transação, calcula effective config, preserva destination order e congela Connection config e SecretVersion ID antes de criar a Run `pending`. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
 
 Supervision tree:
 
@@ -108,9 +187,6 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Catalog
-Connections
-Integrations
 Notifications
 Audit
 Record
@@ -149,34 +225,45 @@ Automatic RunRecovery bootstrap
 Documentation present/future alignment
 RunSnapshot v1 contract ratification
 RunSnapshot v1 materialization
+Upstream authorities and deployment resolution contract ratification
+Catalog Connector authority materialization
+Catalog Contract authority materialization
+Catalog Package topology materialization
+Connections + SecretVersion binding materialization
+Integration identity materialization
+EnvironmentDeployment + binding materialization
+Resolver-facing authority read APIs
+Resolver scope discovery without binding reads
+EnvironmentDeployment transactional resolver
 ```
 
 ## Em andamento
 
-Revisão final e quality gate concluídos; preparar o merge da feature branch de RunSnapshot v1.
+Consolidar e integrar o milestone materializado de EnvironmentDeployment → RunSnapshot v1.
 
 ## Próxima tarefa concreta
 
-Após fechar e integrar este slice, ratificar o menor slice upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido:
+Após concluir os gates e integrar esta branch, revisar e ratificar o menor slice de Contracts/JSV + Connector/Operation/Transport executáveis. A sequência arquitetural aponta para essa fronteira, mas seu recorte concreto deve ser documentado antes de código novo.
+
+O comportamento concluído neste milestone é:
 
 ```text
-Catalog authorities mínimas
-+ Connections e SecretVersion bindings mínimos
-+ Integration e EnvironmentDeployment persistidos
-↓
-resolver na orchestration de leafcutter_runtime
-↓
-definition v1 resolvida
-↓
-Executions.Runs.create/1
+LeafcutterRuntime.Runs.create_from_deployment/1
+→ uma transação compartilhada
+→ descoberta preliminar somente dos parent IDs imutáveis
+→ locks via APIs públicas na ordem ratificada
+→ revalidação semântica das authorities
+→ deep merge de promotable_config + local_config
+→ definition v1 congelando Connection config e SecretVersion ID
+→ Executions.Runs.create/1
 ```
 
-A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts antes de implementar `create_from_deployment/1`. Não carregar o snapshot no RunCoordinator nem antecipar Broadway, Record ou Delivery.
+O resolver ordena destinations pela posição do PackageVersionEndpoint, faz rollback integral em qualquer falha e cria Runs distintas em chamadas bem-sucedidas repetidas.
+
+Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation, actor, invocation, idempotency, carregamento no coordinator ou data plane.
 
 ## Principais decisões abertas
 
-- schemas/APIs de Catalog, Connections e Integrations;
-- resolução semântica de EnvironmentDeployment para a definition v1;
 - Package Manifest e build de packages;
 - Connector/Operation/Transport contracts;
 - data plane e durable fan-out;
@@ -189,6 +276,8 @@ A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts 
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
+- `docs/specifications/environment-deployment-run-resolution.md`
 - `docs/decisions/ADR-0017-run-snapshot-v1.md`
 - `docs/specifications/run-snapshot-v1.md`
 - `docs/architecture/estado-atual-e-visao-futura.md`

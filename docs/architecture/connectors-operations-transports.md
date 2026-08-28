@@ -1,6 +1,16 @@
 # Connectors, Operations e Transports
 
-> **Status: RATIFICADO — NÃO MATERIALIZADO.** `leafcutter_connectors` existe, mas os contracts executáveis abaixo ainda não foram implementados.
+> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation existem como metadata no Catalog; os contracts executáveis em `leafcutter_connectors` e Transport permanecem futuros.
+
+## Estado materializado
+
+```text
+Connector
+└── immutable ConnectorVersion
+    └── Operation metadata
+```
+
+`Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion com suas Operations atomicamente. Operation materializa `ref` e `role: source | destination`; behaviour executável, paginação, requests, responses e Transport não fazem parte desse slice.
 
 ## Separação
 
@@ -15,7 +25,7 @@ Transport
 → conhece o protocolo
 ```
 
-Catalog possuirá metadata e versões. `leafcutter_connectors` possuirá behaviours e implementações executáveis.
+Catalog possui metadata e versões. `leafcutter_connectors` possuirá behaviours e implementações executáveis.
 
 ## Connector
 

@@ -2,18 +2,12 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-O contrato de RunSnapshot v1 não está mais aberto. Ele foi ratificado e materializado conforme `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`. A próxima fronteira é ratificar o menor slice upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido.
+RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. A próxima fronteira requer confirmar o menor recorte executável de Contracts/JSV + Connector/Operation/Transport.
 
 ## Domínio
 
-- schemas e APIs públicas de Catalog;
-- Connection/Secret/SecretVersion;
-- Integration/EnvironmentDeployment;
-- workflow e ownership do resolver EnvironmentDeployment → definition v1;
-- validação semântica das referências congeladas;
-- merge, precedence e provenance de config;
 - provenance futura de Organization/Environment/Integration/Deployment;
-- invocation e idempotency de criação de Run;
+- modelo futuro de invocation/idempotency além da semântica atual de criar Runs distintas;
 - histórico de deployment;
 - homologation evidence e promotion records;
 - Record/Delivery/Attempt/Checkpoint;
@@ -45,7 +39,7 @@ O contrato de RunSnapshot v1 não está mais aberto. Ele foi ratificado e materi
 - User authentication;
 - ServiceAccount credentials;
 - secret provider/encryption;
-- enforcement de config não sensível no resolver;
+- enforcement futuro de config não sensível por schemas tipados;
 - lifecycle, revogação e retenção de SecretVersion;
 - payload redaction;
 - external error exposure;

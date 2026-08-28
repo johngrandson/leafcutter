@@ -29,6 +29,8 @@ Hospeda hoje:
 
 ```text
 Organizations
+Catalog
+Connections
 Leafcutter.Repo
 Leafcutter.PubSub
 Oban
@@ -37,8 +39,6 @@ Oban
 Hospedará futuramente:
 
 ```text
-Catalog
-Connections
 Integrations
 Notifications
 Audit
@@ -77,6 +77,7 @@ Hospeda hoje:
 
 ```text
 Executions foundation
+EnvironmentDeployment → RunSnapshot resolution
 RunRegistry
 RunDynamicSupervisor
 NodeHeartbeat
