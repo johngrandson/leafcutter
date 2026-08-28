@@ -11,7 +11,7 @@ defmodule Leafcutter.Integrations.Deployments do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{PackageVersion, PackageVersionEndpoint, Packages}
+  alias Leafcutter.Catalog.{Packages, PackageVersion, PackageVersionEndpoint}
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Connection
 
@@ -224,48 +224,51 @@ defmodule Leafcutter.Integrations.Deployments do
           Changeset.t(),
           [Changeset.t()]
         ) :: {:ok, EnvironmentDeployment.t()} | {:error, create_error()}
+  defp create_with_locked_authorities(
+         %Changeset{valid?: false} = changeset,
+         _binding_changesets
+       ) do
+    {:error, changeset}
+  end
+
   defp create_with_locked_authorities(changeset, binding_changesets) do
-    if changeset.valid? do
-      organization_id = Changeset.fetch_field!(changeset, :organization_id)
-      environment_id = Changeset.fetch_field!(changeset, :environment_id)
-      integration_id = Changeset.fetch_field!(changeset, :integration_id)
-      package_version_id = Changeset.fetch_field!(changeset, :package_version_id)
+    organization_id = Changeset.fetch_field!(changeset, :organization_id)
+    environment_id = Changeset.fetch_field!(changeset, :environment_id)
+    integration_id = Changeset.fetch_field!(changeset, :integration_id)
+    package_version_id = Changeset.fetch_field!(changeset, :package_version_id)
 
-      Repo.transaction(fn ->
-        with {:ok, _scope} <-
-               Environments.lock_active_scope(
-                 organization_id,
-                 environment_id
-               ),
-             {:ok, integration} <-
-               Integrations.lock_active(integration_id, organization_id),
-             {:ok, connections} <-
-               lock_connections(
-                 binding_changesets,
-                 organization_id,
-                 environment_id
-               ),
-             {:ok, package_version} <-
-               fetch_package_version(package_version_id),
-             :ok <- validate_package_version(package_version, integration),
-             :ok <- validate_binding_refs(package_version, binding_changesets),
-             :ok <-
-               validate_connector_compatibility(
-                 package_version,
-                 binding_changesets,
-                 connections
-               ) do
-          deployment = insert_deployment_or_rollback(changeset)
-          bindings = insert_bindings_or_rollback(binding_changesets)
+    Repo.transaction(fn ->
+      with {:ok, _scope} <-
+             Environments.lock_active_scope(
+               organization_id,
+               environment_id
+             ),
+           {:ok, integration} <-
+             Integrations.lock_active(integration_id, organization_id),
+           {:ok, connections} <-
+             lock_connections(
+               binding_changesets,
+               organization_id,
+               environment_id
+             ),
+           {:ok, package_version} <-
+             fetch_package_version(package_version_id),
+           :ok <- validate_package_version(package_version, integration),
+           :ok <- validate_binding_refs(package_version, binding_changesets),
+           :ok <-
+             validate_connector_compatibility(
+               package_version,
+               binding_changesets,
+               connections
+             ) do
+        deployment = insert_deployment_or_rollback(changeset)
+        bindings = insert_bindings_or_rollback(binding_changesets)
 
-          attach_bindings(deployment, bindings)
-        else
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
-    else
-      {:error, changeset}
-    end
+        attach_bindings(deployment, bindings)
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @spec replace_with_locked_authorities(
@@ -366,37 +369,65 @@ defmodule Leafcutter.Integrations.Deployments do
        ) do
     binding_attrs
     |> Enum.reduce_while({:ok, []}, fn attrs, {:ok, changesets} ->
-      if is_map(attrs) do
-        changeset =
-          EnvironmentDeploymentBinding.create_changeset(
-            %EnvironmentDeploymentBinding{},
-            %{
-              environment_deployment_id: deployment_id,
-              ref: attribute(attrs, :ref),
-              connection_id: attribute(attrs, :connection_id)
-            }
-          )
-
-        if changeset.valid? do
-          {:cont, {:ok, [changeset | changesets]}}
-        else
-          {:halt, {:error, changeset}}
-        end
-      else
-        {:halt,
-         {:error,
-          Changeset.add_error(
-            parent_changeset,
-            :bindings,
-            "must contain only maps",
-            validation: :map
-          )}}
-      end
+      reduce_binding_attrs(
+        attrs,
+        changesets,
+        parent_changeset,
+        deployment_id
+      )
     end)
     |> case do
       {:ok, changesets} -> {:ok, Enum.reverse(changesets)}
       {:error, changeset} -> {:error, changeset}
     end
+  end
+
+  @spec reduce_binding_attrs(
+          term(),
+          [Changeset.t()],
+          Changeset.t(),
+          EnvironmentDeployment.id()
+        ) ::
+          {:cont, {:ok, [Changeset.t()]}}
+          | {:halt, {:error, Changeset.t()}}
+  defp reduce_binding_attrs(
+         attrs,
+         changesets,
+         _parent_changeset,
+         deployment_id
+       )
+       when is_map(attrs) do
+    changeset =
+      EnvironmentDeploymentBinding.create_changeset(
+        %EnvironmentDeploymentBinding{},
+        %{
+          environment_deployment_id: deployment_id,
+          ref: attribute(attrs, :ref),
+          connection_id: attribute(attrs, :connection_id)
+        }
+      )
+
+    if changeset.valid? do
+      {:cont, {:ok, [changeset | changesets]}}
+    else
+      {:halt, {:error, changeset}}
+    end
+  end
+
+  defp reduce_binding_attrs(
+         _attrs,
+         _changesets,
+         parent_changeset,
+         _deployment_id
+       ) do
+    {:halt,
+     {:error,
+      Changeset.add_error(
+        parent_changeset,
+        :bindings,
+        "must contain only maps",
+        validation: :map
+      )}}
   end
 
   @spec fetch_package_version(PackageVersion.id()) ::
