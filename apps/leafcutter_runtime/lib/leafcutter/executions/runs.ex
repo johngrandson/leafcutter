@@ -424,8 +424,7 @@ defmodule Leafcutter.Executions.Runs do
       )
       |> select([runtime_node], runtime_node.id)
 
-    supported_format_versions =
-      RunSnapshot.supported_format_versions()
+    supported_format_versions = RunSnapshot.supported_format_versions()
 
     eligible_snapshot_run_ids =
       RunSnapshot
