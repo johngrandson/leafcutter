@@ -317,6 +317,9 @@ defmodule Leafcutter.Executions.Runs do
     end)
   end
 
+  # OTP 28 loses the MapSet opaqueness when it analyzes Ecto.Multi.new/0.
+  # Remove this suppression when elixir-lang/elixir#14576 no longer reproduces.
+  @dialyzer {:no_opaque, [persist_new_run: 1]}
   @spec persist_new_run(RunSnapshot.definition()) ::
           {:ok, Run.t()} | {:error, Changeset.t()}
   defp persist_new_run(definition) do
