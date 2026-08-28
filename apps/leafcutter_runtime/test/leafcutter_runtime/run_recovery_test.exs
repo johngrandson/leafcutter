@@ -31,33 +31,46 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     {:ok, runtime_node: runtime_node}
   end
 
-  test "recovers unowned running Runs without starting pending Runs", %{
+  test "starts running and eligible pending Runs while skipping ineligible pending Runs", %{
     runtime_node: runtime_node
   } do
     running_run = insert_run(%{status: :running})
-    pending_run = insert_run()
+    eligible_pending_run = create_pending_run()
+    missing_snapshot_pending_run = insert_run()
 
     register_cleanup(running_run.id)
-    register_cleanup(pending_run.id)
+    register_cleanup(eligible_pending_run.id)
+    register_cleanup(missing_snapshot_pending_run.id)
 
     recovery_pid = start_recovery(runtime_node.id)
     send(recovery_pid, :scan)
 
-    local_run = wait_for_local_run(running_run.id, 100)
+    local_running_run = wait_for_local_run(running_run.id, 100)
+    local_pending_run = wait_for_local_run(eligible_pending_run.id, 100)
 
-    assert local_run.ownership_token.runtime_node_id == runtime_node.id
-    assert local_run.ownership_token.generation == 1
-    assert Runs.lookup(pending_run.id) == :error
+    assert local_running_run.ownership_token.runtime_node_id ==
+             runtime_node.id
 
-    persisted_pending_run = Repo.get!(Run, pending_run.id)
-    assert persisted_pending_run.status == :pending
-    assert persisted_pending_run.owner_node_id == nil
+    assert local_running_run.ownership_token.generation == 1
+    assert local_pending_run.ownership_token.runtime_node_id == runtime_node.id
+    assert local_pending_run.ownership_token.generation == 1
+    assert Runs.lookup(missing_snapshot_pending_run.id) == :error
+
+    persisted_eligible_run = Repo.get!(Run, eligible_pending_run.id)
+    assert persisted_eligible_run.status == :running
+    assert persisted_eligible_run.owner_node_id == runtime_node.id
+
+    persisted_missing_snapshot_run =
+      Repo.get!(Run, missing_snapshot_pending_run.id)
+
+    assert persisted_missing_snapshot_run.status == :pending
+    assert persisted_missing_snapshot_run.owner_node_id == nil
   end
 
   test "reconstructs an already-owned Run without incrementing generation", %{
     runtime_node: runtime_node
   } do
-    run = insert_run()
+    run = create_pending_run()
     register_cleanup(run.id)
 
     assert {:ok, ownership_token} =
@@ -80,7 +93,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     previous_runtime_node =
       create_active_runtime_node("recovery-previous-runtime")
 
-    run = insert_run()
+    run = create_pending_run()
     register_cleanup(run.id)
 
     assert {:ok, previous_token} =
@@ -203,6 +216,40 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
       )
 
     start_supervised!({RunRecovery, options})
+  end
+
+  @spec create_pending_run() :: Run.t()
+  defp create_pending_run do
+    {:ok, run} = DurableRuns.create(definition_fixture())
+    run
+  end
+
+  @spec definition_fixture() :: map()
+  defp definition_fixture do
+    %{
+      "package_version_id" => Ecto.UUID.generate(),
+      "source" => %{
+        "ref" => "source",
+        "contract_version_id" => Ecto.UUID.generate(),
+        "connection" => %{
+          "id" => Ecto.UUID.generate(),
+          "config" => %{},
+          "secret_version_id" => nil
+        }
+      },
+      "destinations" => [
+        %{
+          "ref" => "destination",
+          "contract_version_id" => Ecto.UUID.generate(),
+          "connection" => %{
+            "id" => Ecto.UUID.generate(),
+            "config" => %{},
+            "secret_version_id" => nil
+          }
+        }
+      ],
+      "effective_config" => %{}
+    }
   end
 
   @spec insert_run(run_attrs()) :: Run.t()
