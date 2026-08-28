@@ -51,9 +51,7 @@ defmodule Leafcutter.Connections.ActiveConnectionsTest do
                )
              end)
 
-    assert {:ok,
-            {:error,
-             {:connection_scope_mismatch, second_connection_id}}} =
+    assert {:ok, {:error, {:connection_scope_mismatch, second_connection_id}}} =
              Repo.transaction(fn ->
                Connections.lock_active(
                  [second_connection.id],

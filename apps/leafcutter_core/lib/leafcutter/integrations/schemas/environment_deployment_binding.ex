@@ -31,8 +31,7 @@ defmodule Leafcutter.Integrations.EnvironmentDeploymentBinding do
   @type t :: %__MODULE__{
           id: id() | nil,
           environment_deployment_id: EnvironmentDeployment.id() | nil,
-          environment_deployment:
-            EnvironmentDeployment.t() | Ecto.Association.NotLoaded.t(),
+          environment_deployment: EnvironmentDeployment.t() | Ecto.Association.NotLoaded.t(),
           ref: String.t() | nil,
           connection_id: Ecto.UUID.t() | nil,
           inserted_at: DateTime.t() | nil

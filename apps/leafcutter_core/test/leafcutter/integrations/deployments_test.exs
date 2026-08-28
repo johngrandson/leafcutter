@@ -200,8 +200,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       other_scope = deployment_scope("Other")
       missing_connection_id = Ecto.UUID.generate()
 
-      assert {:error,
-              {:connection_not_found, ^missing_connection_id}} =
+      assert {:error, {:connection_not_found, ^missing_connection_id}} =
                Deployments.create(
                  deployment_attrs(scope,
                    bindings: [
@@ -217,8 +216,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
                  )
                )
 
-      assert {:error,
-              {:connection_scope_mismatch, other_connection_id}} =
+      assert {:error, {:connection_scope_mismatch, other_connection_id}} =
                Deployments.create(
                  deployment_attrs(scope,
                    bindings: [
@@ -239,8 +237,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       assert {:ok, _disabled_connection} =
                Connections.disable(scope.destination_connection.id)
 
-      assert {:error,
-              {:connection_disabled, disabled_connection_id}} =
+      assert {:error, {:connection_disabled, disabled_connection_id}} =
                Deployments.create(deployment_attrs(scope))
 
       assert disabled_connection_id == scope.destination_connection.id
@@ -253,13 +250,11 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
                    bindings: [
                      %{
                        ref: "source",
-                       connection_id:
-                         connector_scope.destination_connection.id
+                       connection_id: connector_scope.destination_connection.id
                      },
                      %{
                        ref: "crm",
-                       connection_id:
-                         connector_scope.destination_connection.id
+                       connection_id: connector_scope.destination_connection.id
                      }
                    ]
                  )
@@ -276,9 +271,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       ]
 
       assert {:error, %Changeset{} = binding_changeset} =
-               Deployments.create(
-                 deployment_attrs(scope, bindings: duplicate_bindings)
-               )
+               Deployments.create(deployment_attrs(scope, bindings: duplicate_bindings))
 
       assert %{ref: [_ | _]} = errors_on(binding_changeset)
 
@@ -306,9 +299,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
 
     test "returns a named error when the deployment does not exist" do
       assert {:error, :not_found} =
-               Deployments.get(
-                 "00000000-0000-0000-0000-000000000000"
-               )
+               Deployments.get("00000000-0000-0000-0000-000000000000")
     end
   end
 
@@ -528,9 +519,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
           Repo.transaction(
             fn ->
               deployment
-              |> Changeset.change(
-                package_version_id: other_scope.package_version.id
-              )
+              |> Changeset.change(package_version_id: other_scope.package_version.id)
               |> Repo.update!()
 
               SQL.query!(
@@ -557,9 +546,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
           Repo.transaction(
             fn ->
               source_binding
-              |> Changeset.change(
-                connection_id: scope.destination_connection.id
-              )
+              |> Changeset.change(connection_id: scope.destination_connection.id)
               |> Repo.update!()
 
               SQL.query!(

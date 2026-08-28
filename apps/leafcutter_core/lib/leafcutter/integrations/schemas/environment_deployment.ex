@@ -63,8 +63,7 @@ defmodule Leafcutter.Integrations.EnvironmentDeployment do
           package_version_id: Ecto.UUID.t() | nil,
           promotable_config: map(),
           local_config: map(),
-          bindings:
-            [EnvironmentDeploymentBinding.t()] | Ecto.Association.NotLoaded.t(),
+          bindings: [EnvironmentDeploymentBinding.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
