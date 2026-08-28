@@ -23,7 +23,7 @@ Esta pasta contém tanto a arquitetura **já materializada** quanto a arquitetur
 |---|---|
 | `connectors-operations-transports.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `contracts-json-schema.md` | PARCIALMENTE MATERIALIZADO |
-| `integration-packages.md` | RATIFICADO — NÃO MATERIALIZADO |
+| `integration-packages.md` | PARCIALMENTE MATERIALIZADO |
 | `transformations-enrichments-interceptors.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `api-openapi.md` | PARCIALMENTE MATERIALIZADO |
 | `observabilidade-e-auditoria.md` | PARCIALMENTE MATERIALIZADO |

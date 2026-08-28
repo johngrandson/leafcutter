@@ -36,7 +36,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Context | Estado | Materializado | Preservado para o futuro |
 |---|---|---|---|
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
-| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract e ContractVersion | Package e suas versões/endpoints |
+| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e endpoints | availability, manifest e build |
 | Connections | RATIFICADO — NÃO MATERIALIZADO | — | Connection, Secret, SecretVersion, OAuth state |
 | Integrations | RATIFICADO — NÃO MATERIALIZADO | — | Integration, EnvironmentDeployment, promotion, homologation, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
@@ -71,7 +71,7 @@ Não existe `Principal` persistido. User recebe Role por Membership; ServiceAcco
 
 ## Catalog
 
-O modelo mínimo e suas APIs foram ratificados no ADR-0018. Connector, ConnectorVersion, Operation, Contract e ContractVersion estão materializados. Owns:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018 e estão materializados. Owns:
 
 ```text
 Connector metadata + ConnectorVersion
@@ -81,7 +81,7 @@ Package + PackageVersion
 publication and availability
 ```
 
-Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. ConnectorVersion e Operations são publicados atomicamente e protegidos contra append, update e delete após o sealing. ContractVersion materializa uma identidade publicada e imutável. PackageVersion e seus endpoints relacionais permanecem no próximo sub-slice.
+Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. ConnectorVersion e Operations são publicados atomicamente e protegidos contra append, update e delete após o sealing. ContractVersion materializa uma identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais igualmente imutáveis.
 
 ## Connections
 

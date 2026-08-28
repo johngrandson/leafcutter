@@ -40,13 +40,15 @@
 - Operations source/destination;
 - publicação atômica e sealing no PostgreSQL;
 - conteúdo publicado protegido contra append, update e delete;
-- Contract e ContractVersion identity-only, publicados e imutáveis.
+- Contract e ContractVersion identity-only, publicados e imutáveis;
+- Package e PackageVersion com topologia relacional 1 Source → 1..N Destinations;
+- endpoints ordenados pinando Operation e ContractVersion;
+- cardinalidade, compatibilidade e imutabilidade protegidas no PostgreSQL.
 
 ## Próximo estágio: authorities upstream e resolução
 
 O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrerá em sub-slices ordenados.
 
-- Package/PackageVersion/endpoints;
 - Connections e SecretVersion bindings mínimos;
 - Integration + EnvironmentDeployment persistidos;
 - resolver semântico de EnvironmentDeployment para definition v1;

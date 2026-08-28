@@ -1,10 +1,23 @@
 # Integration Packages
 
-> **Status: ESTRUTURA RATIFICADA — NÃO MATERIALIZADA.**
+> **Status: PARCIALMENTE MATERIALIZADO.** A authority e a projeção relacional do Catalog existem; manifest, código executável e build permanecem futuros.
+
+## Estado materializado
+
+O Catalog materializa a authority necessária para resolução:
+
+```text
+Package
+└── immutable PackageVersion
+    ├── exactly one source endpoint
+    └── one or more ordered destination endpoints
+```
+
+Cada endpoint pinna uma Operation compatível com seu role e uma ContractVersion. A publicação é atômica e o PostgreSQL impede topologia incompleta, append tardio, update e delete. Essa projeção interna não ratifica field names do manifest.
 
 ## Papel
 
-Package é código e metadata reutilizáveis. Não contém credenciais nem configuração concreta de cliente.
+O Integration Package futuro combina código e metadata reutilizáveis. Não contém credenciais nem configuração concreta de cliente.
 
 ```text
 Package
@@ -33,7 +46,7 @@ Cada Package é um Mix project independente fora de `apps/`.
 
 ## Imutabilidade
 
-PackageVersion publicada é imutável. Evolução cria nova versão. `PackageDependency` não faz parte do V1.
+PackageVersion publicada já é imutável no Catalog. Evolução cria nova versão. `PackageDependency` não faz parte do V1.
 
 ## Dependências
 

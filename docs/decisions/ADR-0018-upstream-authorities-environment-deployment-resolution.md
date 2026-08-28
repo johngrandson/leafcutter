@@ -1,7 +1,7 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR E CONTRACT AUTHORITIES
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG MÍNIMO
 - Data: 2026-08-28
 
 ## Contexto
@@ -395,11 +395,13 @@ Materializado:
 - publicação transacional e sealing de ConnectorVersion com suas Operations;
 - imutabilidade de conteúdo e validação UTF-8 dessas authorities;
 - `Contract` e `ContractVersion` identity-only no Catalog;
-- publicação imediata e imutabilidade de ContractVersion.
+- publicação imediata e imutabilidade de ContractVersion;
+- `Package`, `PackageVersion` e `PackageVersionEndpoint` no Catalog;
+- publicação atômica, cardinalidade 1 Source → 1..N Destinations, ordem e role compatibility protegidas no PostgreSQL;
+- leitura pública da projeção imutável por PackageVersion.
 
 Não materializado:
 
-- Package, PackageVersion e PackageVersionEndpoint;
 - Connections;
 - Integrations;
 - resolver de EnvironmentDeployment.
@@ -423,7 +425,7 @@ Continuam fora deste slice:
 - o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- PackageVersion e seus endpoints completam o próximo sub-slice do Catalog.
+- Connections e SecretVersion bindings formam o próximo sub-slice.
 
 ## Evidência
 

@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Minimal Catalog materialization**
+**Upstream authority materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Os dois primeiros sub-slices do Catalog, Connector/ConnectorVersion/Operation e Contract/ContractVersion, estão materializados nesta branch.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. O Catalog mínimo ratificado está materializado nesta branch: Connector/ConnectorVersion/Operation, Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint.
 
 ## Estado materializado
 
@@ -70,15 +70,23 @@ Connector
 Contract
 └── ContractVersion
 
+Package
+└── PackageVersion
+    └── PackageVersionEndpoint
+
 Catalog.Connectors.create/1
 Catalog.Connectors.get/1
 Catalog.Connectors.publish_version/2
 Catalog.Contracts.create/1
 Catalog.Contracts.get/1
 Catalog.Contracts.publish_version/2
+Catalog.Packages.create/1
+Catalog.Packages.get/1
+Catalog.Packages.publish_version/2
+Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
 ### Executions e runtime
 
@@ -130,9 +138,6 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Package
-PackageVersion
-PackageVersionEndpoint
 Connections
 Integrations
 Notifications
@@ -176,26 +181,27 @@ RunSnapshot v1 materialization
 Upstream authorities and deployment resolution contract ratification
 Catalog Connector authority materialization
 Catalog Contract authority materialization
+Catalog Package topology materialization
 ```
 
 ## Em andamento
 
-Completar o Catalog mínimo ratificado com Package/PackageVersion/PackageVersionEndpoint.
+Materializar Connections e SecretVersion bindings mínimos ratificados no ADR-0018.
 
 ## Próxima tarefa concreta
 
-Materializar o próximo sub-slice do ADR-0018:
+Materializar o próximo sub-slice:
 
 ```text
-Catalog
-└── Package
-    └── PackageVersion
-        └── PackageVersionEndpoint
+Connections
+├── Connection
+└── Secret
+    └── SecretVersion
 ```
 
-O sub-slice inclui migrations centralizadas em core, schemas no diretório canônico, APIs públicas de criação/publicação/leitura, constraints de cardinalidade e imutabilidade, testes de banco e documentação in-code. O sealing de ConnectorVersion permanece como padrão físico para agregados versionados com filhos.
+O sub-slice inclui scope explícito de Organization/Environment, config não sensível, binding opcional e exato para SecretVersion, compatibilidade com Connector e constraints de integridade no PostgreSQL.
 
-Não implementar ainda Connections, Integrations, resolver, Package Manifest, JSON Schema/JSV ou contracts executáveis de connectors.
+Não implementar ainda raw secrets, provider locators, OAuth, rotation/revocation, Integrations, EnvironmentDeployment ou o resolver.
 
 ## Principais decisões abertas
 

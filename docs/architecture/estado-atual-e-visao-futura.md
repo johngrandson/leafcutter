@@ -84,7 +84,7 @@ Assignment organization-wide herda para Environments da mesma Organization. Assi
 
 ### Catalog parcial
 
-O primeiro sub-slice do Catalog está materializado:
+O Catalog mínimo ratificado está materializado:
 
 ```text
 Connector
@@ -93,9 +93,13 @@ Connector
 
 Contract
 └── ContractVersion
+
+Package
+└── PackageVersion
+    └── PackageVersionEndpoint
 ```
 
-`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
 ### Runtime e Executions foundation
 
@@ -177,17 +181,17 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ## Arquitetura ratificada ainda não materializada
 
-### Catalog restante
+### Catalog futuro
 
-O modelo mínimo foi ratificado no ADR-0018. Connector, ConnectorVersion, Operation, Contract e ContractVersion já estão materializados; permanecem pendentes:
+O modelo mínimo ratificado no ADR-0018 está materializado. Permanecem posteriores:
 
 ```text
-Package + PackageVersion
-PackageVersionEndpoint
-availability metadata
+availability/deprecation metadata
+Package Manifest e build
+ContractVersion JSON Schema/JSV
 ```
 
-O slice ratificado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. O conteúdo versionado é imutável no agregado já materializado e seguirá a mesma regra nos agregados restantes. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
+O slice materializado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. Todo o conteúdo versionado do Catalog mínimo é imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
 ### Connections
 
@@ -319,15 +323,12 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O próximo slice deve completar o Catalog mínimo ratificado. As authorities de Connector e Contract já existem; Package permanece pendente:
+O Catalog mínimo está materializado. A próxima fronteira segue a ordem ratificada:
 
 ```text
-Catalog mínimo
-├── Connector + ConnectorVersion + Operation (materializado)
-├── Contract + ContractVersion (materializado)
-└── Package + PackageVersion + endpoints (próximo)
+Catalog mínimo (materializado)
 ↓
-Connections
+Connections + SecretVersion bindings
 ↓
 Integrations + EnvironmentDeployment
 ↓

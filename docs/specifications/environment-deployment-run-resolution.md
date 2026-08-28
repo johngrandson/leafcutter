@@ -1,7 +1,7 @@
 # EnvironmentDeployment → RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CONNECTOR E CONTRACT AUTHORITIES
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG MÍNIMO
 - ADR: `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 
 ## Objetivo

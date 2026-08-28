@@ -37,9 +37,13 @@ Connector
 
 Contract
 └── immutable ContractVersion
+
+Package
+└── immutable PackageVersion
+    └── ordered PackageVersionEndpoints
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. Package permanece como o próximo sub-slice do Catalog mínimo ratificado.
+ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis.
 
 ### Runtime
 

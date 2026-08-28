@@ -6,7 +6,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 |---|---|
 | `run-ownership.md` | MATERIALIZADO |
 | `run-snapshot-v1.md` | MATERIALIZADO |
-| `environment-deployment-run-resolution.md` | PARCIAL — CONNECTOR E CONTRACT AUTHORITIES MATERIALIZADAS |
+| `environment-deployment-run-resolution.md` | PARCIAL — CATALOG MÍNIMO MATERIALIZADO |
 | `durable-fanout.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `operation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |

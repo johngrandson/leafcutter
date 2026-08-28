@@ -2,6 +2,8 @@
 
 - Estado: DRAFT / ABERTO
 
+A projeção relacional interna de PackageVersion já está materializada no Catalog. Isso não torna canônicos o JSON Schema, os field names nem o formato físico deste manifest.
+
 ## Estrutura conceitual
 
 ```text

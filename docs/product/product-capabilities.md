@@ -33,13 +33,15 @@
 - Operations source/destination;
 - publicação atômica de versão e Operations;
 - sealing e imutabilidade no PostgreSQL;
-- Contract e ContractVersion identity-only.
+- Contract e ContractVersion identity-only;
+- Package, PackageVersion e endpoints relacionais;
+- topologia 1 Source → 1..N Destinations publicada atomicamente;
+- ordem, references, role compatibility e imutabilidade protegidas no banco.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Package e suas versões/endpoints;
 - Contracts JSON Schema;
 - Connector/Operation/Transport;
 - Integration Packages;

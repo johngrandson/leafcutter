@@ -46,13 +46,15 @@
 
 **ContractVersion** — identidade versionada, publicada e imutável de um Contract; o conteúdo JSON Schema permanece futuro.
 
+**Package** — identidade global reutilizável de uma integração no Catalog.
+
+**PackageVersion** — topologia relacional publicada e imutável com exatamente uma source e uma ou mais destinations.
+
+**PackageVersionEndpoint** — endpoint imutável que pinna uma Operation e uma ContractVersion; positions ordenam destinations.
+
 ## Ratificados para o futuro
 
 **Transport** — execução de protocolo, inicialmente HTTP.
-
-**Package** — identidade reutilizável de uma integração.
-
-**PackageVersion** — definição executável publicada e imutável.
 
 **Integration** — identidade lógica de uma Organization ligada a um Package.
 

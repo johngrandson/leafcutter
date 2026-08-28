@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. Connector, ConnectorVersion, Operation, Contract e ContractVersion materializam os dois primeiros sub-slices do Catalog; Package completa a sequência atual.
+A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e PackageVersionEndpoint materializam o Catalog mínimo. Connections e SecretVersion bindings iniciam a próxima sequência.
 
 ## Documentos
 

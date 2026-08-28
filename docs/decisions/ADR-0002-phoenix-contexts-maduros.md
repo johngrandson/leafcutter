@@ -9,9 +9,9 @@ Contexts representam boundaries de domínio e podem expor facade raiz, capabilit
 
 ## Estado atual
 
-`Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, RunSnapshot, ownership e recovery. `Catalog` possui Connector, ConnectorVersion, Operation, Contract e ContractVersion materializados.
+`Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, RunSnapshot, ownership e recovery. `Catalog` possui Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e PackageVersionEndpoint materializados.
 
-Packages do Catalog, Connections, Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
+Availability e manifest/build do Catalog, Connections, Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
 
 ## Consequências
 

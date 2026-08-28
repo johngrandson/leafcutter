@@ -113,9 +113,13 @@ Connector
 
 Contract
 └── ContractVersion
+
+Package
+└── PackageVersion
+    └── PackageVersionEndpoint
 ```
 
-ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. ContractVersion materializa somente uma identidade versionada, nasce publicada e também é imutável. PackageVersion e seus endpoints permanecem no próximo sub-slice.
+ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. ContractVersion materializa somente uma identidade versionada, nasce publicada e também é imutável. PackageVersion e seus endpoints relacionais são publicados atomicamente, preservam uma source e destinations ordenadas e recebem a mesma proteção de sealing e imutabilidade.
 
 ## RuntimeNode
 
@@ -192,7 +196,7 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog já controla identidades e versões de Connectors e Contracts, além das Operations de ConnectorVersion. Packages e availability permanecem na evolução ratificada. Catalog não executará artefatos.
+Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. Availability, manifests e build permanecem na evolução ratificada. Catalog não executará artefatos.
 
 ## Connections
 
@@ -295,18 +299,18 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Connector e Contract authorities materializam os dois primeiros sub-slices do Catalog; PackageVersion e endpoints ainda não existem. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. O Catalog mínimo está materializado com Connector, Contract e Package authorities. Connections, Integrations e o resolver transacional permanecem nos próximos sub-slices. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
-O Leafcutter já possui uma base real de tenancy, autorização e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, Packages, Connections e Records já existem.
+O Leafcutter já possui uma base real de tenancy, autorização e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages, Connections e Records já existem.
 
 ```text
 present
-→ RBAC + ownership + supervision + recovery + RunSnapshot v1
+→ RBAC + Catalog mínimo + ownership + supervision + recovery + RunSnapshot v1
 
 next
-→ upstream authorities + EnvironmentDeployment resolver
+→ Connections + Integrations + EnvironmentDeployment resolver
 
 future
 → durable Broadway integration data plane
