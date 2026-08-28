@@ -17,8 +17,10 @@ defmodule Leafcutter.Connections.Secret do
   @timestamps_opts [type: :utc_datetime_usec]
   @fields [:organization_id, :environment_id, :name]
 
+  @typedoc "The identifier of one environment-scoped Secret identity."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when creating a Secret identity."
   @type create_attrs ::
           %{
             required(:organization_id) => Ecto.UUID.t(),
@@ -27,6 +29,7 @@ defmodule Leafcutter.Connections.Secret do
           }
           | %{required(String.t()) => String.t()}
 
+  @typedoc "An environment-scoped Secret identity."
   @type t :: %__MODULE__{
           id: id() | nil,
           organization_id: Ecto.UUID.t() | nil,

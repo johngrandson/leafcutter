@@ -12,15 +12,13 @@ defmodule Leafcutter.Connections.Secrets do
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
 
-  @type scope_error ::
-          :transaction_required
-          | :organization_not_found
-          | :organization_disabled
-          | :environment_not_found
-          | :environment_scope_mismatch
-          | :environment_disabled
+  @typedoc "Authority or lifecycle error returned while validating a Secret scope."
+  @type scope_error :: Environments.active_scope_state_error()
 
+  @typedoc "Error returned while creating a Secret identity."
   @type create_error :: scope_error() | Changeset.t()
+
+  @typedoc "Error returned while creating an immutable SecretVersion identity."
   @type create_version_error :: :secret_not_found | scope_error() | Changeset.t()
 
   @doc """
@@ -112,13 +110,8 @@ defmodule Leafcutter.Connections.Secrets do
     environment_id = Changeset.fetch_field!(changeset, :environment_id)
 
     Repo.transaction(fn ->
-      with {:ok, _scope} <-
-             Environments.lock_active_scope(
-               organization_id,
-               environment_id
-             ) do
-        insert_secret_or_rollback(changeset)
-      else
+      case Environments.lock_active_scope(organization_id, environment_id) do
+        {:ok, _scope} -> insert_secret_or_rollback(changeset)
         {:error, reason} -> Repo.rollback(reason)
       end
     end)

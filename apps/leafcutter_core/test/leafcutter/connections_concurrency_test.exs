@@ -147,8 +147,7 @@ defmodule Leafcutter.ConnectionsConcurrencyTest do
       :telemetry.attach(
         handler_id,
         [:leafcutter, :repo, :query],
-        fn _event, _measurements, metadata,
-           {test_process, handler_id, pattern} ->
+        fn _event, _measurements, metadata, {test_process, handler_id, pattern} ->
           if String.contains?(metadata.query, pattern) do
             :telemetry.detach(handler_id)
             send(test_process, {:row_locked, self()})

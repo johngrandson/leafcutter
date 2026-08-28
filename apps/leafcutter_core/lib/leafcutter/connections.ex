@@ -10,7 +10,7 @@ defmodule Leafcutter.Connections do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{Connector, Connectors}
+  alias Leafcutter.Catalog.Connectors
 
   alias Leafcutter.Connections.{
     Connection,
@@ -21,26 +21,25 @@ defmodule Leafcutter.Connections do
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
 
-  @type scope_error ::
-          :transaction_required
-          | :organization_not_found
-          | :organization_disabled
-          | :environment_not_found
-          | :environment_scope_mismatch
-          | :environment_disabled
+  @typedoc "Authority or lifecycle error returned while validating a Connection scope."
+  @type scope_error :: Environments.active_scope_state_error()
 
+  @typedoc "Error returned when an exact SecretVersion binding is absent or incompatible."
   @type binding_error ::
           :secret_version_not_found | :secret_version_scope_mismatch
 
+  @typedoc "Error returned while creating a Connection."
   @type create_error ::
           scope_error()
           | binding_error()
           | :connector_not_found
           | Changeset.t()
 
+  @typedoc "Error returned while updating mutable Connection state."
   @type update_error ::
           :not_found | scope_error() | binding_error() | Changeset.t()
 
+  @typedoc "Error returned while disabling a Connection."
   @type disable_error :: :not_found | scope_error() | Changeset.t()
 
   @doc """
@@ -223,7 +222,7 @@ defmodule Leafcutter.Connections do
                organization_id,
                environment_id
              ),
-           {:ok, _connector} <- fetch_connector(connector_id),
+           :ok <- validate_connector(connector_id),
            :ok <- validate_secret_version_binding(changeset) do
         insert_or_rollback(changeset)
       else
@@ -232,11 +231,11 @@ defmodule Leafcutter.Connections do
     end)
   end
 
-  @spec fetch_connector(Ecto.UUID.t()) ::
-          {:ok, Connector.t()} | {:error, :connector_not_found}
-  defp fetch_connector(connector_id) do
+  @spec validate_connector(Ecto.UUID.t()) ::
+          :ok | {:error, :connector_not_found}
+  defp validate_connector(connector_id) do
     case Connectors.get(connector_id) do
-      {:ok, connector} -> {:ok, connector}
+      {:ok, _connector} -> :ok
       {:error, :not_found} -> {:error, :connector_not_found}
     end
   end
@@ -267,7 +266,7 @@ defmodule Leafcutter.Connections do
 
   @spec lock_connection_scope(Connection.t()) ::
           {:ok, Environments.active_scope()}
-          | {:error, Environments.active_scope_error()}
+          | {:error, scope_error()}
   defp lock_connection_scope(connection) do
     Environments.lock_active_scope(
       connection.organization_id,

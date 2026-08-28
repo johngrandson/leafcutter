@@ -32,8 +32,10 @@ defmodule Leafcutter.Connections.Connection do
   ]
   @update_fields [:config, :secret_version_id]
 
+  @typedoc "The identifier of one environment-scoped Connection."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when creating a Connection."
   @type create_attrs ::
           %{
             required(:organization_id) => Ecto.UUID.t(),
@@ -44,10 +46,10 @@ defmodule Leafcutter.Connections.Connection do
             optional(:secret_version_id) => SecretVersion.id() | nil
           }
           | %{
-              required(String.t()) =>
-                String.t() | map() | SecretVersion.id() | nil
+              required(String.t()) => String.t() | map() | SecretVersion.id() | nil
             }
 
+  @typedoc "Mutable attributes accepted when updating a Connection."
   @type update_attrs ::
           %{
             optional(:config) => map(),
@@ -57,6 +59,7 @@ defmodule Leafcutter.Connections.Connection do
               optional(String.t()) => map() | SecretVersion.id() | nil
             }
 
+  @typedoc "An environment-scoped Connection and its current mutable state."
   @type t :: %__MODULE__{
           id: id() | nil,
           organization_id: Ecto.UUID.t() | nil,

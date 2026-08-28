@@ -9,8 +9,8 @@ defmodule Leafcutter.ConnectionsTest do
 
   alias Leafcutter.Connections.{
     Connection,
-    SecretVersion,
-    Secrets
+    Secrets,
+    SecretVersion
   }
 
   alias Leafcutter.Organizations
@@ -249,9 +249,7 @@ defmodule Leafcutter.ConnectionsTest do
       second_secret_version = secret_version_fixture(second_scope)
 
       {:ok, connection} =
-        Connections.create(
-          connection_attrs(first_scope, config: %{"stable" => true})
-        )
+        Connections.create(connection_attrs(first_scope, config: %{"stable" => true}))
 
       assert {:error, %Changeset{} = changeset} =
                Connections.update(connection.id, %{config: []})

@@ -17,8 +17,10 @@ defmodule Leafcutter.Connections.SecretVersion do
   @timestamps_opts [type: :utc_datetime_usec]
   @fields [:secret_id, :version]
 
+  @typedoc "The identifier of one immutable SecretVersion identity."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when creating a SecretVersion identity."
   @type create_attrs ::
           %{
             required(:secret_id) => Secret.id(),
@@ -26,6 +28,7 @@ defmodule Leafcutter.Connections.SecretVersion do
           }
           | %{required(String.t()) => String.t()}
 
+  @typedoc "An immutable version identity belonging to one Secret."
   @type t :: %__MODULE__{
           id: id() | nil,
           secret_id: Secret.id() | nil,

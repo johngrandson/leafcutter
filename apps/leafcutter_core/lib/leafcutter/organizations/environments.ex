@@ -240,14 +240,18 @@ defmodule Leafcutter.Organizations.Environments do
           environment: Environment.t()
         }
 
-  @typedoc "Error returned while locking an active Organization and Environment scope."
-  @type active_scope_error ::
-          :transaction_required
-          | :organization_not_found
+  @typedoc "Authority or lifecycle error returned while validating an active scope."
+  @type active_scope_state_error ::
+          :organization_not_found
           | :organization_disabled
           | :environment_not_found
           | :environment_scope_mismatch
           | :environment_disabled
+
+  @typedoc "Error returned while locking an active Organization and Environment scope."
+  @type active_scope_error ::
+          :transaction_required
+          | active_scope_state_error()
 
   @doc """
   Locks and validates an active Organization and Environment scope.
@@ -346,6 +350,4 @@ defmodule Leafcutter.Organizations.Environments do
         {:error, :environment_disabled}
     end
   end
-
 end
-
