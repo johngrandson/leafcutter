@@ -71,7 +71,7 @@ Não existe `Principal` persistido. User recebe Role por Membership; ServiceAcco
 
 ## Catalog
 
-Owns futuramente:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018, ainda sem implementação. Owns:
 
 ```text
 Connector metadata + ConnectorVersion
@@ -81,11 +81,11 @@ Package + PackageVersion
 publication and availability
 ```
 
-Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. Versões publicadas são imutáveis.
+Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. O primeiro slice publica versões e filhos atomicamente, usa endpoints relacionais de PackageVersion e protege conteúdo versionado contra alteração.
 
 ## Connections
 
-Owns futuramente:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018, ainda sem implementação. Owns:
 
 ```text
 Connection
@@ -95,11 +95,11 @@ OAuth durable state
 rotation metadata
 ```
 
-Connection referencia Connector identity, não ConnectorVersion. PackageVersion fixa a versão executável.
+Connection referencia Connector identity, não ConnectorVersion. Connection é environment-scoped, mantém config não sensível e pode apontar explicitamente para uma SecretVersion imutável. Raw secret storage continua fora do slice.
 
 ## Integrations
 
-Owns futuramente:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018, ainda sem implementação. Owns:
 
 ```text
 Integration
@@ -110,7 +110,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica e organization-scoped. EnvironmentDeployment contém configuração executável local de cada Environment.
+Integration é lógica, organization-scoped e ligada a Package estável. EnvironmentDeployment contém PackageVersion, promotable/local config e bindings locais de Connection. O resolver transacional pertence a leafcutter_runtime.
 
 ## Executions
 
