@@ -123,6 +123,17 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Examples
 
+  Given a structurally valid definition like the one shown in `create/1`:
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, snapshot} =
+      ...>   Leafcutter.Executions.Runs.fetch_snapshot(run.id)
+
+      iex> snapshot.run_id == run.id
+      true
+
       iex> Leafcutter.Executions.Runs.fetch_snapshot(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -176,6 +187,25 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Examples
 
+  Given a structurally valid definition like the one shown in `create/1`:
+
+      iex> runtime_node_id = Ecto.UUID.generate()
+
+      iex> {:ok, _runtime_node} =
+      ...>   Leafcutter.Executions.Nodes.heartbeat(
+      ...>     runtime_node_id,
+      ...>     "claim-example@host"
+      ...>   )
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, ownership_token} =
+      ...>   Leafcutter.Executions.Runs.claim(run.id, runtime_node_id)
+
+      iex> ownership_token.generation
+      1
+
       iex> Leafcutter.Executions.Runs.claim(
       ...>   "00000000-0000-0000-0000-000000000000",
       ...>   Ecto.UUID.generate()
@@ -221,6 +251,25 @@ defmodule Leafcutter.Executions.Runs do
   * `{:error, :stale_ownership}` when another owner or generation has superseded the token
 
   ## Examples
+
+  Given a structurally valid definition like the one shown in `create/1`:
+
+      iex> runtime_node_id = Ecto.UUID.generate()
+
+      iex> {:ok, _runtime_node} =
+      ...>   Leafcutter.Executions.Nodes.heartbeat(
+      ...>     runtime_node_id,
+      ...>     "release-example@host"
+      ...>   )
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, ownership_token} =
+      ...>   Leafcutter.Executions.Runs.claim(run.id, runtime_node_id)
+
+      iex> Leafcutter.Executions.Runs.release(ownership_token)
+      :ok
 
       iex> Leafcutter.Executions.Runs.release(%{
       ...>   run_id: "00000000-0000-0000-0000-000000000000",
@@ -324,6 +373,29 @@ defmodule Leafcutter.Executions.Runs do
   * `{:error, changeset}` when an ownership transition violates a database constraint
 
   ## Examples
+
+  Given a structurally valid definition like the one shown in `create/1`:
+
+      iex> runtime_node_id = Ecto.UUID.generate()
+
+      iex> {:ok, _runtime_node} =
+      ...>   Leafcutter.Executions.Nodes.heartbeat(
+      ...>     runtime_node_id,
+      ...>     "recovery-example@host"
+      ...>   )
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, ownership_tokens} =
+      ...>   Leafcutter.Executions.Runs.claim_recoverable(
+      ...>     runtime_node_id,
+      ...>     25,
+      ...>     []
+      ...>   )
+
+      iex> Enum.any?(ownership_tokens, &(&1.run_id == run.id))
+      true
 
       iex> Leafcutter.Executions.Runs.claim_recoverable(
       ...>   Ecto.UUID.generate(),

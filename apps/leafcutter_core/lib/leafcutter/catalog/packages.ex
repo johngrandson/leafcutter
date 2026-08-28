@@ -94,6 +94,17 @@ defmodule Leafcutter.Catalog.Packages do
 
   ## Examples
 
+      iex> {:ok, package} =
+      ...>   Leafcutter.Catalog.Packages.create(%{
+      ...>     name: "Package Lookup Example"
+      ...>   })
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Catalog.Packages.get(package.id)
+
+      iex> fetched.id == package.id
+      true
+
       iex> Leafcutter.Catalog.Packages.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -129,6 +140,16 @@ defmodule Leafcutter.Catalog.Packages do
   * `{:error, :not_found}` when no PackageVersion has the identifier
 
   ## Examples
+
+  Given a published PackageVersion with `source` and `destination` endpoint refs:
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Catalog.Packages.get_version(
+      ...>     published_package_version.id
+      ...>   )
+
+      iex> Enum.map(fetched.endpoints, & &1.ref)
+      ["source", "destination"]
 
       iex> Leafcutter.Catalog.Packages.get_version(
       ...>   "00000000-0000-0000-0000-000000000000"
@@ -183,6 +204,31 @@ defmodule Leafcutter.Catalog.Packages do
 
       iex> is_binary(package.id)
       true
+
+  Given compatible persisted source and destination Operations and a ContractVersion:
+
+      iex> {:ok, package_version} =
+      ...>   Leafcutter.Catalog.Packages.publish_version(
+      ...>     package.id,
+      ...>     %{
+      ...>       version: "2026.08",
+      ...>       source: %{
+      ...>         ref: "source",
+      ...>         operation_id: source_operation.id,
+      ...>         contract_version_id: contract_version.id
+      ...>       },
+      ...>       destinations: [
+      ...>         %{
+      ...>           ref: "destination",
+      ...>           operation_id: destination_operation.id,
+      ...>           contract_version_id: contract_version.id
+      ...>         }
+      ...>       ]
+      ...>     }
+      ...>   )
+
+      iex> Enum.map(package_version.endpoints, &{&1.ref, &1.role})
+      [{"source", :source}, {"destination", :destination}]
 
   ## Notes
 

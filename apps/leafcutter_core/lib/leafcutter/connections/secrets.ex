@@ -36,6 +36,27 @@ defmodule Leafcutter.Connections.Secrets do
 
   ## Examples
 
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Secret Create Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, secret} =
+      ...>   Leafcutter.Connections.Secrets.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     name: "CRM credentials"
+      ...>   })
+
+      iex> secret.name
+      "CRM credentials"
+
       iex> match?(
       ...>   {:error, %{valid?: false}},
       ...>   Leafcutter.Connections.Secrets.create(%{})
@@ -76,6 +97,33 @@ defmodule Leafcutter.Connections.Secrets do
   * `{:error, changeset}` when the attributes or database constraints are invalid
 
   ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Secret Version Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, secret} =
+      ...>   Leafcutter.Connections.Secrets.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     name: "CRM credentials"
+      ...>   })
+
+      iex> {:ok, secret_version} =
+      ...>   Leafcutter.Connections.Secrets.create_version(%{
+      ...>     secret_id: secret.id,
+      ...>     version: "rotation-2026-08"
+      ...>   })
+
+      iex> secret_version.version
+      "rotation-2026-08"
 
       iex> match?(
       ...>   {:error, %{valid?: false}},

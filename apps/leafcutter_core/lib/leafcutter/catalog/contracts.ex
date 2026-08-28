@@ -69,6 +69,17 @@ defmodule Leafcutter.Catalog.Contracts do
 
   ## Examples
 
+      iex> {:ok, contract} =
+      ...>   Leafcutter.Catalog.Contracts.create(%{
+      ...>     name: "Contract Lookup Example"
+      ...>   })
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Catalog.Contracts.get(contract.id)
+
+      iex> fetched.id == contract.id
+      true
+
       iex> Leafcutter.Catalog.Contracts.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )

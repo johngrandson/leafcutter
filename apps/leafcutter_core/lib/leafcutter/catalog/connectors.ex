@@ -86,6 +86,17 @@ defmodule Leafcutter.Catalog.Connectors do
 
   ## Examples
 
+      iex> {:ok, connector} =
+      ...>   Leafcutter.Catalog.Connectors.create(%{
+      ...>     name: "Connector Lookup Example"
+      ...>   })
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Catalog.Connectors.get(connector.id)
+
+      iex> fetched.id == connector.id
+      true
+
       iex> Leafcutter.Catalog.Connectors.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )

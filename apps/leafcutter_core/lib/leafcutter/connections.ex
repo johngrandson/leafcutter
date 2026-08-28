@@ -57,6 +57,34 @@ defmodule Leafcutter.Connections do
 
   ## Examples
 
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Connection Create Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, connector} =
+      ...>   Leafcutter.Catalog.Connectors.create(%{
+      ...>     name: "Connection Create Connector"
+      ...>   })
+
+      iex> {:ok, connection} =
+      ...>   Leafcutter.Connections.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     connector_id: connector.id,
+      ...>     name: "CRM",
+      ...>     config: %{"base_url" => "https://example.test"}
+      ...>   })
+
+      iex> connection.config
+      %{"base_url" => "https://example.test"}
+
       iex> match?(
       ...>   {:error, %{valid?: false}},
       ...>   Leafcutter.Connections.create(%{})
@@ -97,6 +125,36 @@ defmodule Leafcutter.Connections do
 
   ## Examples
 
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Connection Lookup Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, connector} =
+      ...>   Leafcutter.Catalog.Connectors.create(%{
+      ...>     name: "Connection Lookup Connector"
+      ...>   })
+
+      iex> {:ok, connection} =
+      ...>   Leafcutter.Connections.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     connector_id: connector.id,
+      ...>     name: "CRM"
+      ...>   })
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Connections.get(connection.id)
+
+      iex> fetched.id == connection.id
+      true
+
       iex> Leafcutter.Connections.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -134,6 +192,39 @@ defmodule Leafcutter.Connections do
   * `{:error, changeset}` when the attributes or database constraints are invalid
 
   ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Connection Update Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, connector} =
+      ...>   Leafcutter.Catalog.Connectors.create(%{
+      ...>     name: "Connection Update Connector"
+      ...>   })
+
+      iex> {:ok, connection} =
+      ...>   Leafcutter.Connections.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     connector_id: connector.id,
+      ...>     name: "CRM"
+      ...>   })
+
+      iex> {:ok, updated} =
+      ...>   Leafcutter.Connections.update(
+      ...>     connection.id,
+      ...>     %{config: %{"timeout" => 30}}
+      ...>   )
+
+      iex> updated.config
+      %{"timeout" => 30}
 
       iex> Leafcutter.Connections.update(
       ...>   "00000000-0000-0000-0000-000000000000",
@@ -180,6 +271,36 @@ defmodule Leafcutter.Connections do
   * `{:error, changeset}` when the lifecycle transition cannot be persisted
 
   ## Examples
+
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Connection Disable Organization"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, connector} =
+      ...>   Leafcutter.Catalog.Connectors.create(%{
+      ...>     name: "Connection Disable Connector"
+      ...>   })
+
+      iex> {:ok, connection} =
+      ...>   Leafcutter.Connections.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     connector_id: connector.id,
+      ...>     name: "CRM"
+      ...>   })
+
+      iex> {:ok, disabled} =
+      ...>   Leafcutter.Connections.disable(connection.id)
+
+      iex> is_struct(disabled.disabled_at, DateTime)
+      true
 
       iex> Leafcutter.Connections.disable(
       ...>   "00000000-0000-0000-0000-000000000000"

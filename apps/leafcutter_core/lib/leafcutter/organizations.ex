@@ -158,6 +158,19 @@ defmodule Leafcutter.Organizations do
 
   ## Examples
 
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Active Organization Example"
+      ...>   })
+
+      iex> {:ok, {:ok, locked_organization}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Organizations.lock_active(organization.id)
+      ...>   end)
+
+      iex> locked_organization.id == organization.id
+      true
+
       iex> Leafcutter.Organizations.lock_active(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )

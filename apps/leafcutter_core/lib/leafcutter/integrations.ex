@@ -46,6 +46,16 @@ defmodule Leafcutter.Integrations do
       ...> )
       true
 
+      iex> match?(
+      ...>   {:error, :package_not_found},
+      ...>   Leafcutter.Integrations.create(%{
+      ...>     organization_id: "00000000-0000-0000-0000-000000000000",
+      ...>     package_id: "00000000-0000-0000-0000-000000000000",
+      ...>     name: "Integration"
+      ...>   })
+      ...> )
+      true
+
   ## Notes
 
   * The Organization must exist and remain active throughout persistence.

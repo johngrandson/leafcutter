@@ -273,6 +273,28 @@ defmodule Leafcutter.Organizations.Environments do
 
   ## Examples
 
+      iex> {:ok, organization} =
+      ...>   Leafcutter.Organizations.create(%{
+      ...>     name: "Active Scope Example"
+      ...>   })
+
+      iex> {:ok, environment} =
+      ...>   Leafcutter.Organizations.Environments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     name: "production"
+      ...>   })
+
+      iex> {:ok, {:ok, scope}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Organizations.Environments.lock_active_scope(
+      ...>       organization.id,
+      ...>       environment.id
+      ...>     )
+      ...>   end)
+
+      iex> {scope.organization.id, scope.environment.id}
+      {organization.id, environment.id}
+
       iex> Leafcutter.Organizations.Environments.lock_active_scope(
       ...>   "00000000-0000-0000-0000-000000000000",
       ...>   "00000000-0000-0000-0000-000000000000"

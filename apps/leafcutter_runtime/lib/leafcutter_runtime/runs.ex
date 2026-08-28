@@ -52,6 +52,21 @@ defmodule LeafcutterRuntime.Runs do
 
   ## Examples
 
+  Given a structurally valid definition like the one shown in
+  `Leafcutter.Executions.Runs.create/1`:
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, run_supervisor_pid} =
+      ...>   LeafcutterRuntime.Runs.start(run.id)
+
+      iex> is_pid(run_supervisor_pid)
+      true
+
+      iex> LeafcutterRuntime.Runs.stop(run.id)
+      :ok
+
       iex> LeafcutterRuntime.Runs.start(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -101,6 +116,33 @@ defmodule LeafcutterRuntime.Runs do
   * `{:error, {:run_supervisor_start_failed, reason, release_error}}` when startup and ownership cleanup both fail
 
   ## Examples
+
+  Given a structurally valid definition like the one shown in
+  `Leafcutter.Executions.Runs.create/1`:
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> runtime_node_id =
+      ...>   LeafcutterRuntime.NodeHeartbeat.runtime_node_id()
+
+      iex> {:ok, _runtime_node} =
+      ...>   Leafcutter.Executions.Nodes.heartbeat(
+      ...>     runtime_node_id,
+      ...>     "start-claimed-example@host"
+      ...>   )
+
+      iex> {:ok, ownership_token} =
+      ...>   Leafcutter.Executions.Runs.claim(run.id, runtime_node_id)
+
+      iex> {:ok, run_supervisor_pid} =
+      ...>   LeafcutterRuntime.Runs.start_claimed(ownership_token)
+
+      iex> is_pid(run_supervisor_pid)
+      true
+
+      iex> LeafcutterRuntime.Runs.stop(run.id)
+      :ok
 
       iex> function_exported?(
       ...>   LeafcutterRuntime.Runs,
@@ -191,6 +233,24 @@ defmodule LeafcutterRuntime.Runs do
   * `:error` when the Run has no live local supervision tree
 
   ## Examples
+
+  Given a structurally valid definition like the one shown in
+  `Leafcutter.Executions.Runs.create/1`:
+
+      iex> {:ok, run} =
+      ...>   Leafcutter.Executions.Runs.create(valid_definition)
+
+      iex> {:ok, _run_supervisor_pid} =
+      ...>   LeafcutterRuntime.Runs.start(run.id)
+
+      iex> {:ok, local_run} =
+      ...>   LeafcutterRuntime.Runs.lookup(run.id)
+
+      iex> local_run.ownership_token.run_id == run.id
+      true
+
+      iex> LeafcutterRuntime.Runs.stop(run.id)
+      :ok
 
       iex> LeafcutterRuntime.Runs.lookup(
       ...>   "00000000-0000-0000-0000-000000000000"
