@@ -141,10 +141,86 @@ Leafcutter.Connections.Secrets
 └── create_version/1
 ```
 
+## Modelo mínimo de Integrations
+
+O primeiro slice materializará:
+
+```text
+Organization
+└── Integration
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
+```
+
+Persistência mínima:
+
+```text
+Integration
+├── id
+├── organization_id
+├── package_id
+├── name
+└── disabled_at
+
+EnvironmentDeployment
+├── id
+├── organization_id
+├── environment_id
+├── integration_id
+├── package_version_id
+├── promotable_config
+└── local_config
+
+EnvironmentDeploymentBinding
+├── environment_deployment_id
+├── ref
+└── connection_id
+```
+
+Regras aprovadas:
+
+- Integration é organization-scoped e referencia a identidade estável de Package;
+- uma Integration não troca de Package;
+- existe no máximo um EnvironmentDeployment por Integration e Environment;
+- o deployment representa o estado executável atual e é mutável;
+- alterações substituem atomicamente PackageVersion, configs e o conjunto completo de bindings;
+- não existem revision, history, draft, promotion ou rollback neste slice;
+- promotable config e local config permanecem separados e não sensíveis;
+- effective config é calculada pelo resolver e não é persistida no deployment;
+- bindings armazenam somente o ref do endpoint e a Connection;
+- role, posição, Operation e ContractVersion continuam vindo da PackageVersion;
+- o binding não armazena SecretVersion; o resolver congela o binding atual da Connection;
+- create e replace validam compatibilidade semântica naquele momento;
+- o resolver repete a validação ao criar uma Run porque Connection e deployment são mutáveis;
+- Integration desabilitada bloqueia todos os seus deployments;
+- EnvironmentDeployment não possui lifecycle independente inicialmente: existe completo ou não existe.
+
+Validações de create e replace:
+
+```text
+PackageVersion belongs to the Integration Package
+bindings match all PackageVersion endpoints exactly
+Connections belong to the same Environment
+Connection Connector is compatible with the endpoint Operation
+Organization, Environment, Integration and Connections are active
+```
+
+APIs públicas:
+
+```text
+Leafcutter.Integrations
+├── create/1
+├── get/1
+└── disable/1
+
+Leafcutter.Integrations.Deployments
+├── create/1
+├── get/1
+└── replace/2
+```
+
 ## Decisões ainda pendentes neste ADR
 
-- schemas e lifecycle mínimos de Integration e EnvironmentDeployment;
-- representação dos bindings entre endpoints e Connections;
 - merge e precedence de config não sensível;
 - consistência transacional da resolução;
 - contrato público e erros de `create_from_deployment/1`;
