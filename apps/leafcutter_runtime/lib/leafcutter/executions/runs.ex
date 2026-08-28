@@ -35,6 +35,8 @@ defmodule Leafcutter.Executions.Runs do
           | :runtime_node_not_found
           | :runtime_node_expired
           | :owned_by_active_node
+          | :run_snapshot_not_found
+          | :unsupported_run_snapshot_format
           | Ecto.Changeset.t()
 
   @typedoc "Error returned when Run ownership cannot be released."
@@ -170,6 +172,8 @@ defmodule Leafcutter.Executions.Runs do
   * `{:error, :runtime_node_not_found}` when the requesting runtime incarnation does not exist
   * `{:error, :runtime_node_expired}` when the requesting runtime incarnation is stale
   * `{:error, :owned_by_active_node}` when another active runtime incarnation owns the Run
+  * `{:error, :run_snapshot_not_found}` when a pending Run has no snapshot
+  * `{:error, :unsupported_run_snapshot_format}` when a pending Run uses an unknown format
   * `{:error, changeset}` when the ownership transition violates a database constraint
 
   ## Examples
@@ -182,15 +186,15 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Notes
 
-  * Only `:pending` and `:running` Runs are claimable.
-  * The first claim changes a pending Run to `:running`.
+  * A pending Run is claimable only with a snapshot in a supported format.
+  * Running Runs preserve legacy ownership and recovery behavior regardless of snapshot state.
+  * The first eligible claim changes a pending Run to `:running`.
   * Claiming an unowned or stale-owned Run increments `generation`.
   * Repeating a claim from the current active owner is idempotent and preserves `generation`.
   * Another active owner prevents the claim.
   * Runtime liveness and ownership timestamps use the PostgreSQL clock.
   * The Run row is locked while claimability and current ownership are evaluated.
   * Runs created through create/1 always carry a structurally valid snapshot.
-  * Legacy pending Runs remain possible until snapshot eligibility is enforced by claim/2.
   """
   @spec claim(Run.id(), RuntimeNode.id()) ::
           {:ok, ownership_token()} | {:error, claim_error()}
@@ -478,6 +482,7 @@ defmodule Leafcutter.Executions.Runs do
 
   @spec claim_locked_run(Run.t(), RuntimeNode.id(), DateTime.t()) :: ownership_token()
   defp claim_locked_run(%Run{status: :pending} = run, runtime_node_id, database_now) do
+    ensure_pending_run_snapshot_eligible(run.id)
     persist_claim(run, runtime_node_id, database_now)
   end
 
@@ -502,6 +507,21 @@ defmodule Leafcutter.Executions.Runs do
       Repo.rollback(:owned_by_active_node)
     else
       persist_claim(run, runtime_node_id, database_now)
+    end
+  end
+
+  @spec ensure_pending_run_snapshot_eligible(Run.id()) :: :ok
+  defp ensure_pending_run_snapshot_eligible(run_id) do
+    case Repo.get(RunSnapshot, run_id) do
+      nil ->
+        Repo.rollback(:run_snapshot_not_found)
+
+      %RunSnapshot{format_version: format_version} ->
+        if format_version in RunSnapshot.supported_format_versions() do
+          :ok
+        else
+          Repo.rollback(:unsupported_run_snapshot_format)
+        end
     end
   end
 
