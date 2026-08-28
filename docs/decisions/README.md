@@ -19,7 +19,7 @@ Materialized / Partial / Not materialized
 | ADR-0005 | Broadway como data plane | NÃO MATERIALIZADO |
 | ADR-0006 | JSON Schema 2020-12 + JSV | NÃO MATERIALIZADO |
 | ADR-0007 | Integration Packages fora de `apps/` | ESTRUTURA RATIFICADA; BUILD ABERTO |
-| ADR-0008 | Connector → Operation → Transport | NÃO MATERIALIZADO |
+| ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA DE CONNECTOR/OPERATION |
 | ADR-0009 | Semântica `at-least-once` | MATERIALIZADA COMO PRINCÍPIO; DATA PLANE PENDENTE |
 | ADR-0010 | Fan-out durável sem fila externa inicial | NÃO MATERIALIZADO |
 | ADR-0011 | Ownership por RuntimeNode + generation/fencing | MATERIALIZADO, INCLUINDO RECOVERY |

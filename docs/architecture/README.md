@@ -21,7 +21,7 @@ Esta pasta contém tanto a arquitetura **já materializada** quanto a arquitetur
 
 | Documento | Estado |
 |---|---|
-| `connectors-operations-transports.md` | RATIFICADO — NÃO MATERIALIZADO |
+| `connectors-operations-transports.md` | PARCIALMENTE MATERIALIZADO |
 | `contracts-json-schema.md` | PARCIALMENTE MATERIALIZADO |
 | `integration-packages.md` | PARCIALMENTE MATERIALIZADO |
 | `transformations-enrichments-interceptors.md` | RATIFICADO — NÃO MATERIALIZADO |

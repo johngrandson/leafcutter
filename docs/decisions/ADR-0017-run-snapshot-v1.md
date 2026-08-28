@@ -137,6 +137,10 @@ A validação inicial é estrutural. A existência e a compatibilidade semântic
 
 O futuro workflow de resolução pertence à orchestration em `leafcutter_runtime`. `Executions.Runs.create/1` recebe uma definition já resolvida; Executions não consulta internals de Catalog, Connections ou Integrations.
 
+## Evolução posterior
+
+Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints. O formato RunSnapshot v1 permaneceu inalterado. Connections, Integrations e o resolver semântico continuam pendentes; por isso a consistência cross-context ainda não é comprovada por `Executions.Runs.create/1`.
+
 ## Consequências
 
 - uma Run nova nasce com snapshot estruturalmente completo e identificado por versão;

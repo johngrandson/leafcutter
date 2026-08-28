@@ -16,7 +16,7 @@ Neste slice, o control plane usa a presença e a versão suportada do snapshot c
 
 `Leafcutter.Executions.Runs.create/1` recebe uma definition já resolvida. O futuro workflow de `EnvironmentDeployment → definition v1` pertence à orchestration em `leafcutter_runtime`; Executions não consulta internals de Catalog, Connections ou Integrations.
 
-O snapshot referencia identifiers owned por contexts futuros sem assumir seus schemas físicos. `PackageVersion` continua authority da topologia executável; o snapshot não cria authorities paralelas.
+O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. O Catalog mínimo já materializa PackageVersion, ContractVersion e endpoints; Connections e Integrations permanecem pendentes. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
 
 ## Persistência
 
@@ -142,7 +142,7 @@ SourceIdentity
 
 Esses elementos não são copiados para o formato v1.
 
-As referências de PackageVersion, ContractVersion, Connection e SecretVersion são uma resolução congelada. Sua consistência com as authorities upstream será verificada pelo futuro resolver; o primeiro slice não consegue comprová-la semanticamente.
+As referências de PackageVersion, ContractVersion, Connection e SecretVersion são uma resolução congelada. PackageVersion e ContractVersion já possuem authorities persistidas no Catalog, mas sua composição com Connections continuará sendo verificada pelo futuro resolver; `Executions.Runs.create/1` permanece uma validação estrutural.
 
 `source.ref` e `destinations[].ref` são nomes do formato RunSnapshot v1. Eles não ratificam field names do Package Manifest, que continua DRAFT.
 
@@ -189,9 +189,9 @@ A validação deste slice é estrutural:
 - strings, chaves e valores de config em UTF-8 válido;
 - `secret_version_id` como UUID ou null.
 
-Ficam para os contexts owners e para o resolver futuro:
+O Catalog mínimo já consegue provar a existência isolada de PackageVersion, endpoints, Operations e ContractVersions. Ficam para os demais context owners e para o resolver futuro:
 
-- existência das referências;
+- existência das referências de Connection e SecretVersion;
 - compatibilidade PackageVersion/ContractVersion;
 - validade dos bindings de Connection;
 - lifecycle de SecretVersion;

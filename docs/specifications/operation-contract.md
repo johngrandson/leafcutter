@@ -1,6 +1,8 @@
 # Operation contract
 
-- Estado: RATIFICADO — NÃO MATERIALIZADO
+- Estado: RATIFICADO — CONTRACT EXECUTÁVEL NÃO MATERIALIZADO
+
+Operation já existe como metadata imutável no Catalog, com `ref` e role source/destination. Esta specification trata exclusivamente do behaviour executável ainda futuro.
 
 ## Read Operation
 
