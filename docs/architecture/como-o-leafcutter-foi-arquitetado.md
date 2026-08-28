@@ -282,7 +282,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 deixou de ser uma decisão aberta e está materializado. Permanecem abertos os schemas de Catalog/Connections/Integrations, o resolver semântico de EnvironmentDeployment, merge e provenance de config, rolling upgrade de formatos, idempotência/invocation, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018 e ainda não estão materializados. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
