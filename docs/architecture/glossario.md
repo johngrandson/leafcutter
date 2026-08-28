@@ -24,7 +24,9 @@
 
 **RuntimeNode** — uma incarnação específica da application runtime, identificada por UUID.
 
-**Run** — identidade durável de uma execução; atualmente possui lifecycle mínimo e ownership, ainda sem definição executável completa.
+**Run** — identidade durável de uma execução, com lifecycle mínimo, ownership e uma definição executável congelada nas novas criações públicas.
+
+**RunSnapshot** — definição executável estruturalmente validada, versionada e imutável criada atomicamente com uma nova Run; Runs legadas podem não possuir snapshot.
 
 **Generation** — fencing token monotônico de ownership de Run.
 
@@ -54,7 +56,6 @@
 
 **EnvironmentDeployment** — configuração executável da Integration em um Environment.
 
-**RunSnapshot** — definição imutável resolvida para uma Run.
 
 **Record** — ocorrência de um item source dentro da Run.
 
