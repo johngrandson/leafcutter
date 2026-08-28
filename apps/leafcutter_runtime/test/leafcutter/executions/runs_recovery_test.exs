@@ -93,8 +93,7 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
       assert persisted_active_run.owner_node_id == active_token.runtime_node_id
       assert persisted_active_run.generation == active_token.generation
 
-      persisted_eligible_pending_run =
-        Repo.get!(Run, eligible_pending_run.id)
+      persisted_eligible_pending_run = Repo.get!(Run, eligible_pending_run.id)
 
       assert persisted_eligible_pending_run.status == :running
       assert persisted_eligible_pending_run.owner_node_id == claimant.id
