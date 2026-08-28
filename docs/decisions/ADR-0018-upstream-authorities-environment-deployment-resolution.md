@@ -250,9 +250,61 @@ Regras aprovadas:
 
 Essa precedência preserva a promoção futura: somente promotable config será copiada, enquanto cada Environment manterá sua local config.
 
+## Boundary transacional do resolver
+
+A API de orchestration será:
+
+```elixir
+LeafcutterRuntime.Runs.create_from_deployment(environment_deployment_id)
+```
+
+O workflow permanece no módulo público de Runs já existente em `leafcutter_runtime`. Não será criada service layer, processo OTP ou workflow abstraction adicional.
+
+Fluxo aprovado:
+
+```text
+create_from_deployment
+→ one shared Repo transaction
+→ lock mutable authorities through public context APIs
+→ fetch immutable Catalog and SecretVersion projections
+→ validate semantic consistency
+→ build definition v1
+→ Executions.Runs.create/1 inside the same transaction
+→ commit Run + RunSnapshot
+```
+
+Ordem fixa de leitura e locks:
+
+```text
+1. Organization
+2. Environment
+3. Integration
+4. EnvironmentDeployment
+5. Connection rows ordered by ID
+6. immutable Catalog projection
+7. immutable SecretVersion identities
+```
+
+Regras aprovadas:
+
+- leafcutter_runtime abre uma única transação externa no Repo compartilhado;
+- contexts são acessados somente por APIs públicas;
+- Organization, Environment, Integration, deployment e Connections recebem locks de leitura que bloqueiam alterações concorrentes;
+- PackageVersion, endpoints, Operations, ContractVersions e SecretVersions não precisam de lock porque são imutáveis;
+- o deployment é bloqueado antes da leitura de seus bindings;
+- Connections são bloqueadas em ordem de ID;
+- nenhum HTTP, PubSub, Oban ou efeito externo ocorre dentro da transação;
+- replace, update ou disable concorrente espera a resolução terminar;
+- o resolver repete as validações semânticas e calcula effective config;
+- `Executions.Runs.create/1` participa da mesma transação;
+- qualquer erro semântico ou changeset inválido causa rollback integral;
+- sucesso retorna uma Run `pending`;
+- o workflow não inicia a árvore local;
+- RunRecovery continua responsável por claim e startup;
+- o formato v1 permanece sem Organization, Environment, Integration ou Deployment IDs.
+
 ## Decisões ainda pendentes neste ADR
 
-- consistência transacional da resolução;
 - contrato público e erros de `create_from_deployment/1`;
 - comportamento de chamadas repetidas e fronteira de idempotency.
 
