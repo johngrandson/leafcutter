@@ -139,9 +139,7 @@ defmodule Leafcutter.Executions.Runs do
   def fetch_snapshot(run_id) do
     Run
     |> where([run], run.id == ^run_id)
-    |> join(:left, [run], snapshot in RunSnapshot,
-      on: snapshot.run_id == run.id
-    )
+    |> join(:left, [run], snapshot in RunSnapshot, on: snapshot.run_id == run.id)
     |> select([run, snapshot], {run.id, snapshot})
     |> Repo.one()
     |> case do

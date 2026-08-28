@@ -1,6 +1,8 @@
 defmodule LeafcutterRuntime.RunRecoveryTest do
   use ExUnit.Case, async: false
 
+  import Leafcutter.Executions.RunFixtures
+
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
   alias Leafcutter.Executions.{Nodes, Run, RuntimeNode}
@@ -59,7 +61,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
   test "reconstructs an already-owned Run without incrementing generation", %{
     runtime_node: runtime_node
   } do
-    run = insert_run()
+    run = pending_run_fixture()
     register_cleanup(run.id)
 
     assert {:ok, ownership_token} =
@@ -79,7 +81,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
   test "preserves a Run started after the durable ownership snapshot", %{
     runtime_node: runtime_node
   } do
-    run = insert_run()
+    run = pending_run_fixture()
     register_cleanup(run.id)
     handler_id = {__MODULE__, make_ref()}
     test_process = self()
@@ -134,7 +136,7 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     previous_runtime_node =
       create_active_runtime_node("recovery-previous-runtime")
 
-    run = insert_run()
+    run = pending_run_fixture()
     register_cleanup(run.id)
 
     assert {:ok, previous_token} =

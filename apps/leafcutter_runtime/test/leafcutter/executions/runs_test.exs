@@ -103,9 +103,7 @@ defmodule Leafcutter.Executions.RunsTest do
 
     test "returns run_not_found when the Run does not exist" do
       assert {:error, :run_not_found} =
-               Runs.fetch_snapshot(
-                 "00000000-0000-0000-0000-000000000000"
-               )
+               Runs.fetch_snapshot("00000000-0000-0000-0000-000000000000")
     end
   end
 

@@ -1,6 +1,8 @@
 defmodule Leafcutter.Executions.RunsRecoveryTest do
   use ExUnit.Case, async: true
 
+  import Leafcutter.Executions.RunFixtures
+
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
   alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
@@ -24,9 +26,9 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
       runtime_node = create_active_runtime_node("owned-list")
       other_runtime_node = create_active_runtime_node("owned-list-other")
 
-      owned_run = insert_run()
-      released_run = insert_run()
-      other_run = insert_run()
+      owned_run = pending_run_fixture()
+      released_run = pending_run_fixture()
+      other_run = pending_run_fixture()
 
       assert {:ok, owned_token} = Runs.claim(owned_run.id, runtime_node.id)
 
@@ -47,8 +49,8 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
       active_owner = create_active_runtime_node("recovery-active-owner")
 
       unowned_run = insert_run(%{status: :running})
-      stale_run = insert_run()
-      active_run = insert_run()
+      stale_run = pending_run_fixture()
+      active_run = pending_run_fixture()
       pending_run = insert_run()
       completed_run = insert_run(%{status: :completed})
 
