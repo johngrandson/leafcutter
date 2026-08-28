@@ -3,8 +3,8 @@ defmodule LeafcutterRuntime.RunRecovery do
   Reconciles durable Run ownership with local per-Run supervision.
 
   PostgreSQL remains authoritative. This process periodically reconstructs
-  local trees already owned by the current runtime incarnation and atomically
-  claims recoverable running Runs in bounded batches.
+  local trees already owned by the current runtime incarnation, starts eligible
+  pending Runs, and atomically reclaims running Runs in bounded batches.
   """
 
   use GenServer
