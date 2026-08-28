@@ -156,6 +156,8 @@ Ownership é serializado no PostgreSQL. `generation` é o fencing token monotôn
 
 `RunSnapshot` usa o id de `Run` como primary key, congela a definition v1 estruturalmente validada e rejeita updates no PostgreSQL. `Runs.create/1` persiste Run `pending` e snapshot atomicamente. `Runs.fetch_snapshot/1` fornece leitura explícita.
 
+`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, calcula effective config e cria Run + RunSnapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
+
 ### Supervision e recovery atuais
 
 ```text
@@ -254,7 +256,7 @@ ExecutionEvent
 Enrichment execution state
 ```
 
-A criação a partir de EnvironmentDeployment foi ratificada no ADR-0018 e em sua specification, mas ainda não foi materializada. O workflow pertence à orchestration em leafcutter_runtime, resolve as authorities upstream em uma transação e entrega a definition pronta a Executions.
+A criação a partir de EnvironmentDeployment está materializada conforme o ADR-0018 e sua specification. O workflow pertence à orchestration em leafcutter_runtime, resolve as authorities upstream em uma transação e entrega a definition pronta a Executions. O carregamento e a execução dessa definition pelo RunCoordinator continuam posteriores.
 
 ### Data plane Broadway
 
@@ -340,7 +342,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections, Integration e EnvironmentDeployment estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration, EnvironmentDeployment e seu resolver transacional estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -351,9 +353,9 @@ Integration identity (materialized)
 ↓
 EnvironmentDeployment + bindings (materialized)
 ↓
-resolver em leafcutter_runtime
+resolver em leafcutter_runtime (materialized)
 ↓
-Executions.Runs.create/1
+Contracts/JSV + Connector/Operation/Transport
 ```
 
-O ADR-0018 e a specification correspondente controlam esses sub-slices. RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone concluído. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O próximo recorte executável precisa ser ratificado antes de materialização. O carregamento no coordinator e a execução Broadway permanecem posteriores.

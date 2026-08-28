@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings estão materializados. O resolver transacional forma o próximo sub-slice.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O próximo estágio arquitetural aponta para Contracts/JSV e Connector/Operation/Transport executáveis; o menor recorte vertical deve ser ratificado antes de nova implementação.
 
 ## Documentos
 

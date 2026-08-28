@@ -33,7 +33,7 @@ Run
 └── RunSnapshot
 ```
 
-`Run` existe hoje como identidade de lifecycle e authority de ownership. `RunSnapshot` congela a definition estruturalmente validada e versionada criada com a Run; a resolução semântica upstream e a execução dessa definition ainda não estão materializadas.
+`Run` existe hoje como identidade de lifecycle e authority de ownership. `RunSnapshot` congela a definition estruturalmente validada e versionada criada com a Run. A resolução semântica upstream a partir de EnvironmentDeployment está materializada; a execução dessa definition ainda não.
 
 ## Relação principal planejada
 
@@ -122,7 +122,7 @@ resolved PackageVersion
 
 Runs legadas podem não possuir snapshot. Runs `pending` só são elegíveis no control plane quando possuem snapshot em formato suportado.
 
-Raw secrets permanecem fora do snapshot. O resolver transacional ratificado no ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1.
+Raw secrets permanecem fora do snapshot. O resolver transacional materializado pelo ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1.
 
 ## Record, Delivery e Attempt
 

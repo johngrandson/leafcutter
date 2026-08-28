@@ -1,15 +1,33 @@
 defmodule LeafcutterRuntime.Runs do
   @moduledoc """
-  Public workflow module for local per-Run supervision.
+  Public workflow module for Run resolution and local per-Run supervision.
 
-  Startup first acquires durable ownership from `Leafcutter.Executions.Runs`
-  and only then starts the local OTP tree. PostgreSQL decides who owns a Run;
-  the local Registry and supervisors represent that ownership inside one BEAM
-  node.
+  EnvironmentDeployment resolution freezes executable state before a Run can
+  be claimed. Startup then acquires durable ownership from
+  `Leafcutter.Executions.Runs` and only afterward starts the local OTP tree.
+  PostgreSQL decides who owns a Run; the local Registry and supervisors
+  represent that ownership inside one BEAM node.
   """
 
+  alias Ecto.Changeset
+
+  alias Leafcutter.Catalog.{PackageVersion, PackageVersionEndpoint, Packages}
+  alias Leafcutter.Connections
+  alias Leafcutter.Connections.{Connection, SecretVersion, Secrets}
   alias Leafcutter.Executions.Run
   alias Leafcutter.Executions.Runs, as: DurableRuns
+
+  alias Leafcutter.Integrations
+
+  alias Leafcutter.Integrations.{
+    Deployments,
+    EnvironmentDeployment,
+    EnvironmentDeploymentBinding,
+    Integration
+  }
+
+  alias Leafcutter.Organizations.Environments
+  alias Leafcutter.Repo
 
   alias LeafcutterRuntime.{
     NodeHeartbeat,
@@ -34,6 +52,436 @@ defmodule LeafcutterRuntime.Runs do
 
   @typedoc "Error returned when a Run cannot be claimed or started locally."
   @type start_error :: DurableRuns.claim_error() | claimed_start_error()
+
+  @typedoc "Semantic reason why an EnvironmentDeployment cannot produce a new Run."
+  @type deployment_not_executable_reason ::
+          :organization_disabled
+          | :environment_disabled
+          | :integration_disabled
+          | :package_version_mismatch
+          | {:binding_mismatch,
+             %{
+               required(:missing_refs) => [String.t()],
+               required(:unexpected_refs) => [String.t()]
+             }}
+          | {:connection_not_found, Connection.id()}
+          | {:connection_disabled, Connection.id()}
+          | {:connection_scope_mismatch, Connection.id()}
+          | {:connector_mismatch, String.t()}
+          | {:secret_version_not_found, SecretVersion.id()}
+          | {:secret_version_scope_mismatch, SecretVersion.id()}
+
+  @typedoc "Error returned while resolving an EnvironmentDeployment into a new Run."
+  @type create_from_deployment_error ::
+          :environment_deployment_not_found
+          | {:environment_deployment_not_executable,
+             deployment_not_executable_reason()}
+          | Changeset.t()
+
+  @doc """
+  Creates a pending Run from one persisted EnvironmentDeployment.
+
+  ## Parameters
+
+  * `environment_deployment_id` - The deployment whose current executable state is frozen
+
+  ## Returns
+
+  * `{:ok, run}` after the Run and its immutable snapshot commit atomically
+  * `{:error, :environment_deployment_not_found}` when the deployment does not exist
+  * `{:error, {:environment_deployment_not_executable, reason}}` when an
+    authority is disabled or semantically incompatible
+  * `{:error, changeset}` when the final RunSnapshot definition is structurally invalid
+
+  ## Examples
+
+      iex> LeafcutterRuntime.Runs.create_from_deployment(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :environment_deployment_not_found}
+
+  ## Notes
+
+  * One outer Repo transaction owns discovery, authority locks, resolution, and Run creation.
+  * Mutable authorities are locked in the ratified deterministic order.
+  * Catalog projections and SecretVersion identities are read without locks because they are immutable.
+  * Effective config recursively merges promotable config with local config taking precedence.
+  * Connection config and the exact current SecretVersion identifier are copied into definition v1.
+  * The workflow does not start a local Run tree or perform any external effect.
+  * Repeating a successful call creates another distinct Run.
+  """
+  @spec create_from_deployment(EnvironmentDeployment.id()) ::
+          {:ok, Run.t()} | {:error, create_from_deployment_error()}
+  def create_from_deployment(environment_deployment_id) do
+    Repo.transaction(fn ->
+      case resolve_and_create_run(environment_deployment_id) do
+        {:ok, run} -> run
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  @spec resolve_and_create_run(EnvironmentDeployment.id()) ::
+          {:ok, Run.t()} | {:error, create_from_deployment_error()}
+  defp resolve_and_create_run(environment_deployment_id) do
+    with {:ok, resolution_scope} <-
+           fetch_resolution_scope(environment_deployment_id),
+         {:ok, _active_scope} <- lock_active_scope(resolution_scope),
+         {:ok, integration} <- lock_active_integration(resolution_scope),
+         {:ok, deployment} <-
+           lock_deployment_for_resolution(environment_deployment_id),
+         :ok <- ensure_resolution_scope(deployment, resolution_scope),
+         {:ok, connections} <- lock_active_connections(deployment),
+         {:ok, package_version} <-
+           fetch_package_version(deployment.package_version_id),
+         :ok <- validate_package_version(package_version, integration),
+         :ok <- validate_binding_refs(package_version, deployment.bindings),
+         :ok <-
+           validate_connector_compatibility(
+             package_version,
+             deployment.bindings,
+             connections
+           ),
+         :ok <- validate_secret_versions(connections, resolution_scope),
+         definition =
+           build_definition(
+             deployment,
+             package_version,
+             connections
+           ),
+         {:ok, run} <- DurableRuns.create(definition) do
+      {:ok, run}
+    end
+  end
+
+  @spec fetch_resolution_scope(EnvironmentDeployment.id()) ::
+          {:ok, Deployments.resolution_scope()}
+          | {:error, :environment_deployment_not_found}
+  defp fetch_resolution_scope(environment_deployment_id) do
+    case Deployments.fetch_resolution_scope(environment_deployment_id) do
+      {:ok, resolution_scope} -> {:ok, resolution_scope}
+      {:error, :not_found} -> {:error, :environment_deployment_not_found}
+    end
+  end
+
+  @spec lock_active_scope(Deployments.resolution_scope()) ::
+          {:ok, Environments.active_scope()}
+          | {:error,
+             {:environment_deployment_not_executable,
+              :organization_disabled | :environment_disabled}}
+  defp lock_active_scope(resolution_scope) do
+    case Environments.lock_active_scope(
+           resolution_scope.organization_id,
+           resolution_scope.environment_id
+         ) do
+      {:ok, active_scope} ->
+        {:ok, active_scope}
+
+      {:error, reason}
+      when reason in [:organization_disabled, :environment_disabled] ->
+        not_executable(reason)
+
+      {:error, reason} ->
+        raise_unexpected_authority_state!(:environment_scope, reason)
+    end
+  end
+
+  @spec lock_active_integration(Deployments.resolution_scope()) ::
+          {:ok, Integration.t()}
+          | {:error,
+             {:environment_deployment_not_executable,
+              :integration_disabled}}
+  defp lock_active_integration(resolution_scope) do
+    case Integrations.lock_active(
+           resolution_scope.integration_id,
+           resolution_scope.organization_id
+         ) do
+      {:ok, integration} ->
+        {:ok, integration}
+
+      {:error, :integration_disabled} ->
+        not_executable(:integration_disabled)
+
+      {:error, reason} ->
+        raise_unexpected_authority_state!(:integration, reason)
+    end
+  end
+
+  @spec lock_deployment_for_resolution(EnvironmentDeployment.id()) ::
+          {:ok, EnvironmentDeployment.t()}
+          | {:error, :environment_deployment_not_found}
+  defp lock_deployment_for_resolution(environment_deployment_id) do
+    case Deployments.lock_for_resolution(environment_deployment_id) do
+      {:ok, deployment} -> {:ok, deployment}
+      {:error, :not_found} -> {:error, :environment_deployment_not_found}
+      {:error, reason} -> raise_unexpected_authority_state!(:deployment, reason)
+    end
+  end
+
+  @spec ensure_resolution_scope(
+          EnvironmentDeployment.t(),
+          Deployments.resolution_scope()
+        ) :: :ok
+  defp ensure_resolution_scope(deployment, resolution_scope) do
+    if deployment.organization_id == resolution_scope.organization_id and
+         deployment.environment_id == resolution_scope.environment_id and
+         deployment.integration_id == resolution_scope.integration_id do
+      :ok
+    else
+      raise "EnvironmentDeployment immutable resolution scope changed during resolution"
+    end
+  end
+
+  @spec lock_active_connections(EnvironmentDeployment.t()) ::
+          {:ok, [Connection.t()]}
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:connection_not_found, Connection.id()}
+              | {:connection_disabled, Connection.id()}
+              | {:connection_scope_mismatch, Connection.id()}}}
+  defp lock_active_connections(deployment) do
+    connection_ids = Enum.map(deployment.bindings, & &1.connection_id)
+
+    case Connections.lock_active(
+           connection_ids,
+           deployment.organization_id,
+           deployment.environment_id
+         ) do
+      {:ok, connections} ->
+        {:ok, connections}
+
+      {:error, reason} when is_tuple(reason) ->
+        not_executable(reason)
+
+      {:error, reason} ->
+        raise_unexpected_authority_state!(:connections, reason)
+    end
+  end
+
+  @spec fetch_package_version(PackageVersion.id()) ::
+          {:ok, PackageVersion.t()}
+  defp fetch_package_version(package_version_id) do
+    case Packages.get_version(package_version_id) do
+      {:ok, package_version} ->
+        {:ok, package_version}
+
+      {:error, :not_found} ->
+        raise_unexpected_authority_state!(
+          :package_version,
+          :not_found
+        )
+    end
+  end
+
+  @spec validate_package_version(PackageVersion.t(), Integration.t()) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              :package_version_mismatch}}
+  defp validate_package_version(package_version, integration) do
+    if package_version.package_id == integration.package_id do
+      :ok
+    else
+      not_executable(:package_version_mismatch)
+    end
+  end
+
+  @spec validate_binding_refs(
+          PackageVersion.t(),
+          [EnvironmentDeploymentBinding.t()]
+        ) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:binding_mismatch,
+               %{
+                 required(:missing_refs) => [String.t()],
+                 required(:unexpected_refs) => [String.t()]
+               }}}}
+  defp validate_binding_refs(package_version, bindings) do
+    expected_refs = MapSet.new(package_version.endpoints, & &1.ref)
+    actual_refs = MapSet.new(bindings, & &1.ref)
+
+    missing_refs =
+      expected_refs
+      |> MapSet.difference(actual_refs)
+      |> Enum.sort()
+
+    unexpected_refs =
+      actual_refs
+      |> MapSet.difference(expected_refs)
+      |> Enum.sort()
+
+    if missing_refs == [] and unexpected_refs == [] do
+      :ok
+    else
+      not_executable(
+        {:binding_mismatch,
+         %{
+           missing_refs: missing_refs,
+           unexpected_refs: unexpected_refs
+         }}
+      )
+    end
+  end
+
+  @spec validate_connector_compatibility(
+          PackageVersion.t(),
+          [EnvironmentDeploymentBinding.t()],
+          [Connection.t()]
+        ) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:connector_mismatch, String.t()}}}
+  defp validate_connector_compatibility(
+         package_version,
+         bindings,
+         connections
+       ) do
+    endpoints_by_ref = Map.new(package_version.endpoints, &{&1.ref, &1})
+    connections_by_id = Map.new(connections, &{&1.id, &1})
+
+    bindings
+    |> Enum.sort_by(& &1.ref)
+    |> Enum.find_value(:ok, fn binding ->
+      endpoint = Map.fetch!(endpoints_by_ref, binding.ref)
+      connection = Map.fetch!(connections_by_id, binding.connection_id)
+
+      if endpoint_connector_id(endpoint) == connection.connector_id do
+        false
+      else
+        not_executable({:connector_mismatch, binding.ref})
+      end
+    end)
+  end
+
+  @spec endpoint_connector_id(PackageVersionEndpoint.t()) :: Ecto.UUID.t()
+  defp endpoint_connector_id(endpoint) do
+    endpoint.operation.connector_version.connector_id
+  end
+
+  @spec validate_secret_versions(
+          [Connection.t()],
+          Deployments.resolution_scope()
+        ) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:secret_version_not_found, SecretVersion.id()}
+              | {:secret_version_scope_mismatch, SecretVersion.id()}}}
+  defp validate_secret_versions(connections, resolution_scope) do
+    secret_version_ids =
+      connections
+      |> Enum.map(& &1.secret_version_id)
+      |> Enum.reject(&is_nil/1)
+
+    case Secrets.fetch_versions(
+           secret_version_ids,
+           resolution_scope.organization_id,
+           resolution_scope.environment_id
+         ) do
+      {:ok, _secret_versions} ->
+        :ok
+
+      {:error, reason} ->
+        not_executable(reason)
+    end
+  end
+
+  @spec build_definition(
+          EnvironmentDeployment.t(),
+          PackageVersion.t(),
+          [Connection.t()]
+        ) :: map()
+  defp build_definition(deployment, package_version, connections) do
+    source = Enum.find(package_version.endpoints, &(&1.role == :source))
+
+    destinations =
+      package_version.endpoints
+      |> Enum.filter(&(&1.role == :destination))
+      |> Enum.sort_by(& &1.position)
+
+    bindings_by_ref = Map.new(deployment.bindings, &{&1.ref, &1})
+    connections_by_id = Map.new(connections, &{&1.id, &1})
+
+    %{
+      package_version_id: deployment.package_version_id,
+      source:
+        build_definition_endpoint(
+          source,
+          bindings_by_ref,
+          connections_by_id
+        ),
+      destinations:
+        Enum.map(destinations, fn endpoint ->
+          build_definition_endpoint(
+            endpoint,
+            bindings_by_ref,
+            connections_by_id
+          )
+        end),
+      effective_config:
+        deep_merge(
+          deployment.promotable_config,
+          deployment.local_config
+        )
+    }
+  end
+
+  @spec build_definition_endpoint(
+          PackageVersionEndpoint.t(),
+          %{String.t() => EnvironmentDeploymentBinding.t()},
+          %{Connection.id() => Connection.t()}
+        ) :: map()
+  defp build_definition_endpoint(
+         endpoint,
+         bindings_by_ref,
+         connections_by_id
+       ) do
+    binding = Map.fetch!(bindings_by_ref, endpoint.ref)
+    connection = Map.fetch!(connections_by_id, binding.connection_id)
+
+    %{
+      ref: endpoint.ref,
+      contract_version_id: endpoint.contract_version_id,
+      connection: %{
+        id: connection.id,
+        config: connection.config,
+        secret_version_id: connection.secret_version_id
+      }
+    }
+  end
+
+  @spec deep_merge(map(), map()) :: map()
+  defp deep_merge(promotable_config, local_config) do
+    Map.merge(
+      promotable_config,
+      local_config,
+      fn _key, promotable_value, local_value ->
+        if is_map(promotable_value) and not is_struct(promotable_value) and
+             is_map(local_value) and not is_struct(local_value) do
+          deep_merge(promotable_value, local_value)
+        else
+          local_value
+        end
+      end
+    )
+  end
+
+  @spec not_executable(deployment_not_executable_reason()) ::
+          {:error,
+           {:environment_deployment_not_executable,
+            deployment_not_executable_reason()}}
+  defp not_executable(reason) do
+    {:error, {:environment_deployment_not_executable, reason}}
+  end
+
+  @spec raise_unexpected_authority_state!(atom(), term()) :: no_return()
+  defp raise_unexpected_authority_state!(authority, reason) do
+    raise "unexpected #{authority} authority state during EnvironmentDeployment resolution: " <>
+            inspect(reason)
+  end
 
   @doc """
   Claims a Run for the current runtime incarnation and starts its local tree.

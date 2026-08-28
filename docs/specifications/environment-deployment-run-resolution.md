@@ -1,7 +1,7 @@
 # EnvironmentDeployment → RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE
+- Estado de implementação: MATERIALIZADO
 - ADR: `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 
 ## Objetivo
@@ -257,6 +257,7 @@ Leafcutter.Integrations.lock_active/2
 Leafcutter.Integrations.Deployments.create/1
 Leafcutter.Integrations.Deployments.get/1
 Leafcutter.Integrations.Deployments.replace/2
+Leafcutter.Integrations.Deployments.fetch_resolution_scope/1
 Leafcutter.Integrations.Deployments.lock_for_resolution/1
 ```
 
@@ -271,8 +272,9 @@ O modelo mínimo está materializado em `leafcutter_core`:
 - writes revalidam Organization, Environment, Integration, Connections e compatibilidade de PackageVersion/Connector sob locks determinísticos;
 - constraints e triggers protegem JSON objects, identidade, PackageVersion, cobertura e Connector compatibility;
 - `get/1` devolve bindings ordenados por ref;
+- `fetch_resolution_scope/1` devolve somente Organization, Environment e Integration IDs imutáveis, sem ler estado executável;
 - `lock_for_resolution/1` mantém deployment e bindings sob shared locks até o fim da transação;
-- effective config e congelamento de SecretVersion continuam responsabilidades do resolver.
+- effective config e congelamento de SecretVersion são materializados pelo resolver em `leafcutter_runtime`.
 
 ## Effective config
 
@@ -310,6 +312,7 @@ Fluxo:
 
 ```text
 one shared Repo transaction
+→ fetch immutable deployment parent IDs without bindings
 → lock mutable authorities through public APIs
 → fetch immutable Catalog and SecretVersion projections
 → validate semantic consistency
@@ -319,7 +322,9 @@ one shared Repo transaction
 → commit Run + RunSnapshot
 ```
 
-Ordem obrigatória:
+`fetch_resolution_scope/1` é uma descoberta preliminar dentro da mesma transação. Seu resultado não prova executabilidade e existe somente para permitir que os parent locks sejam adquiridos antes do lock do deployment.
+
+Ordem obrigatória dos locks e das leituras autoritativas:
 
 ```text
 1. Organization
@@ -333,7 +338,7 @@ Ordem obrigatória:
 
 Organization, Environment, Integration, deployment e Connections recebem locks de leitura que bloqueiam alterações concorrentes. Authorities imutáveis não precisam de lock.
 
-O deployment é bloqueado antes da leitura de bindings. Connections são bloqueadas em ordem de ID. Nenhum efeito externo ocorre dentro da transação.
+O lookup preliminar não lê bindings, PackageVersion nem config. O deployment é bloqueado antes da leitura autoritativa de seus bindings. Connections são bloqueadas em ordem de ID. Nenhum efeito externo ocorre dentro da transação.
 
 ## Mapeamento para definition v1
 
@@ -408,6 +413,20 @@ Duas chamadas bem-sucedidas para o mesmo deployment criam duas Runs distintas.
 Chamadas concorrentes também podem criar Runs distintas. Não existem idempotency key, invocation record ou deduplicação. Timeout ambíguo pode resultar em duplicação.
 
 Falha confirmada causa rollback integral.
+
+## Estado materializado
+
+`LeafcutterRuntime.Runs.create_from_deployment/1` implementa o workflow completo sem ampliar a definition v1:
+
+- descobre somente os parent IDs imutáveis antes dos locks;
+- bloqueia e revalida todas as authorities mutáveis na ordem ratificada;
+- lê Catalog e SecretVersions imutáveis por APIs públicas;
+- calcula effective config conforme o merge aprovado;
+- preserva destination order da PackageVersion;
+- congela Connection config e SecretVersion ID exato;
+- cria Run `pending` e RunSnapshot dentro da mesma transação;
+- retorna erros determinísticos sem expor config ou material sensível;
+- permite Runs distintas em chamadas repetidas.
 
 ## Critérios de aceitação
 

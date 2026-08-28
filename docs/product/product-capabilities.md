@@ -16,6 +16,8 @@
 - Run lifecycle mínimo;
 - ownership e generation fencing;
 - criação atômica de Run + RunSnapshot v1;
+- criação transacional de Run a partir de EnvironmentDeployment;
+- congelamento de PackageVersion, ContractVersions, destination order, effective config, Connections e SecretVersion IDs;
 - per-Run supervision;
 - automatic recovery de Runs `running` e `pending` elegíveis;
 - concorrência distribuída baseada em PostgreSQL.
@@ -56,6 +58,7 @@
 - PackageVersion, promotable/local config e bindings completos por endpoint;
 - create/get/replace atômicos;
 - validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos.
+- descoberta de scope imutável e locks de resolução por APIs públicas.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 

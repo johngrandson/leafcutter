@@ -2,7 +2,7 @@
 title: "Como o Leafcutter foi arquitetado"
 subtitle: "Estado materializado, decisões ratificadas e evolução planejada"
 author: "Leafcutter Architecture"
-date: "27 de agosto de 2026"
+date: "28 de agosto de 2026"
 lang: pt-BR
 toc: true
 toc-depth: 3
@@ -192,7 +192,7 @@ Run
 → concrete execution
 ```
 
-Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica. RunSnapshot v1 e EnvironmentDeployment estão materializados; o resolver transacional continua no próximo slice.
+Essa separação impede que mudança de configuração altere uma Run em andamento ou histórica. RunSnapshot v1, EnvironmentDeployment e o resolver transacional estão materializados. Cada nova resolução congela o estado atual sem alterar snapshots anteriores.
 
 ## Catalog
 
@@ -299,7 +299,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 e todas as authorities upstream mínimas estão materializados. O resolver transacional e o merge de config foram ratificados no ADR-0018 e formam o próximo slice. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -307,10 +307,10 @@ O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connec
 
 ```text
 present
-→ RBAC + authorities upstream mínimas + ownership + supervision + recovery + RunSnapshot v1
+→ RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
 
 next
-→ EnvironmentDeployment resolver
+→ ratificar Contracts/JSV + Connector/Operation/Transport executáveis
 
 future
 → durable Broadway integration data plane

@@ -26,18 +26,20 @@
 21. Integration identity materialization
 22. EnvironmentDeployment/EnvironmentDeploymentBinding materialization
 23. resolver-facing deployment lock and SecretVersion reads
+24. resolver scope discovery without binding reads
+25. EnvironmentDeployment transactional resolver
 ```
 
 ## Próximo slice de implementação
 
 ```text
-LeafcutterRuntime.Runs.create_from_deployment/1
-→ resolve authorities upstream em uma transação
-→ congela definition v1
-→ Executions.Runs.create/1
+Contracts/JSV + Connector/Operation/Transport executáveis
+→ revisar ADR-0006, ADR-0008 e specifications existentes
+→ ratificar o menor contract vertical
+→ somente então iniciar materialização
 ```
 
-O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Todas as authorities upstream mínimas estão materializadas. O próximo sub-slice implementa o resolver transacional sem ampliar o formato RunSnapshot v1.
+O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/specifications/environment-deployment-run-resolution.md`. O resolver transacional não ampliou o formato RunSnapshot v1. A próxima fronteira segue a sequência ratificada, mas o recorte executável concreto ainda precisa ser revisado e confirmado antes da implementação.
 
 ## Sequência ratificada posterior
 
@@ -46,7 +48,7 @@ minimal Catalog authorities (materialized)
 → Connections + SecretVersion bindings (materialized)
 → Integration identity (materialized)
 → EnvironmentDeployment + bindings (materialized)
-→ EnvironmentDeployment resolver
+→ EnvironmentDeployment resolver (materialized)
 → Contracts/JSV + Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -54,4 +56,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem dos cinco primeiros sub-slices está ratificada pelo ADR-0018. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
+A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018. A sequência posterior não deve pular Contracts e execução de Connector para criar Broadway com definição implícita.

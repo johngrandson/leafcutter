@@ -303,6 +303,48 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
     end
   end
 
+  describe "fetch_resolution_scope/1" do
+    test "returns only immutable parent identifiers without reading bindings" do
+      scope = deployment_scope()
+      {:ok, deployment} = Deployments.create(deployment_attrs(scope))
+      handler_id = {__MODULE__, make_ref()}
+      test_process = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:leafcutter, :repo, :query],
+          fn _event, _measurements, metadata, test_process ->
+            if self() == test_process do
+              send(test_process, {:resolution_scope_query, metadata.query})
+            end
+          end,
+          test_process
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, resolution_scope} =
+               Deployments.fetch_resolution_scope(deployment.id)
+
+      assert resolution_scope == %{
+               organization_id: scope.organization.id,
+               environment_id: scope.environment.id,
+               integration_id: scope.integration.id
+             }
+
+      assert_receive {:resolution_scope_query, query}
+      assert String.contains?(query, ~s(FROM "environment_deployments"))
+      refute String.contains?(query, "environment_deployment_bindings")
+      refute_receive {:resolution_scope_query, _query}
+    end
+
+    test "returns a named error when the deployment does not exist" do
+      assert {:error, :not_found} =
+               Deployments.fetch_resolution_scope(Ecto.UUID.generate())
+    end
+  end
+
   describe "lock_for_resolution/1" do
     test "requires a caller-owned transaction" do
       assert {:error, :transaction_required} =

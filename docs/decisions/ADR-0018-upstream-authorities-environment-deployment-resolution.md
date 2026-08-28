@@ -1,14 +1,14 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — AUTHORITIES UPSTREAM COMPLETAS; RESOLVER PENDENTE
+- Estado de implementação: MATERIALIZADO
 - Data: 2026-08-28
 
 ## Contexto
 
 RunSnapshot v1 já materializa o destino estrutural, versionado e imutável de uma resolução executável. A próxima fronteira precisa persistir as authorities mínimas de Catalog, Connections e Integrations e compô-las em `leafcutter_runtime` sem antecipar Package Manifest, data plane ou secrets concretos.
 
-Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings já foram materializados em sub-slices ordenados; o resolver permanece posterior.
+Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog, Connections, Integration, EnvironmentDeployment, seus bindings e o resolver transacional foram materializados em sub-slices ordenados.
 
 ## Decisão
 
@@ -216,7 +216,9 @@ Leafcutter.Integrations
 Leafcutter.Integrations.Deployments
 ├── create/1
 ├── get/1
-└── replace/2
+├── fetch_resolution_scope/1
+├── replace/2
+└── lock_for_resolution/1
 ```
 
 ## Merge de configuração efetiva
@@ -265,6 +267,7 @@ Fluxo aprovado:
 ```text
 create_from_deployment
 → one shared Repo transaction
+→ discover immutable deployment parent IDs through a public API
 → lock mutable authorities through public context APIs
 → fetch immutable Catalog and SecretVersion projections
 → validate semantic consistency
@@ -273,7 +276,9 @@ create_from_deployment
 → commit Run + RunSnapshot
 ```
 
-Ordem fixa de leitura e locks:
+Antes dos locks, `Deployments.fetch_resolution_scope/1` lê somente os IDs imutáveis de Organization, Environment e Integration. Essa descoberta não lê bindings, PackageVersion ou config, não valida executabilidade e não constitui a leitura autoritativa do estado do deployment.
+
+Ordem fixa dos locks e das leituras autoritativas:
 
 ```text
 1. Organization
@@ -289,6 +294,7 @@ Regras aprovadas:
 
 - leafcutter_runtime abre uma única transação externa no Repo compartilhado;
 - contexts são acessados somente por APIs públicas;
+- a descoberta preliminar permanece dentro da mesma transação e retorna somente identidade imutável;
 - Organization, Environment, Integration, deployment e Connections recebem locks de leitura que bloqueiam alterações concorrentes;
 - PackageVersion, endpoints, Operations, ContractVersions e SecretVersions não precisam de lock porque são imutáveis;
 - o deployment é bloqueado antes da leitura de seus bindings;
@@ -416,14 +422,16 @@ Materializado:
 - imutabilidade de Organization, Package e identidade da Integration no PostgreSQL;
 - `EnvironmentDeployment` e `EnvironmentDeploymentBinding` com scope explícito;
 - APIs públicas `Integrations.Deployments.create/1`, `get/1` e `replace/2`;
+- API pública `Integrations.Deployments.fetch_resolution_scope/1` para descobrir somente os parent IDs imutáveis sem ler bindings;
 - API pública `Integrations.Deployments.lock_for_resolution/1` para proteger deployment e bindings;
 - um deployment completo por Integration/Environment com PackageVersion, configs separadas e bindings completos;
 - validação transacional de authorities ativas, PackageVersion, refs e compatibilidade de Connector;
 - locks ordenados de Organization, Environment, Integration, deployment e Connections;
 - constraints e triggers protegendo identidade, JSON objects, cobertura, PackageVersion e Connector compatibility.
-
-Não materializado:
-- resolver de EnvironmentDeployment.
+- `LeafcutterRuntime.Runs.create_from_deployment/1` como uma única transação de descoberta, locks, revalidação, resolução e criação de Run;
+- deep merge recursivo com precedência de local config, substituição de arrays e `null` como override;
+- congelamento de PackageVersion, ContractVersions, ordem de destinations, Connection configs e SecretVersion IDs na definition v1;
+- rollback integral para erros semânticos e criação distinta em chamadas repetidas.
 
 ## Futuro preservado
 
@@ -441,10 +449,10 @@ Continuam fora deste slice:
 ## Consequências
 
 - Catalog já publica ConnectorVersion e Operations sem transformar o manifest aberto em contract persistido;
-- o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
-- referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
+- o resolver obtém refs, Operations e ContractVersions por uma API pública do owner;
+- referências relacionais e cardinalidade são revalidadas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- o resolver de EnvironmentDeployment forma o próximo sub-slice.
+- a próxima fronteira volta a ser Contracts/JSV e os contracts executáveis de Connector/Operation/Transport.
 
 ## Evidência
 
@@ -457,4 +465,6 @@ Continuam fora deste slice:
 - `apps/leafcutter_core/lib/leafcutter/integrations/deployments.ex`;
 - `apps/leafcutter_core/priv/repo/migrations/20260828090000_create_environment_deployments.exs`;
 - `apps/leafcutter_core/test/leafcutter/integrations/deployments_test.exs`;
+- `apps/leafcutter_runtime/lib/leafcutter_runtime/runs.ex`;
+- `apps/leafcutter_runtime/test/leafcutter_runtime/runs_resolution_test.exs`;
 - `docs/checkpoint/CURRENT.md`.

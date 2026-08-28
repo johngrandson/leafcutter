@@ -84,6 +84,13 @@ defmodule Leafcutter.Integrations.Deployments do
   @typedoc "Error returned while replacing an EnvironmentDeployment."
   @type replace_error :: :not_found | validation_error()
 
+  @typedoc "Immutable parent identifiers required before resolution locks are acquired."
+  @type resolution_scope :: %{
+          required(:organization_id) => Ecto.UUID.t(),
+          required(:environment_id) => Ecto.UUID.t(),
+          required(:integration_id) => Integration.id()
+        }
+
   @typedoc "Error returned while locking an EnvironmentDeployment for resolution."
   @type lock_for_resolution_error :: :transaction_required | :not_found
 
@@ -164,6 +171,51 @@ defmodule Leafcutter.Integrations.Deployments do
 
       nil ->
         {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Fetches the immutable parent scope required to order resolution locks.
+
+  ## Parameters
+
+  * `id` - The EnvironmentDeployment identifier whose parent scope is required
+
+  ## Returns
+
+  * `{:ok, scope}` with Organization, Environment, and Integration identifiers
+  * `{:error, :not_found}` when no EnvironmentDeployment has the identifier
+
+  ## Examples
+
+      iex> Leafcutter.Integrations.Deployments.fetch_resolution_scope(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :not_found}
+
+  ## Notes
+
+  * The result contains only identifiers protected as immutable deployment identity.
+  * Bindings, PackageVersion, and configuration are deliberately not read.
+  * The result is discovery data, not an executable-state validation.
+  * The caller must still lock and revalidate every mutable authority.
+  """
+  @spec fetch_resolution_scope(EnvironmentDeployment.id()) ::
+          {:ok, resolution_scope()} | {:error, :not_found}
+  def fetch_resolution_scope(id) do
+    scope =
+      EnvironmentDeployment
+      |> where([deployment], deployment.id == ^id)
+      |> select([deployment], %{
+        organization_id: deployment.organization_id,
+        environment_id: deployment.environment_id,
+        integration_id: deployment.integration_id
+      })
+      |> Repo.one()
+
+    case scope do
+      nil -> {:error, :not_found}
+      scope -> {:ok, scope}
     end
   end
 

@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1 e todas as authorities upstream mínimas estão materializados. O workflow EnvironmentDeployment → definition v1 foi ratificado no ADR-0018 e forma a próxima fronteira.
+RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. A próxima fronteira requer confirmar o menor recorte executável de Contracts/JSV + Connector/Operation/Transport.
 
 ## Domínio
 

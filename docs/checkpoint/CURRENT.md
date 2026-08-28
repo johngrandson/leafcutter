@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Upstream authority materialization**
+**EnvironmentDeployment → RunSnapshot v1 materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog, Connections, Integration, EnvironmentDeployment e seus bindings estão materializados nesta branch; o resolver permanece pendente.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. O ADR-0018 agora está materializado de ponta a ponta nesta branch: Catalog, Connections, Integration, EnvironmentDeployment, bindings e o resolver transacional `EnvironmentDeployment → definition v1`.
 
 ## Estado materializado
 
@@ -128,12 +128,13 @@ Integrations.lock_active/2
 Integrations.Deployments.create/1
 Integrations.Deployments.get/1
 Integrations.Deployments.replace/2
+Integrations.Deployments.fetch_resolution_scope/1
 Integrations.Deployments.lock_for_resolution/1
 ```
 
 Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration.
 
-EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs e compatibilidade de Connector. `lock_for_resolution/1` protege deployment e bindings com shared locks dentro da transação do caller. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
+EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs e compatibilidade de Connector. `fetch_resolution_scope/1` descobre somente os parent IDs imutáveis sem ler bindings; `lock_for_resolution/1` protege deployment e bindings com shared locks dentro da transação do caller. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
 
 ### Executions e runtime
 
@@ -151,9 +152,10 @@ Runs.claim/2
 Runs.release/1
 Runs.list_owned_tokens/1
 Runs.claim_recoverable/3
+LeafcutterRuntime.Runs.create_from_deployment/1
 ```
 
-Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
+Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. `create_from_deployment/1` resolve authorities por APIs públicas dentro de uma única transação, calcula effective config, preserva destination order e congela Connection config e SecretVersion ID antes de criar a Run `pending`. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
 
 Supervision tree:
 
@@ -231,19 +233,24 @@ Connections + SecretVersion binding materialization
 Integration identity materialization
 EnvironmentDeployment + binding materialization
 Resolver-facing authority read APIs
+Resolver scope discovery without binding reads
+EnvironmentDeployment transactional resolver
 ```
 
 ## Em andamento
 
-Materializar o resolver transacional de EnvironmentDeployment ratificado no ADR-0018.
+Consolidar e integrar o milestone materializado de EnvironmentDeployment → RunSnapshot v1.
 
 ## Próxima tarefa concreta
 
-Implementar o próximo sub-slice em `leafcutter_runtime`:
+Após concluir os gates e integrar esta branch, revisar e ratificar o menor slice de Contracts/JSV + Connector/Operation/Transport executáveis. A sequência arquitetural aponta para essa fronteira, mas seu recorte concreto deve ser documentado antes de código novo.
+
+O comportamento concluído neste milestone é:
 
 ```text
 LeafcutterRuntime.Runs.create_from_deployment/1
 → uma transação compartilhada
+→ descoberta preliminar somente dos parent IDs imutáveis
 → locks via APIs públicas na ordem ratificada
 → revalidação semântica das authorities
 → deep merge de promotable_config + local_config
@@ -251,7 +258,7 @@ LeafcutterRuntime.Runs.create_from_deployment/1
 → Executions.Runs.create/1
 ```
 
-O resolver deve ordenar destinations pela posição do PackageVersionEndpoint e fazer rollback integral em qualquer falha. Duas chamadas bem-sucedidas continuam criando Runs distintas.
+O resolver ordena destinations pela posição do PackageVersionEndpoint, faz rollback integral em qualquer falha e cria Runs distintas em chamadas bem-sucedidas repetidas.
 
 Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation, actor, invocation, idempotency, carregamento no coordinator ou data plane.
 

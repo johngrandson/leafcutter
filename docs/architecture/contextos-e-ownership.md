@@ -111,7 +111,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê, substitui atomicamente e bloqueia para resolução um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. O resolver transacional permanece em `leafcutter_runtime`.
+Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê, desabilita e oferece o lock ativo exigido por workflows compostos. `Integrations.Deployments` cria, lê, substitui atomicamente e bloqueia para resolução um EnvironmentDeployment completo por Integration/Environment, incluindo PackageVersion, promotable/local config e todos os bindings locais de Connection. A capability também expõe uma descoberta restrita aos parent IDs imutáveis para ordenar locks sem antecipar a leitura dos bindings. O resolver transacional está materializado em `leafcutter_runtime`.
 
 ## Executions
 
@@ -136,6 +136,8 @@ ExecutionEvent
 ```
 
 Runtime OTP infrastructure — Registry, supervisors, heartbeat, recovery e Broadway — pertence à application `leafcutter_runtime`, não ao ownership conceitual do context.
+
+O workflow `LeafcutterRuntime.Runs.create_from_deployment/1` também pertence a essa application: compõe somente APIs públicas de Organizations, Catalog, Connections, Integrations e Executions sem mover ownership entre contexts.
 
 ## Notifications
 

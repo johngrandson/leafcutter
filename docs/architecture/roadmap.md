@@ -65,14 +65,18 @@
 - create/get/replace atômicos com cobertura exata e compatibilidade de Connector;
 - locks ordenados de Organization, Environment, Integration, deployment e Connections.
 
-## Próximo estágio: authorities upstream e resolução
+### Resolução executável
 
-O contract deste estágio foi ratificado no ADR-0018. Todas as authorities upstream mínimas estão materializadas; resta compô-las no resolver ratificado.
+- descoberta preliminar somente dos parent IDs imutáveis;
+- resolução transacional por APIs públicas dos contexts;
+- revalidação de lifecycle, scope, PackageVersion, bindings, Connectors e SecretVersions;
+- deep merge de promotable/local config;
+- congelamento de definition v1 e criação atômica de Run + RunSnapshot;
+- chamadas repetidas criando Runs distintas.
 
-- resolver semântico de EnvironmentDeployment para definition v1;
-- criação de Run a partir da definition resolvida.
+## Próximo estágio: reliable integration core
 
-## Reliable integration core
+O contract do estágio upstream foi materializado integralmente conforme o ADR-0018. A próxima fronteira precisa começar pela revisão e ratificação do menor recorte vertical de contracts e execução:
 
 - Contracts + JSON Schema/JSV;
 - Connector/Operation/Transport contracts;

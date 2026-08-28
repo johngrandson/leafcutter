@@ -77,6 +77,7 @@ Hospeda hoje:
 
 ```text
 Executions foundation
+EnvironmentDeployment → RunSnapshot resolution
 RunRegistry
 RunDynamicSupervisor
 NodeHeartbeat
@@ -163,4 +164,3 @@ Package pode depender de contracts públicos de `leafcutter_connectors`. Não de
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;
 - configuração concreta de Oban e HTTP pools ainda aberta.
-
