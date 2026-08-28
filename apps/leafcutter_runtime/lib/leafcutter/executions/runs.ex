@@ -310,7 +310,7 @@ defmodule Leafcutter.Executions.Runs do
   end
 
   @doc """
-  Claims a bounded batch of running Runs that require recovery.
+  Claims a bounded batch of Runs that are eligible to start or recover.
 
   ## Parameters
 
@@ -336,9 +336,10 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Notes
 
-  * Only Runs already in the `:running` state participate in automatic recovery.
-  * Pending Runs remain excluded until snapshot eligibility is added to recovery.
-  * Unowned Runs and Runs whose owner heartbeat is older than the stale threshold are eligible.
+  * Pending Runs require no owner and a snapshot in a supported format.
+  * Pending Runs without snapshots or with unsupported formats are excluded.
+  * Running Runs remain eligible without requiring a snapshot.
+  * Running Runs must be unowned or have an owner heartbeat older than the stale threshold.
   * Rows are ordered by oldest `updated_at` and then identifier.
   * `FOR UPDATE SKIP LOCKED` distributes concurrent recovery batches across runtime nodes.
   * Every claimed Run receives a greater fencing generation.
@@ -423,12 +424,25 @@ defmodule Leafcutter.Executions.Runs do
       )
       |> select([runtime_node], runtime_node.id)
 
+    supported_format_versions =
+      RunSnapshot.supported_format_versions()
+
+    eligible_snapshot_run_ids =
+      RunSnapshot
+      |> where(
+        [snapshot],
+        snapshot.format_version in ^supported_format_versions
+      )
+      |> select([snapshot], snapshot.run_id)
+
     Run
-    |> where([run], run.status == :running)
     |> where(
       [run],
-      is_nil(run.owner_node_id) or
-        run.owner_node_id in subquery(stale_owner_ids)
+      (run.status == :running and
+         (is_nil(run.owner_node_id) or
+            run.owner_node_id in subquery(stale_owner_ids))) or
+        (run.status == :pending and is_nil(run.owner_node_id) and
+           run.id in subquery(eligible_snapshot_run_ids))
     )
     |> exclude_recovery_runs(excluded_run_ids)
     |> order_by([run], asc: run.updated_at, asc: run.id)
