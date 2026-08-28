@@ -189,6 +189,7 @@ A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts 
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 - `docs/decisions/ADR-0017-run-snapshot-v1.md`
 - `docs/specifications/run-snapshot-v1.md`
 - `docs/architecture/estado-atual-e-visao-futura.md`
