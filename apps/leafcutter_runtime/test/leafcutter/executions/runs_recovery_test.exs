@@ -98,8 +98,7 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
       assert persisted_eligible_pending_run.status == :running
       assert persisted_eligible_pending_run.owner_node_id == claimant.id
 
-      persisted_missing_snapshot_run =
-        Repo.get!(Run, missing_snapshot_pending_run.id)
+      persisted_missing_snapshot_run = Repo.get!(Run, missing_snapshot_pending_run.id)
 
       assert persisted_missing_snapshot_run.status == :pending
       assert persisted_missing_snapshot_run.owner_node_id == nil
