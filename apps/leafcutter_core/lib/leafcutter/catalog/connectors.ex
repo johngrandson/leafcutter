@@ -206,7 +206,7 @@ defmodule Leafcutter.Catalog.Connectors do
         )
       end
 
-      connector_version = insert_or_rollback(version_changeset)
+      connector_version = insert_connector_version_or_rollback(version_changeset)
 
       operations =
         Enum.map(operation_attrs, fn attrs ->
@@ -216,7 +216,7 @@ defmodule Leafcutter.Catalog.Connectors do
             ref: attribute(attrs, :ref),
             role: attribute(attrs, :role)
           })
-          |> insert_or_rollback()
+          |> insert_operation_or_rollback()
         end)
 
       %{
@@ -227,12 +227,24 @@ defmodule Leafcutter.Catalog.Connectors do
     end)
   end
 
-  @spec insert_or_rollback(Changeset.t()) ::
-          ConnectorVersion.t() | Operation.t() | no_return()
-  defp insert_or_rollback(changeset) do
+  @spec insert_connector_version_or_rollback(Changeset.t()) ::
+          ConnectorVersion.t() | no_return()
+  defp insert_connector_version_or_rollback(changeset) do
     case Repo.insert(changeset) do
-      {:ok, struct} ->
-        struct
+      {:ok, %ConnectorVersion{} = connector_version} ->
+        connector_version
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
+  @spec insert_operation_or_rollback(Changeset.t()) ::
+          Operation.t() | no_return()
+  defp insert_operation_or_rollback(changeset) do
+    case Repo.insert(changeset) do
+      {:ok, %Operation{} = operation} ->
+        operation
 
       {:error, changeset} ->
         Repo.rollback(changeset)
