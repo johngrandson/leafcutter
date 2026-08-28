@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial e RunSnapshot v1 já foram concluídos. A sequência atual começa na ratificação das authorities upstream mínimas e do resolver de `EnvironmentDeployment` para uma definition v1.
+A foundation inicial e RunSnapshot v1 já foram concluídos. As authorities upstream mínimas e o resolver de `EnvironmentDeployment` foram ratificados no ADR-0018. A sequência atual começa pela materialização do Catalog mínimo.
 
 ## Documentos
 
