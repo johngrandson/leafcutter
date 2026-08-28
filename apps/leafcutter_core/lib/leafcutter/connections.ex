@@ -28,6 +28,13 @@ defmodule Leafcutter.Connections do
   @type binding_error ::
           :secret_version_not_found | :secret_version_scope_mismatch
 
+  @typedoc "Error returned while locking active Connections for a caller-owned workflow."
+  @type lock_active_error ::
+          :transaction_required
+          | {:connection_not_found, Connection.id()}
+          | {:connection_scope_mismatch, Connection.id()}
+          | {:connection_disabled, Connection.id()}
+
   @typedoc "Error returned while creating a Connection."
   @type create_error ::
           scope_error()
@@ -172,6 +179,57 @@ defmodule Leafcutter.Connections do
     case Repo.get(Connection, id) do
       %Connection{} = connection -> {:ok, connection}
       nil -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Locks and validates active Connections in deterministic identifier order.
+
+  ## Parameters
+
+  * `ids` - The Connection identifiers required by the caller-owned workflow
+  * `organization_id` - The Organization every Connection must belong to
+  * `environment_id` - The Environment every Connection must belong to
+
+  ## Returns
+
+  * `{:ok, connections}` with unique Connections ordered by identifier
+  * `{:error, :transaction_required}` when no caller-owned transaction is active
+  * `{:error, {:connection_not_found, id}}` when a requested Connection is absent
+  * `{:error, {:connection_scope_mismatch, id}}` when a Connection has another scope
+  * `{:error, {:connection_disabled, id}}` when a Connection is disabled
+
+  ## Examples
+
+      iex> Leafcutter.Connections.lock_active(
+      ...>   [],
+      ...>   "00000000-0000-0000-0000-000000000000",
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :transaction_required}
+
+  ## Notes
+
+  * The caller must already own a Repo transaction.
+  * The caller is responsible for locking Organization and Environment first.
+  * Duplicate identifiers are locked once and do not duplicate the result.
+  * Shared row locks block Connection update and disable until commit.
+  * Ordering by identifier prevents workflows from acquiring the same set in different orders.
+  """
+  @spec lock_active(
+          [Connection.id()],
+          Ecto.UUID.t(),
+          Ecto.UUID.t()
+        ) ::
+          {:ok, [Connection.t()]} | {:error, lock_active_error()}
+  def lock_active(ids, organization_id, environment_id) when is_list(ids) do
+    if Repo.in_transaction?() do
+      ids
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> lock_and_validate_connections(organization_id, environment_id)
+    else
+      {:error, :transaction_required}
     end
   end
 
@@ -359,6 +417,71 @@ defmodule Leafcutter.Connections do
       {:ok, _connector} -> :ok
       {:error, :not_found} -> {:error, :connector_not_found}
     end
+  end
+
+  @spec lock_and_validate_connections(
+          [Connection.id()],
+          Ecto.UUID.t(),
+          Ecto.UUID.t()
+        ) :: {:ok, [Connection.t()]} | {:error, lock_active_error()}
+  defp lock_and_validate_connections(ids, organization_id, environment_id) do
+    connections =
+      Connection
+      |> where([connection], connection.id in ^ids)
+      |> order_by([connection], asc: connection.id)
+      |> lock("FOR SHARE")
+      |> Repo.all()
+
+    with :ok <- validate_connections_present(ids, connections),
+         :ok <-
+           validate_connections_active_scope(
+             connections,
+             organization_id,
+             environment_id
+           ) do
+      {:ok, connections}
+    end
+  end
+
+  @spec validate_connections_present(
+          [Connection.id()],
+          [Connection.t()]
+        ) :: :ok | {:error, {:connection_not_found, Connection.id()}}
+  defp validate_connections_present(ids, connections) do
+    persisted_ids = MapSet.new(connections, & &1.id)
+
+    case Enum.find(ids, &(not MapSet.member?(persisted_ids, &1))) do
+      nil -> :ok
+      id -> {:error, {:connection_not_found, id}}
+    end
+  end
+
+  @spec validate_connections_active_scope(
+          [Connection.t()],
+          Ecto.UUID.t(),
+          Ecto.UUID.t()
+        ) ::
+          :ok
+          | {:error, {:connection_scope_mismatch, Connection.id()}}
+          | {:error, {:connection_disabled, Connection.id()}}
+  defp validate_connections_active_scope(
+         connections,
+         organization_id,
+         environment_id
+       ) do
+    Enum.reduce_while(connections, :ok, fn connection, :ok ->
+      cond do
+        connection.organization_id != organization_id or
+            connection.environment_id != environment_id ->
+          {:halt, {:error, {:connection_scope_mismatch, connection.id}}}
+
+        connection.disabled_at != nil ->
+          {:halt, {:error, {:connection_disabled, connection.id}}}
+
+        true ->
+          {:cont, :ok}
+      end
+    end)
   end
 
   @spec fetch_connection(Connection.id()) ::
