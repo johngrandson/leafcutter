@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1 está materializado. As authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation já materializam o primeiro sub-slice do Catalog; Contract e Package completam a próxima fronteira.
+RunSnapshot v1 está materializado. As authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 foram ratificados no ADR-0018. Connector, ConnectorVersion, Operation, Contract e ContractVersion já materializam os dois primeiros sub-slices do Catalog; Package e seus endpoints completam a próxima fronteira.
 
 ## Domínio
 
