@@ -36,9 +36,46 @@ Regras aprovadas:
 - a projeção é um contract interno do Catalog e não ratifica field names do Package Manifest v1;
 - a futura ingestão de packages será responsável por materializar essa projeção a partir de um manifest validado.
 
+## Modelo mínimo do Catalog
+
+O primeiro slice materializará:
+
+```text
+Catalog
+├── Connector
+│   └── ConnectorVersion
+│       └── Operation
+├── Contract
+│   └── ContractVersion
+└── Package
+    └── PackageVersion
+        └── PackageVersionEndpoint
+```
+
+Regras aprovadas:
+
+- `Connector`, `Contract` e `Package` são identidades globais estáveis e não possuem tenancy;
+- cada versão possui UUID e uma string `version` opaca, única dentro da identidade pai;
+- Semantic Versioning não é validado neste slice;
+- versões nascem publicadas e seu conteúdo é imutável;
+- não existem draft, update, delete, deprecation ou availability lifecycle inicialmente;
+- `ConnectorVersion` e suas Operations são publicadas atomicamente;
+- cada Operation possui `ref` e `role: source | destination`;
+- `ContractVersion` materializa somente a authority de identidade necessária para a resolução; JSON Schema e JSV permanecem para o estágio posterior;
+- `PackageVersion` e seus endpoints são publicados atomicamente;
+- o PostgreSQL rejeita alterações no conteúdo versionado;
+- metadata mutável de disponibilidade permanece para um slice futuro.
+
+APIs públicas serão organizadas por capacidades reais:
+
+```text
+Leafcutter.Catalog.Connectors
+Leafcutter.Catalog.Contracts
+Leafcutter.Catalog.Packages
+```
+
 ## Decisões ainda pendentes neste ADR
 
-- lifecycle e APIs mínimas das versões do Catalog;
 - schemas e invariantes mínimos de Connection, Secret e SecretVersion;
 - schemas e lifecycle mínimos de Integration e EnvironmentDeployment;
 - representação dos bindings entre endpoints e Connections;
