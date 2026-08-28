@@ -69,10 +69,38 @@ defmodule Leafcutter.Executions.RunsConcurrencyTest do
           "claim-second-#{suffix}@example"
         )
 
-      run = Repo.insert!(%Run{})
+      {:ok, run} = Runs.create(definition_fixture())
 
       {run, first_runtime_node, second_runtime_node}
     end)
+  end
+
+  @spec definition_fixture() :: map()
+  defp definition_fixture do
+    %{
+      "package_version_id" => Ecto.UUID.generate(),
+      "source" => %{
+        "ref" => "source",
+        "contract_version_id" => Ecto.UUID.generate(),
+        "connection" => %{
+          "id" => Ecto.UUID.generate(),
+          "config" => %{},
+          "secret_version_id" => nil
+        }
+      },
+      "destinations" => [
+        %{
+          "ref" => "destination",
+          "contract_version_id" => Ecto.UUID.generate(),
+          "connection" => %{
+            "id" => Ecto.UUID.generate(),
+            "config" => %{},
+            "secret_version_id" => nil
+          }
+        }
+      ],
+      "effective_config" => %{}
+    }
   end
 
   @spec pause_next_run_lock() :: :ok
