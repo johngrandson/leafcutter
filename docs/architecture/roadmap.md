@@ -35,6 +35,8 @@
 
 ## Próximo estágio: authorities upstream e resolução
 
+O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrerá em sub-slices ordenados.
+
 - Catalog mínimo;
 - Connections e SecretVersion bindings mínimos;
 - Integration + EnvironmentDeployment persistidos;
