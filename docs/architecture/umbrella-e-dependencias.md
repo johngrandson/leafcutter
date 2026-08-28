@@ -29,6 +29,8 @@ Hospeda hoje:
 
 ```text
 Organizations
+Catalog
+Connections
 Leafcutter.Repo
 Leafcutter.PubSub
 Oban
@@ -37,8 +39,6 @@ Oban
 Hospedará futuramente:
 
 ```text
-Catalog
-Connections
 Integrations
 Notifications
 Audit
@@ -163,3 +163,4 @@ Package pode depender de contracts públicos de `leafcutter_connectors`. Não de
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;
 - configuração concreta de Oban e HTTP pools ainda aberta.
+

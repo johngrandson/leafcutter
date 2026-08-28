@@ -31,8 +31,9 @@ Broadway data plane
 OpenAPI product surface
 ```
 
-Esses elementos continuam na arquitetura futura e não foram descartados.
+Esses elementos não pertenciam ao milestone. RunSnapshot, Catalog e Connections foram materializados em slices posteriores; Integrations, connectors executáveis, Broadway e OpenAPI de produto permanecem futuros.
 
 ## Resultado
 
 O projeto encerrou este milestone com um control plane real e testado. O milestone posterior, também concluído, transformou Run de identity/ownership record em execução definida por snapshot imutável.
+

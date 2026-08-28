@@ -101,6 +101,20 @@ Package
 
 `Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
+### Connections mínimo
+
+```text
+Environment
+├── Connection
+│   └── optional SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+```
+
+`Leafcutter.Connections` cria, lê, atualiza config/binding e desabilita Connections. `Leafcutter.Connections.Secrets` cria Secret e SecretVersion identities sem armazenar material secreto. Connection referencia Connector estável; config é um JSON object não sensível; o binding é opcional, exato e precisa pertencer ao mesmo Organization/Environment.
+
+Writes validam Organization e Environment ativos por uma API pública do owner que segura locks compartilhados na ordem Organization → Environment. FKs compostas impedem scope incompatível, um trigger protege o binding de SecretVersion cross-scope e PostgreSQL rejeita update/delete de SecretVersion. Raw secret, ciphertext, provider locator, credential, OAuth e rotation permanecem fora do slice.
+
 ### Runtime e Executions foundation
 
 Persistência atual:
@@ -193,19 +207,18 @@ ContractVersion JSON Schema/JSV
 
 O slice materializado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. Todo o conteúdo versionado do Catalog mínimo é imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
-### Connections
+### Connections futuro
 
-O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
+O modelo mínimo de Connection, Secret e SecretVersion está materializado. Permanecem ratificados ou abertos para slices posteriores:
 
 ```text
-Connection
-Secret
-SecretVersion
 OAuth durable state
-rotation metadata
+secret provider/encryption
+rotation and revocation metadata
+retention lifecycle
 ```
 
-Connection será environment-scoped, referenciará Connector estável e manterá config não sensível e um binding opcional para SecretVersion imutável. Raw secrets não entram neste slice nem em PackageVersion, RunSnapshot, logs, AuditEvent ou respostas de API.
+Raw secrets continuam fora de PackageVersion, RunSnapshot, logs, AuditEvent e respostas de API. Provider, encryption, OAuth, rotation, revocation e retention exigem decisões próprias antes de implementação.
 
 ### Integrations
 
@@ -323,12 +336,12 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O Catalog mínimo está materializado. A próxima fronteira segue a ordem ratificada:
+Catalog e Connections mínimos estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
 ↓
-Connections + SecretVersion bindings
+Connections + SecretVersion bindings (materializado)
 ↓
 Integrations + EnvironmentDeployment
 ↓
@@ -338,3 +351,4 @@ Executions.Runs.create/1
 ```
 
 O ADR-0018 e a specification correspondente controlam esses sub-slices. RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+

@@ -6,7 +6,7 @@
 
 **Upstream authority materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. O Catalog mínimo ratificado está materializado nesta branch: Connector/ConnectorVersion/Operation, Contract/ContractVersion e Package/PackageVersion/PackageVersionEndpoint.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog e Connections mínimos estão materializados nesta branch, incluindo topologia de PackageVersion, config não sensível e bindings exatos de SecretVersion.
 
 ## Estado materializado
 
@@ -88,6 +88,27 @@ Catalog.Packages.get_version/1
 
 ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
+### Connections
+
+Materializado:
+
+```text
+Environment
+├── Connection
+│   └── optional exact SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+
+Connections.create/1
+Connections.get/1
+Connections.update/2
+Connections.disable/1
+Connections.Secrets.create/1
+Connections.Secrets.create_version/1
+```
+
+Connection referencia Connector estável, guarda config JSON object não sensível e pode selecionar uma SecretVersion exata do mesmo Organization/Environment. Writes validam parents ativos sob locks compartilhados na ordem Organization → Environment; updates e disable lockam a Connection depois. FKs compostas, constraint de JSON object e trigger de binding protegem integridade no PostgreSQL. SecretVersion é única dentro de Secret e rejeita update/delete. Nenhum raw secret, ciphertext, provider locator ou credential é persistido.
+
 ### Executions e runtime
 
 Materializado:
@@ -138,7 +159,6 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Connections
 Integrations
 Notifications
 Audit
@@ -182,26 +202,27 @@ Upstream authorities and deployment resolution contract ratification
 Catalog Connector authority materialization
 Catalog Contract authority materialization
 Catalog Package topology materialization
+Connections + SecretVersion binding materialization
 ```
 
 ## Em andamento
 
-Materializar Connections e SecretVersion bindings mínimos ratificados no ADR-0018.
+Materializar Integration e EnvironmentDeployment mínimos ratificados no ADR-0018.
 
 ## Próxima tarefa concreta
 
 Materializar o próximo sub-slice:
 
 ```text
-Connections
-├── Connection
-└── Secret
-    └── SecretVersion
+Integrations
+├── Integration
+└── EnvironmentDeployment
+    └── EnvironmentDeploymentBinding
 ```
 
-O sub-slice inclui scope explícito de Organization/Environment, config não sensível, binding opcional e exato para SecretVersion, compatibilidade com Connector e constraints de integridade no PostgreSQL.
+O sub-slice inclui Integration organization-scoped ligada a Package estável, um EnvironmentDeployment completo por Integration/Environment, PackageVersion, promotable/local config e o conjunto completo de bindings por endpoint.
 
-Não implementar ainda raw secrets, provider locators, OAuth, rotation/revocation, Integrations, EnvironmentDeployment ou o resolver.
+Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation ou o resolver.
 
 ## Principais decisões abertas
 
@@ -230,3 +251,4 @@ Não implementar ainda raw secrets, provider locators, OAuth, rotation/revocatio
 - `docs/specifications/run-ownership.md`
 - `docs/decisions/ADR-0011-run-ownership-fencing.md`
 - `docs/decisions/ADR-0016-documentacao-presente-e-futuro.md`
+

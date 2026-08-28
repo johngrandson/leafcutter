@@ -37,7 +37,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 |---|---|---|---|
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
 | Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e endpoints | availability, manifest e build |
-| Connections | RATIFICADO — NÃO MATERIALIZADO | — | Connection, Secret, SecretVersion, OAuth state |
+| Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
 | Integrations | RATIFICADO — NÃO MATERIALIZADO | — | Integration, EnvironmentDeployment, promotion, homologation, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
 | Notifications | RATIFICADO — NÃO MATERIALIZADO | Oban compartilhado como infraestrutura | rules, recipients e durable deliveries |
@@ -85,17 +85,18 @@ Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. Con
 
 ## Connections
 
-O modelo mínimo e suas APIs foram ratificados no ADR-0018, ainda sem implementação. Owns:
+O modelo mínimo e suas APIs ratificados no ADR-0018 estão materializados. Owns:
 
 ```text
 Connection
 Secret
 SecretVersion
-OAuth durable state
-rotation metadata
+mutable config and exact binding lifecycle
 ```
 
-Connection referencia Connector identity, não ConnectorVersion. Connection é environment-scoped, mantém config não sensível e pode apontar explicitamente para uma SecretVersion imutável. Raw secret storage continua fora do slice.
+Connection referencia Connector identity, não ConnectorVersion. Connection e Secret possuem scope explícito de Organization/Environment; SecretVersion herda esse scope de Secret. Config é não sensível e o binding opcional seleciona uma versão exata. A boundary pública valida parents ativos com locks compartilhados, enquanto o PostgreSQL protege scope, JSON object, binding compatível e imutabilidade de SecretVersion.
+
+Continuam futuros OAuth durable state, providers/encryption, rotation, revocation e retention. Raw secret storage permanece fora do slice.
 
 ## Integrations
 
@@ -172,3 +173,4 @@ leafcutter_api
 ```
 
 Não criar `ApplicationService`, `CommandBus` ou `WorkflowEngine` genéricos por antecipação.
+

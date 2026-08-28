@@ -1,7 +1,7 @@
 # EnvironmentDeployment → RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG MÍNIMO
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG + CONNECTIONS MÍNIMOS
 - ADR: `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 
 ## Objetivo
@@ -171,6 +171,18 @@ Leafcutter.Connections.disable/1
 Leafcutter.Connections.Secrets.create/1
 Leafcutter.Connections.Secrets.create_version/1
 ```
+
+### Estado materializado
+
+O modelo mínimo está materializado em `leafcutter_core`:
+
+- Connection referencia Connector estável e aceita somente config JSON object não sensível;
+- Secret e Connection persistem Organization/Environment explícitos e compatíveis;
+- SecretVersion contém somente identidade/version, é única dentro de Secret e imutável;
+- binding de Connection é opcional, exato e protegido contra cross-scope;
+- writes seguram locks compartilhados de Organization e Environment antes de Connection;
+- update substitui somente config e/ou SecretVersion; disable preserva um timestamp idempotente;
+- raw secret, ciphertext, provider locator, credential, OAuth, rotation e revocation não foram materializados.
 
 ## Integrations mínimo
 
@@ -411,3 +423,4 @@ Falha confirmada causa rollback integral.
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway;
 - HTTP/API translation.
+

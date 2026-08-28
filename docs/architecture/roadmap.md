@@ -45,11 +45,20 @@
 - endpoints ordenados pinando Operation e ContractVersion;
 - cardinalidade, compatibilidade e imutabilidade protegidas no PostgreSQL.
 
+### Connections mínimo
+
+- Connection ligada a Organization, Environment e Connector estável;
+- config não sensível validada como JSON object;
+- Secret e SecretVersion identities sem material secreto;
+- binding opcional e exato para SecretVersion do mesmo scope;
+- update de config/binding e disable idempotente;
+- locks de scope e constraints de integridade no PostgreSQL;
+- SecretVersion imutável e única dentro de Secret.
+
 ## Próximo estágio: authorities upstream e resolução
 
-O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrerá em sub-slices ordenados.
+O contract deste estágio foi ratificado no ADR-0018. Catalog e Connections mínimos já foram materializados; os sub-slices restantes seguem a ordem ratificada.
 
-- Connections e SecretVersion bindings mínimos;
 - Integration + EnvironmentDeployment persistidos;
 - resolver semântico de EnvironmentDeployment para definition v1;
 - criação de Run a partir da definition resolvida.
@@ -102,3 +111,4 @@ O contract deste estágio foi ratificado no ADR-0018. A materialização ocorrer
 - external queue somente com gargalo comprovado;
 - multi-source orchestration;
 - SDKs após estabilização.
+

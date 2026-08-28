@@ -38,6 +38,16 @@
 - topologia 1 Source → 1..N Destinations publicada atomicamente;
 - ordem, references, role compatibility e imutabilidade protegidas no banco.
 
+### Connections mínimo
+
+- Connection environment-scoped ligada a Connector estável;
+- config não sensível como JSON object;
+- binding opcional e exato de SecretVersion;
+- Secret e SecretVersion scoped por Organization/Environment;
+- update de config/binding e disable idempotente;
+- locks contra disable concorrente e integridade relacional no PostgreSQL;
+- nenhum raw secret, ciphertext, provider locator ou credential persistido.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
@@ -45,7 +55,7 @@
 - Contracts JSON Schema;
 - Connector/Operation/Transport;
 - Integration Packages;
-- Connections e Secrets;
+- lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - Integrations e EnvironmentDeployments.
 
 ### Data plane
@@ -83,3 +93,4 @@
 - external queue;
 - multi-source joins;
 - SDKs após API estabilizada.
+

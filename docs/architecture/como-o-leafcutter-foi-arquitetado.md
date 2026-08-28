@@ -200,7 +200,7 @@ Catalog já controla identidades e versões de Connectors, Contracts e Packages,
 
 ## Connections
 
-Connections controlará acesso configurado a sistemas externos, incluindo SecretVersion e OAuth durable state. Raw secrets não entrarão no snapshot.
+Connections já controla acesso configurado mínimo a sistemas externos por Connection environment-scoped, config não sensível e binding exato para SecretVersion imutável. Organization/Environment ativos são protegidos por locks e integridade relacional. Raw secrets não são persistidos. OAuth durable state, providers e rotation continuam futuros.
 
 ## Integrations
 
@@ -299,21 +299,23 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. O Catalog mínimo está materializado com Connector, Contract e Package authorities. Connections, Integrations e o resolver transacional permanecem nos próximos sub-slices. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 está materializado. O modelo upstream mínimo, o resolver transacional e o merge de config foram ratificados no ADR-0018. Catalog e Connections mínimos estão materializados; Integrations e o resolver transacional permanecem nos próximos sub-slices. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
-O Leafcutter já possui uma base real de tenancy, autorização e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages, Connections e Records já existem.
+O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages, Integrations e Records já existem.
 
 ```text
 present
-→ RBAC + Catalog mínimo + ownership + supervision + recovery + RunSnapshot v1
+→ RBAC + Catalog mínimo + Connections mínimo + ownership + supervision + recovery + RunSnapshot v1
 
 next
-→ Connections + Integrations + EnvironmentDeployment resolver
+→ Integrations + EnvironmentDeployment
+→ EnvironmentDeployment resolver
 
 future
 → durable Broadway integration data plane
 ```
 
 Essa separação mantém a visão ambiciosa sem sacrificar honestidade arquitetural nem simplicidade incremental.
+

@@ -45,6 +45,17 @@ Package
 
 ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis.
 
+### Connections mínimo
+
+```text
+Environment
+├── Connections
+└── Secrets
+    └── immutable SecretVersions
+```
+
+Connection referencia Connector estável, mantém config não sensível e pode selecionar uma SecretVersion exata. APIs públicas protegem scope ativo com locks compartilhados; constraints compostas e triggers preservam Organization/Environment, config JSON object, binding compatível e imutabilidade de SecretVersion.
+
 ### Runtime
 
 ```text
@@ -65,7 +76,7 @@ PostgreSQL decide ownership e recovery. Registry e processos OTP representam som
 ### Applications
 
 ```text
-core       → Organizations + Catalog parcial + Repo + PubSub + Oban
+core       → Organizations + Catalog mínimo + Connections mínimo + Repo + PubSub + Oban
 connectors → boundary executável ainda vazia
 runtime    → Executions foundation + OTP runtime
 api        → Phoenix API-only foundation
@@ -140,3 +151,4 @@ Uma Run tree permanece em um único node. RuntimeNodes expiram por heartbeat. Ou
 ## API
 
 A application Phoenix existe, mas autenticação, OpenAPI completo e endpoints de produto ainda são futuros ratificados. Toda capacidade deverá ser operável sem frontend.
+

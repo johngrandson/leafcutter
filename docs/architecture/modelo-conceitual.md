@@ -7,6 +7,9 @@
 ```text
 Organization
 └── Environment
+    ├── Connection
+    └── Secret
+        └── SecretVersion
 
 User
 └── Membership
@@ -52,7 +55,7 @@ Attempt
 
 `Organization` é a fronteira de tenancy. `Environment` é scope operacional configurável. O lifecycle básico e o RBAC desses conceitos estão implementados.
 
-No futuro, Connections, EnvironmentDeployments, Runs e IdentityMappings carregarão referências explícitas de Organization/Environment conforme seu ownership.
+Connections já carregam referências explícitas de Organization/Environment. EnvironmentDeployments, Runs e IdentityMappings receberão scope explícito conforme seu ownership e os slices ratificados.
 
 ## Catalog
 
@@ -69,6 +72,22 @@ PackageVersion
 ```
 
 O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion materializam identities publicadas e imutáveis. Package, PackageVersion e seus endpoints relacionais completam o Catalog mínimo com cardinalidade, referências, ordem e imutabilidade protegidas no banco.
+
+## Connections
+
+O modelo mínimo ratificado está materializado:
+
+```text
+Environment
+├── Connection
+│   ├── stable Connector reference
+│   ├── non-sensitive config
+│   └── optional exact SecretVersion binding
+└── Secret
+    └── immutable SecretVersion
+```
+
+Connection pode alterar somente config e binding para resoluções futuras; disable é idempotente. Organization e Environment ativos são validados sob locks compartilhados. SecretVersion não contém material secreto e permanece imutável. Provider, encryption, OAuth, rotation, revocation e retention continuam posteriores.
 
 ## Integration e EnvironmentDeployment
 
@@ -149,3 +168,4 @@ AuditEvent
 PubSub message
 → propagação efêmera, nunca authority
 ```
+
