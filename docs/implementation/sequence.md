@@ -18,21 +18,20 @@
 13. automatic RunRecovery
 14. documentation present/future alignment
 15. RunSnapshot v1 contract ratification
+16. RunSnapshot v1 materialization
 ```
 
 ## Próximo slice
 
 ```text
-RunSnapshot v1 persistence + immutability
-+
-typed definition validation
-+
-public Run creation and snapshot fetch
-+
-pending eligibility in claim and recovery
+Catalog authorities mínimas
++ Connections e SecretVersion bindings mínimos
++ Integration e EnvironmentDeployment persistidos
+→ resolver definition v1 em leafcutter_runtime
+→ Executions.Runs.create/1
 ```
 
-O contrato deste slice está em `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`.
+Ownership, schemas e APIs mínimas desses contexts precisam ser ratificados antes da implementação. O contrato de destino já materializado está em `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`.
 
 ## Sequência ratificada posterior
 
@@ -41,7 +40,6 @@ Catalog/Contracts/Packages foundations
 → Connections/Secrets
 → Integrations/EnvironmentDeployment
 → EnvironmentDeployment resolver
-→ semantically resolved executable RunSnapshot
 → Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway

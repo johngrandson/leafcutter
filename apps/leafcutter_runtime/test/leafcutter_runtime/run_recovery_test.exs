@@ -1,6 +1,8 @@
 defmodule LeafcutterRuntime.RunRecoveryTest do
   use ExUnit.Case, async: false
 
+  import Leafcutter.Executions.RunFixtures
+
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
   alias Leafcutter.Executions.{Nodes, Run, RuntimeNode}
@@ -12,6 +14,8 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     RunRegistry,
     Runs
   }
+
+  @repo_query_event [:leafcutter, :repo, :query]
 
   @typep run_attrs :: %{
            optional(:status) => Run.status()
@@ -31,33 +35,45 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     {:ok, runtime_node: runtime_node}
   end
 
-  test "recovers unowned running Runs without starting pending Runs", %{
+  test "starts running and eligible pending Runs while skipping ineligible pending Runs", %{
     runtime_node: runtime_node
   } do
     running_run = insert_run(%{status: :running})
-    pending_run = insert_run()
+    eligible_pending_run = pending_run_fixture()
+    missing_snapshot_pending_run = insert_run()
 
     register_cleanup(running_run.id)
-    register_cleanup(pending_run.id)
+    register_cleanup(eligible_pending_run.id)
+    register_cleanup(missing_snapshot_pending_run.id)
 
     recovery_pid = start_recovery(runtime_node.id)
     send(recovery_pid, :scan)
 
-    local_run = wait_for_local_run(running_run.id, 100)
+    local_running_run = wait_for_local_run(running_run.id, 100)
+    local_pending_run = wait_for_local_run(eligible_pending_run.id, 100)
 
-    assert local_run.ownership_token.runtime_node_id == runtime_node.id
-    assert local_run.ownership_token.generation == 1
-    assert Runs.lookup(pending_run.id) == :error
+    assert local_running_run.ownership_token.runtime_node_id ==
+             runtime_node.id
 
-    persisted_pending_run = Repo.get!(Run, pending_run.id)
-    assert persisted_pending_run.status == :pending
-    assert persisted_pending_run.owner_node_id == nil
+    assert local_running_run.ownership_token.generation == 1
+    assert local_pending_run.ownership_token.runtime_node_id == runtime_node.id
+    assert local_pending_run.ownership_token.generation == 1
+    assert Runs.lookup(missing_snapshot_pending_run.id) == :error
+
+    persisted_eligible_run = Repo.get!(Run, eligible_pending_run.id)
+    assert persisted_eligible_run.status == :running
+    assert persisted_eligible_run.owner_node_id == runtime_node.id
+
+    persisted_missing_snapshot_run = Repo.get!(Run, missing_snapshot_pending_run.id)
+
+    assert persisted_missing_snapshot_run.status == :pending
+    assert persisted_missing_snapshot_run.owner_node_id == nil
   end
 
   test "reconstructs an already-owned Run without incrementing generation", %{
     runtime_node: runtime_node
   } do
-    run = insert_run()
+    run = pending_run_fixture()
     register_cleanup(run.id)
 
     assert {:ok, ownership_token} =
@@ -74,13 +90,65 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
     assert persisted_run.owner_node_id == runtime_node.id
   end
 
+  test "preserves a Run started after the durable ownership snapshot", %{
+    runtime_node: runtime_node
+  } do
+    run = pending_run_fixture()
+    register_cleanup(run.id)
+    handler_id = {__MODULE__, make_ref()}
+    test_process = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        @repo_query_event,
+        fn _event, _measurements, metadata, test_process ->
+          if String.contains?(metadata.query, ~s(FROM "runs" AS r0)) and
+               String.contains?(metadata.query, ~s(r0."owner_node_id" =)) do
+            send(test_process, {:owned_tokens_snapshot_read, self()})
+
+            receive do
+              :continue_recovery_scan -> :ok
+            after
+              1_000 -> raise "timed out while holding the ownership snapshot"
+            end
+          end
+        end,
+        test_process
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    recovery_pid = start_recovery(runtime_node.id)
+    send(recovery_pid, :scan)
+
+    assert_receive {:owned_tokens_snapshot_read, ^recovery_pid}, 500
+
+    assert {:ok, ownership_token} =
+             DurableRuns.claim(run.id, runtime_node.id)
+
+    assert {:ok, run_supervisor_pid} =
+             Runs.start_claimed(ownership_token)
+
+    monitor_ref = Process.monitor(run_supervisor_pid)
+    send(recovery_pid, :continue_recovery_scan)
+
+    refute_receive {:DOWN, ^monitor_ref, :process, ^run_supervisor_pid, _reason}, 500
+
+    assert {:ok,
+            %{
+              run_supervisor_pid: ^run_supervisor_pid,
+              ownership_token: ^ownership_token
+            }} = Runs.lookup(run.id)
+  end
+
   test "replaces a stale local generation with the current durable token", %{
     runtime_node: runtime_node
   } do
     previous_runtime_node =
       create_active_runtime_node("recovery-previous-runtime")
 
-    run = insert_run()
+    run = pending_run_fixture()
     register_cleanup(run.id)
 
     assert {:ok, previous_token} =
@@ -126,21 +194,23 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
         }
       )
 
-    send(recovery_pid, :scan)
+    ExUnit.CaptureLog.capture_log(fn ->
+      send(recovery_pid, :scan)
 
-    _healthy_local_run = wait_for_local_run(healthy_run.id, 100)
-    wait_for_released_run(blocked_run.id, 100)
+      _healthy_local_run = wait_for_local_run(healthy_run.id, 100)
+      wait_for_released_run(blocked_run.id, 100)
 
-    first_failed_attempt = Repo.get!(Run, blocked_run.id)
-    assert first_failed_attempt.owner_node_id == nil
-    assert first_failed_attempt.generation == 1
+      first_failed_attempt = Repo.get!(Run, blocked_run.id)
+      assert first_failed_attempt.owner_node_id == nil
+      assert first_failed_attempt.generation == 1
 
-    send(recovery_pid, :scan)
-    Process.sleep(100)
+      send(recovery_pid, :scan)
+      _state_after_second_scan = :sys.get_state(recovery_pid)
 
-    second_observation = Repo.get!(Run, blocked_run.id)
-    assert second_observation.owner_node_id == nil
-    assert second_observation.generation == 1
+      second_observation = Repo.get!(Run, blocked_run.id)
+      assert second_observation.owner_node_id == nil
+      assert second_observation.generation == 1
+    end)
   end
 
   test "graceful recovery shutdown releases local ownership", %{
@@ -168,6 +238,22 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
 
   test "a failed scan is retried without crashing the recovery process" do
     missing_runtime_node_id = Ecto.UUID.generate()
+    handler_id = {__MODULE__, make_ref()}
+    test_process = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        @repo_query_event,
+        fn _event, _measurements, metadata, test_process ->
+          if String.contains?(metadata.query, ~s(FROM "runtime_nodes" AS r0)) do
+            send(test_process, {:runtime_node_lookup, self()})
+          end
+        end,
+        test_process
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
 
     recovery_pid =
       start_recovery(
@@ -178,10 +264,30 @@ defmodule LeafcutterRuntime.RunRecoveryTest do
         }
       )
 
-    send(recovery_pid, :scan)
-    Process.sleep(75)
+    ExUnit.CaptureLog.capture_log(fn ->
+      send(recovery_pid, :scan)
 
-    assert Process.alive?(recovery_pid)
+      assert_receive {:runtime_node_lookup, ^recovery_pid}, 500
+      assert_receive {:runtime_node_lookup, ^recovery_pid}, 500
+      assert Process.alive?(recovery_pid)
+    end)
+  end
+
+  test "does not convert programmer errors into retryable scan failures", %{
+    runtime_node: runtime_node
+  } do
+    recovery_pid = start_recovery(runtime_node.id)
+    monitor_ref = Process.monitor(recovery_pid)
+
+    :sys.replace_state(recovery_pid, fn state ->
+      %{state | batch_size: :invalid}
+    end)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      send(recovery_pid, :scan)
+
+      assert_receive {:DOWN, ^monitor_ref, :process, ^recovery_pid, _reason}, 500
+    end)
   end
 
   @spec start_recovery(RuntimeNode.id(), recovery_overrides()) :: pid()

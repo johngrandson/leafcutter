@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**RunSnapshot v1 materialization**
+**RunSnapshot v1 materialization closure**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. O contrato de RunSnapshot v1 foi ratificado, mas ainda não existe no código ou no banco.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 também está materializado na feature branch, com fechamento condicionado à suíte integral e ao merge.
 
 ## Estado materializado
 
@@ -65,14 +65,18 @@ Materializado:
 ```text
 RuntimeNode
 Run
+RunSnapshot
+RunSnapshot.DefinitionV1
 Nodes.heartbeat/2
+Runs.create/1
+Runs.fetch_snapshot/1
 Runs.claim/2
 Runs.release/1
 Runs.list_owned_tokens/1
 Runs.claim_recoverable/3
 ```
 
-Run possui status mínimo, owner, generation e ownership timestamp. PostgreSQL é authority de liveness, ownership e fencing.
+Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
 
 Supervision tree:
 
@@ -91,9 +95,9 @@ RunSupervisor
 └── RunCoordinator
 ```
 
-`RunRecovery` reconstrói árvores já owned e reclama Runs `running` sem owner ou com owner expirado usando polling e `FOR UPDATE SKIP LOCKED`.
+`RunRecovery` reconstrói árvores já owned, reclama Runs `running` sem owner ou com owner expirado e inicia Runs `pending` com snapshot suportado usando polling e `FOR UPDATE SKIP LOCKED`.
 
-Runs `pending` ainda não são iniciadas automaticamente. RunSnapshot, criação pública de Run e eligibility por formato ainda não estão materializados.
+Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis. Runs legadas `running` preservam recovery independentemente de snapshot.
 
 ### API e connectors
 
@@ -109,7 +113,6 @@ Connections
 Integrations
 Notifications
 Audit
-RunSnapshot v1
 Record
 Delivery
 Attempt
@@ -123,7 +126,7 @@ OpenAPI completo
 Homologation/Promotion/Rollback
 ```
 
-Para RunSnapshot v1, o contrato físico, o formato da definition, a criação atômica e a eligibility de `pending` estão ratificados em ADR-0017 e na specification correspondente.
+RunSnapshot v1 materializa o contrato físico, o formato da definition, a criação atômica, a leitura explícita e a eligibility de `pending` ratificados em ADR-0017 e na specification correspondente.
 
 ## Completed milestones
 
@@ -145,40 +148,30 @@ RunSupervisor + RunCoordinator
 Automatic RunRecovery bootstrap
 Documentation present/future alignment
 RunSnapshot v1 contract ratification
+RunSnapshot v1 materialization
 ```
 
 ## Em andamento
 
-Materializar o contrato ratificado de RunSnapshot v1 sem antecipar Catalog, Connections ou Integrations.
+Revisão final e quality gate concluídos; preparar o merge da feature branch de RunSnapshot v1.
 
 ## Próxima tarefa concreta
 
-Implementar, nesta ordem lógica:
+Após fechar e integrar este slice, ratificar o menor slice upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido:
 
 ```text
-run_snapshots persistence + immutable schema
+Catalog authorities mínimas
++ Connections e SecretVersion bindings mínimos
++ Integration e EnvironmentDeployment persistidos
 ↓
-typed definition v1 validation
-↓ transaction
-Runs.create/1 → Run + RunSnapshot
+resolver na orchestration de leafcutter_runtime
 ↓
-Runs.fetch_snapshot/1
+definition v1 resolvida
 ↓
-pending eligibility in claim and recovery
+Executions.Runs.create/1
 ```
 
-Fechar no código e nos testes:
-
-- relação 1:1 por shared primary key;
-- constraints, `ON DELETE CASCADE` e trigger que rejeita `UPDATE`;
-- formato v1 e versões suportadas;
-- criação pública atômica;
-- leitura explícita do snapshot;
-- novos erros de claim;
-- recovery de `pending` com snapshot suportado;
-- compatibilidade com Runs legadas `running` sem snapshot.
-
-Ainda não adicionar resolver de EnvironmentDeployment, schemas upstream, Broadway ou Record/Delivery.
+A próxima fase deve definir ownership, schemas e APIs mínimas desses contexts antes de implementar `create_from_deployment/1`. Não carregar o snapshot no RunCoordinator nem antecipar Broadway, Record ou Delivery.
 
 ## Principais decisões abertas
 

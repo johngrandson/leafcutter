@@ -86,23 +86,30 @@ Cada scan:
 ```text
 1. list tokens already owned by current RuntimeNode
 2. reconcile local trees
-3. claim recoverable running Runs
+3. claim recoverable running Runs and eligible pending Runs
 4. start local trees after commit
 ```
 
 Claim de recovery:
 
 ```sql
-WHERE status = 'running'
-  AND (owner_node_id IS NULL OR owner heartbeat expired)
+WHERE (
+        status = 'running'
+        AND (owner_node_id IS NULL OR owner heartbeat expired)
+      )
+   OR (
+        status = 'pending'
+        AND owner_node_id IS NULL
+        AND snapshot format is supported
+      )
 ORDER BY updated_at, id
 FOR UPDATE SKIP LOCKED
 LIMIT 25
 ```
 
-Runs `pending` ficam fora do scanner até existir RunSnapshot.
+Runs `pending` sem snapshot ou com formato desconhecido ficam fora do scanner. Runs legadas `running` continuam recuperáveis sem snapshot ou com formato desconhecido.
 
-Falhas globais usam backoff exponencial. Falhas de startup usam backoff em memória por Run e liberam o token quando não existe árvore local correspondente.
+Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas de conexão ou operação PostgreSQL usam backoff exponencial global. Erros de programação encerram o processo e seguem a política do supervisor. Falhas de startup usam backoff em memória por Run e liberam o token quando não existe árvore local correspondente.
 
 Shutdown normal tenta release best effort e encerra árvores locais. Crash isolado de recovery não libera ownership.
 

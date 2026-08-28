@@ -1,7 +1,7 @@
 # RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: RATIFICADO — NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO
 - ADR: `docs/decisions/ADR-0017-run-snapshot-v1.md`
 
 ## Objetivo
@@ -108,13 +108,13 @@ A forma persistida usa exatamente as chaves JSON mostradas. Campos semânticos d
 |---|---|---|
 | `package_version_id` | UUID | obrigatório |
 | `source` | object | exatamente uma source |
-| `source.ref` | non-empty string | único no snapshot |
+| `source.ref` | non-empty UTF-8 string | único no snapshot |
 | `source.contract_version_id` | UUID | obrigatório |
 | `source.connection.id` | UUID | obrigatório |
 | `source.connection.config` | JSON object | config resolvida; deve ser não sensível |
 | `source.connection.secret_version_id` | UUID ou null | referência exata; nunca raw secret |
 | `destinations` | array | pelo menos um item |
-| `destinations[].ref` | non-empty string | único no snapshot |
+| `destinations[].ref` | non-empty UTF-8 string | único no snapshot |
 | `destinations[].contract_version_id` | UUID | obrigatório |
 | `destinations[].connection.id` | UUID | obrigatório |
 | `destinations[].connection.config` | JSON object | config resolvida; deve ser não sensível |
@@ -125,7 +125,7 @@ Todos os `ref` de source e destinations são não vazios e mutuamente únicos de
 
 A ordem do array `destinations` é preservada como dado, mas não define prioridade, scheduling ou ordem de execução.
 
-`definition` é validated typed data serializada como JSONB. Aceitar um JSON object no banco não substitui a validação estrutural da aplicação.
+`definition` contém dados tipados e validados, serializados como JSONB. Toda string, incluindo chaves e valores de config, deve ser UTF-8 válida. Aceitar um JSON object no banco não substitui a validação estrutural da aplicação.
 
 ### Authority preservada
 
@@ -186,6 +186,7 @@ A validação deste slice é estrutural:
 - pelo menos uma destination;
 - `ref` não vazio e único;
 - `config` e `effective_config` como JSON objects;
+- strings, chaves e valores de config em UTF-8 válido;
 - `secret_version_id` como UUID ou null.
 
 Ficam para os contexts owners e para o resolver futuro:

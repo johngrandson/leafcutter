@@ -1,9 +1,11 @@
 defmodule Leafcutter.Executions.RunsRecoveryTest do
   use ExUnit.Case, async: true
 
+  import Leafcutter.Executions.RunFixtures
+
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
-  alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
+  alias Leafcutter.Executions.{Nodes, Run, Runs, RunSnapshot, RuntimeNode}
   alias Leafcutter.Repo
 
   @typep run_attrs :: %{
@@ -24,9 +26,9 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
       runtime_node = create_active_runtime_node("owned-list")
       other_runtime_node = create_active_runtime_node("owned-list-other")
 
-      owned_run = insert_run()
-      released_run = insert_run()
-      other_run = insert_run()
+      owned_run = pending_run_fixture()
+      released_run = pending_run_fixture()
+      other_run = pending_run_fixture()
 
       assert {:ok, owned_token} = Runs.claim(owned_run.id, runtime_node.id)
 
@@ -41,15 +43,18 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
   end
 
   describe "claim_recoverable/3" do
-    test "claims unowned and stale-owned running Runs while ignoring ineligible Runs" do
+    test "claims recoverable running and eligible pending Runs" do
       claimant = create_active_runtime_node("recovery-claimant")
       stale_owner = create_active_runtime_node("recovery-stale-owner")
       active_owner = create_active_runtime_node("recovery-active-owner")
 
       unowned_run = insert_run(%{status: :running})
-      stale_run = insert_run()
-      active_run = insert_run()
-      pending_run = insert_run()
+      stale_run = pending_run_fixture()
+      active_run = pending_run_fixture()
+      eligible_pending_run = pending_run_fixture()
+      missing_snapshot_pending_run = insert_run()
+      unsupported_snapshot_pending_run = insert_run()
+      _snapshot = insert_snapshot(unsupported_snapshot_pending_run, 999)
       completed_run = insert_run(%{status: :completed})
 
       assert {:ok, stale_token} = Runs.claim(stale_run.id, stale_owner.id)
@@ -70,20 +75,40 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
         |> MapSet.new()
 
       assert claimed_run_ids ==
-               MapSet.new([unowned_run.id, stale_run.id])
+               MapSet.new([
+                 unowned_run.id,
+                 stale_run.id,
+                 eligible_pending_run.id
+               ])
 
       assert tokens_by_run[unowned_run.id].runtime_node_id == claimant.id
       assert tokens_by_run[unowned_run.id].generation == 1
       assert tokens_by_run[stale_run.id].runtime_node_id == claimant.id
       assert tokens_by_run[stale_run.id].generation == stale_token.generation + 1
 
+      assert tokens_by_run[eligible_pending_run.id].runtime_node_id ==
+               claimant.id
+
+      assert tokens_by_run[eligible_pending_run.id].generation == 1
+
       persisted_active_run = Repo.get!(Run, active_run.id)
       assert persisted_active_run.owner_node_id == active_token.runtime_node_id
       assert persisted_active_run.generation == active_token.generation
 
-      persisted_pending_run = Repo.get!(Run, pending_run.id)
-      assert persisted_pending_run.status == :pending
-      assert persisted_pending_run.owner_node_id == nil
+      persisted_eligible_pending_run = Repo.get!(Run, eligible_pending_run.id)
+
+      assert persisted_eligible_pending_run.status == :running
+      assert persisted_eligible_pending_run.owner_node_id == claimant.id
+
+      persisted_missing_snapshot_run = Repo.get!(Run, missing_snapshot_pending_run.id)
+
+      assert persisted_missing_snapshot_run.status == :pending
+      assert persisted_missing_snapshot_run.owner_node_id == nil
+
+      persisted_unsupported_snapshot_run = Repo.get!(Run, unsupported_snapshot_pending_run.id)
+
+      assert persisted_unsupported_snapshot_run.status == :pending
+      assert persisted_unsupported_snapshot_run.owner_node_id == nil
 
       persisted_completed_run = Repo.get!(Run, completed_run.id)
       assert persisted_completed_run.status == :completed
@@ -158,6 +183,16 @@ defmodule Leafcutter.Executions.RunsRecoveryTest do
                  []
                )
     end
+  end
+
+  @spec insert_snapshot(Run.t(), pos_integer()) :: RunSnapshot.t()
+  defp insert_snapshot(run, format_version) do
+    %RunSnapshot{
+      run_id: run.id,
+      format_version: format_version,
+      definition: definition_fixture()
+    }
+    |> Repo.insert!()
   end
 
   @spec insert_run(run_attrs()) :: Run.t()

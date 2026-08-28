@@ -155,30 +155,28 @@ defmodule LeafcutterRuntime.Runs do
   def list_local do
     RunDynamicSupervisor
     |> DynamicSupervisor.which_children()
-    |> Enum.flat_map(fn
-      {_child_id, run_supervisor_pid, :supervisor, _modules}
-      when is_pid(run_supervisor_pid) ->
-        case Registry.keys(
-               LeafcutterRuntime.RunRegistry,
-               run_supervisor_pid
-             ) do
-          [run_id] when is_binary(run_id) ->
-            case lookup(run_id) do
-              {:ok, local_run} -> [local_run]
-              :error -> []
-            end
-
-          _other_keys ->
-            []
-        end
-
-      _other_child ->
-        []
-    end)
+    |> Enum.flat_map(&local_run_from_child/1)
     |> Enum.sort_by(fn local_run ->
       local_run.ownership_token.run_id
     end)
   end
+
+  @spec local_run_from_child(tuple()) :: [local_run()]
+  defp local_run_from_child({_child_id, run_supervisor_pid, :supervisor, _modules})
+       when is_pid(run_supervisor_pid) do
+    with [run_id] when is_binary(run_id) <-
+           Registry.keys(
+             LeafcutterRuntime.RunRegistry,
+             run_supervisor_pid
+           ),
+         {:ok, local_run} <- lookup(run_id) do
+      [local_run]
+    else
+      _not_local_run -> []
+    end
+  end
+
+  defp local_run_from_child(_other_child), do: []
 
   @doc """
   Returns the local supervision tree registered for a Run.

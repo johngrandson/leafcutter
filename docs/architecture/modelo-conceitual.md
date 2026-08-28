@@ -20,9 +20,12 @@ Role
 
 RuntimeNode
 └── Run ownership
+
+Run
+└── RunSnapshot
 ```
 
-`Run` existe hoje como identidade de lifecycle e authority de ownership. Ainda não representa uma definição executável completa.
+`Run` existe hoje como identidade de lifecycle e authority de ownership. `RunSnapshot` congela a definition estruturalmente validada e versionada criada com a Run; a resolução semântica upstream e a execução dessa definition ainda não estão materializadas.
 
 ## Relação principal planejada
 
@@ -82,9 +85,7 @@ Ainda não existe implementação do Catalog.
 
 ## Run e RunSnapshot
 
-Hoje `Run` possui status, owner, generation e timestamps de ownership.
-
-A próxima evolução adicionará uma relação 1:1 com `RunSnapshot` imutável:
+Hoje `Run` possui status, owner, generation e timestamps de ownership. Novas Runs criadas pela API pública possuem uma relação 1:1 com `RunSnapshot` imutável:
 
 ```text
 resolved PackageVersion
@@ -94,6 +95,8 @@ resolved PackageVersion
 + safe SecretVersion references
 = immutable RunSnapshot
 ```
+
+Runs legadas podem não possuir snapshot. Runs `pending` só são elegíveis no control plane quando possuem snapshot em formato suportado.
 
 Raw secrets permanecem fora do snapshot.
 

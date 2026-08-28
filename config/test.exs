@@ -23,5 +23,4 @@ config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
   interval: 50,
   mode: :telemetry_only
 
-config :leafcutter_runtime, LeafcutterRuntime.RunRecovery,
-  enabled: false
+config :leafcutter_runtime, LeafcutterRuntime.RunRecovery, enabled: false

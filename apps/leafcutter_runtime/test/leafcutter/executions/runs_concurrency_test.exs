@@ -2,6 +2,7 @@ defmodule Leafcutter.Executions.RunsConcurrencyTest do
   use ExUnit.Case, async: false
 
   import Ecto.Query
+  import Leafcutter.Executions.RunFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
@@ -69,7 +70,7 @@ defmodule Leafcutter.Executions.RunsConcurrencyTest do
           "claim-second-#{suffix}@example"
         )
 
-      run = Repo.insert!(%Run{})
+      run = pending_run_fixture()
 
       {run, first_runtime_node, second_runtime_node}
     end)

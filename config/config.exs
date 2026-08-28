@@ -46,8 +46,7 @@ config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
   interval: 15_000,
   mode: :durable
 
-config :leafcutter_runtime, Leafcutter.Executions.Runs,
-  runtime_node_stale_after_ms: 45_000
+config :leafcutter_runtime, Leafcutter.Executions.Runs, runtime_node_stale_after_ms: 45_000
 
 config :leafcutter_runtime, LeafcutterRuntime.RunRecovery,
   enabled: true,

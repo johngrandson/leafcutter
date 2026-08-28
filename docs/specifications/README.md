@@ -5,7 +5,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 | Specification | Estado |
 |---|---|
 | `run-ownership.md` | MATERIALIZADO |
-| `run-snapshot-v1.md` | RATIFICADO — NÃO MATERIALIZADO |
+| `run-snapshot-v1.md` | MATERIALIZADO |
 | `durable-fanout.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `operation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |

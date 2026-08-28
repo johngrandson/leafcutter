@@ -3,8 +3,10 @@ defmodule Leafcutter.Executions.RunsTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
-  alias Leafcutter.Executions.{Nodes, Run, Runs, RuntimeNode}
+  alias Leafcutter.Executions.{Nodes, Run, Runs, RunSnapshot, RuntimeNode}
   alias Leafcutter.Repo
+
+  import Leafcutter.Executions.RunFixtures, only: [definition_fixture: 0]
 
   @type run_fixture_attrs :: %{
           optional(:status) => Run.status(),
@@ -20,9 +22,112 @@ defmodule Leafcutter.Executions.RunsTest do
     :ok
   end
 
+  describe "create/1" do
+    test "creates a pending Run and immutable snapshot in one transaction" do
+      definition = definition_fixture()
+
+      assert {:ok, run} = Runs.create(definition)
+
+      assert run.status == :pending
+      assert run.owner_node_id == nil
+      assert run.generation == 0
+      assert run.ownership_acquired_at == nil
+
+      snapshot = Repo.get!(RunSnapshot, run.id)
+
+      assert snapshot.run_id == run.id
+      assert snapshot.format_version == RunSnapshot.current_format_version()
+      assert snapshot.definition == definition
+    end
+
+    test "does not persist either record when the definition is invalid" do
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      invalid_definition =
+        definition_fixture()
+        |> Map.put("package_version_id", "not-a-uuid")
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(invalid_definition)
+
+      refute changeset.valid?
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "returns a changeset and persists nothing for invalid UTF-8" do
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      invalid_definition =
+        definition_fixture()
+        |> put_in(["source", "ref"], <<255>>)
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(invalid_definition)
+
+      refute changeset.valid?
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects attempts to set internal Run or snapshot fields" do
+      definition_with_internal_fields =
+        definition_fixture()
+        |> Map.put("status", "running")
+        |> Map.put("format_version", 999)
+
+      assert {:error, %Changeset{} = changeset} =
+               Runs.create(definition_with_internal_fields)
+
+      assert {:base, {"contains unknown fields", options}} =
+               List.keyfind(changeset.errors, :base, 0)
+
+      assert options[:validation] == :unknown_fields
+      assert Repo.aggregate(Run, :count) == 0
+      assert Repo.aggregate(RunSnapshot, :count) == 0
+    end
+
+    test "creates distinct Runs for two valid calls" do
+      definition = definition_fixture()
+
+      assert {:ok, first_run} = Runs.create(definition)
+      assert {:ok, second_run} = Runs.create(definition)
+
+      refute first_run.id == second_run.id
+      assert Repo.get!(RunSnapshot, first_run.id)
+      assert Repo.get!(RunSnapshot, second_run.id)
+    end
+  end
+
+  describe "fetch_snapshot/1" do
+    test "returns the immutable snapshot for a Run created publicly" do
+      assert {:ok, run} = Runs.create(definition_fixture())
+
+      assert {:ok, %RunSnapshot{} = snapshot} =
+               Runs.fetch_snapshot(run.id)
+
+      assert snapshot.run_id == run.id
+      assert snapshot.format_version == RunSnapshot.current_format_version()
+    end
+
+    test "distinguishes an existing legacy Run without a snapshot" do
+      run = insert_run()
+
+      assert {:error, :run_snapshot_not_found} =
+               Runs.fetch_snapshot(run.id)
+    end
+
+    test "returns run_not_found when the Run does not exist" do
+      assert {:error, :run_not_found} =
+               Runs.fetch_snapshot("00000000-0000-0000-0000-000000000000")
+    end
+  end
+
   describe "claim/2" do
     test "claims a pending Run and returns generation one" do
-      run = insert_run()
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("first-claim")
       run_id = run.id
       runtime_node_id = runtime_node.id
@@ -42,8 +147,52 @@ defmodule Leafcutter.Executions.RunsTest do
       assert %DateTime{} = persisted_run.ownership_acquired_at
     end
 
-    test "is idempotent for the current active owner" do
+    test "rejects a pending legacy Run without a snapshot" do
       run = insert_run()
+      runtime_node = create_active_runtime_node("missing-snapshot")
+
+      assert {:error, :run_snapshot_not_found} =
+               Runs.claim(run.id, runtime_node.id)
+
+      persisted_run = Repo.get!(Run, run.id)
+
+      assert persisted_run.status == :pending
+      assert persisted_run.owner_node_id == nil
+      assert persisted_run.generation == 0
+    end
+
+    test "rejects a pending Run with an unsupported snapshot format" do
+      run = insert_run()
+      _snapshot = insert_snapshot(run, 999)
+      runtime_node = create_active_runtime_node("unsupported-snapshot")
+
+      assert {:error, :unsupported_run_snapshot_format} =
+               Runs.claim(run.id, runtime_node.id)
+
+      persisted_run = Repo.get!(Run, run.id)
+
+      assert persisted_run.status == :pending
+      assert persisted_run.owner_node_id == nil
+      assert persisted_run.generation == 0
+    end
+
+    test "preserves claims for running Runs regardless of snapshot state" do
+      missing_snapshot_run = insert_run(%{status: :running})
+      unsupported_snapshot_run = insert_run(%{status: :running})
+      _snapshot = insert_snapshot(unsupported_snapshot_run, 999)
+      runtime_node = create_active_runtime_node("running-compatibility")
+
+      for run <- [missing_snapshot_run, unsupported_snapshot_run] do
+        assert {:ok, ownership_token} =
+                 Runs.claim(run.id, runtime_node.id)
+
+        assert ownership_token.run_id == run.id
+        assert ownership_token.generation == 1
+      end
+    end
+
+    test "is idempotent for the current active owner" do
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("idempotent-claim")
 
       assert {:ok, first_token} = Runs.claim(run.id, runtime_node.id)
@@ -60,7 +209,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "rejects another active owner" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("active-owner")
       second_runtime_node = create_active_runtime_node("active-contender")
 
@@ -76,7 +225,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "reclaims a Run from an expired owner and increments generation" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("expired-owner")
       second_runtime_node = create_active_runtime_node("recovery-node")
 
@@ -95,7 +244,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "requires an existing active claimant runtime node" do
-      run = insert_run()
+      run = create_pending_run()
       missing_runtime_node_id = "00000000-0000-0000-0000-000000000000"
 
       assert {:error, :runtime_node_not_found} =
@@ -132,7 +281,7 @@ defmodule Leafcutter.Executions.RunsTest do
 
   describe "release/1" do
     test "clears ownership idempotently while preserving lifecycle and generation" do
-      run = insert_run()
+      run = create_pending_run()
       runtime_node = create_active_runtime_node("release")
 
       assert {:ok, ownership_token} = Runs.claim(run.id, runtime_node.id)
@@ -148,7 +297,7 @@ defmodule Leafcutter.Executions.RunsTest do
     end
 
     test "rejects an old token after another runtime node acquires a later generation" do
-      run = insert_run()
+      run = create_pending_run()
       first_runtime_node = create_active_runtime_node("release-first")
       second_runtime_node = create_active_runtime_node("release-second")
 
@@ -213,6 +362,22 @@ defmodule Leafcutter.Executions.RunsTest do
       assert {:owner_node_id, {_message, _options}} =
                List.keyfind(changeset.errors, :owner_node_id, 0)
     end
+  end
+
+  @spec create_pending_run() :: Run.t()
+  defp create_pending_run do
+    {:ok, run} = Runs.create(definition_fixture())
+    run
+  end
+
+  @spec insert_snapshot(Run.t(), pos_integer()) :: RunSnapshot.t()
+  defp insert_snapshot(run, format_version) do
+    %RunSnapshot{
+      run_id: run.id,
+      format_version: format_version,
+      definition: definition_fixture()
+    }
+    |> Repo.insert!()
   end
 
   @spec insert_run(run_fixture_attrs()) :: Run.t()

@@ -9,8 +9,9 @@ defmodule Leafcutter.Executions.Runs do
 
   import Ecto.Query
 
-  alias Ecto.Changeset
-  alias Leafcutter.Executions.{DatabaseClock, Run, RuntimeNode}
+  alias Ecto.{Changeset, Multi}
+  alias Leafcutter.Executions.{DatabaseClock, Run, RunSnapshot, RuntimeNode}
+  alias Leafcutter.Executions.RunSnapshot.DefinitionV1
   alias Leafcutter.Repo
 
   @default_runtime_node_stale_after_ms 45_000
@@ -34,16 +35,124 @@ defmodule Leafcutter.Executions.Runs do
           | :runtime_node_not_found
           | :runtime_node_expired
           | :owned_by_active_node
+          | :run_snapshot_not_found
+          | :unsupported_run_snapshot_format
           | Ecto.Changeset.t()
 
   @typedoc "Error returned when Run ownership cannot be released."
   @type release_error :: :run_not_found | :stale_ownership
+
+  @typedoc "Error returned when a RunSnapshot cannot be fetched."
+  @type fetch_snapshot_error :: :run_not_found | :run_snapshot_not_found
 
   @typedoc "Error returned when a recovery batch cannot be claimed."
   @type recovery_claim_error ::
           :runtime_node_not_found
           | :runtime_node_expired
           | Ecto.Changeset.t()
+
+  @doc """
+  Creates a pending Run and freezes its executable definition atomically.
+
+  ## Parameters
+
+  * definition_attrs - The complete logical RunSnapshot definition v1
+
+  ## Returns
+
+  * {:ok, run} after both the Run and its immutable snapshot are committed
+  * {:error, changeset} when the definition or a persistence constraint is invalid
+
+  ## Examples
+
+      iex> definition = %{
+      ...>   package_version_id: Ecto.UUID.generate(),
+      ...>   source: %{
+      ...>     ref: "source",
+      ...>     contract_version_id: Ecto.UUID.generate(),
+      ...>     connection: %{
+      ...>       id: Ecto.UUID.generate(),
+      ...>       config: %{},
+      ...>       secret_version_id: nil
+      ...>     }
+      ...>   },
+      ...>   destinations: [
+      ...>     %{
+      ...>       ref: "destination",
+      ...>       contract_version_id: Ecto.UUID.generate(),
+      ...>       connection: %{
+      ...>         id: Ecto.UUID.generate(),
+      ...>         config: %{},
+      ...>         secret_version_id: nil
+      ...>       }
+      ...>     }
+      ...>   ],
+      ...>   effective_config: %{}
+      ...> }
+      iex> {:ok, run} = Leafcutter.Executions.Runs.create(definition)
+      iex> run.status
+      :pending
+
+  ## Notes
+
+  * The input is the definition itself, not an envelope.
+  * The caller cannot set Run identity, lifecycle, ownership, generation, or snapshot version.
+  * Definition validation completes before any database write is attempted.
+  * Run and RunSnapshot persistence share one transaction and roll back together.
+  * Two valid calls create two distinct Runs; idempotency is outside this slice.
+  """
+  @spec create(map()) :: {:ok, Run.t()} | {:error, Changeset.t()}
+  def create(definition_attrs) do
+    with {:ok, definition} <- DefinitionV1.validate(definition_attrs) do
+      persist_new_run(definition)
+    end
+  end
+
+  @doc """
+  Fetches the immutable snapshot associated with a Run.
+
+  ## Parameters
+
+  * run_id - The identifier of the Run whose snapshot will be fetched
+
+  ## Returns
+
+  * {:ok, snapshot} when both the Run and its snapshot exist
+  * {:error, :run_not_found} when the Run does not exist
+  * {:error, :run_snapshot_not_found} when a legacy Run has no snapshot
+
+  ## Examples
+
+      iex> Leafcutter.Executions.Runs.fetch_snapshot(
+      ...>   "00000000-0000-0000-0000-000000000000"
+      ...> )
+      {:error, :run_not_found}
+
+  ## Notes
+
+  * Run existence and snapshot presence are classified from one database statement.
+  * A missing Run takes precedence over a missing snapshot.
+  * The operation never creates, replaces, or updates a snapshot.
+  """
+  @spec fetch_snapshot(Run.id()) ::
+          {:ok, RunSnapshot.t()} | {:error, fetch_snapshot_error()}
+  def fetch_snapshot(run_id) do
+    Run
+    |> where([run], run.id == ^run_id)
+    |> join(:left, [run], snapshot in RunSnapshot, on: snapshot.run_id == run.id)
+    |> select([run, snapshot], {run.id, snapshot})
+    |> Repo.one()
+    |> case do
+      nil ->
+        {:error, :run_not_found}
+
+      {_run_id, nil} ->
+        {:error, :run_snapshot_not_found}
+
+      {_run_id, %RunSnapshot{} = snapshot} ->
+        {:ok, snapshot}
+    end
+  end
 
   @doc """
   Claims or reclaims a Run for an active runtime node incarnation.
@@ -61,6 +170,8 @@ defmodule Leafcutter.Executions.Runs do
   * `{:error, :runtime_node_not_found}` when the requesting runtime incarnation does not exist
   * `{:error, :runtime_node_expired}` when the requesting runtime incarnation is stale
   * `{:error, :owned_by_active_node}` when another active runtime incarnation owns the Run
+  * `{:error, :run_snapshot_not_found}` when a pending Run has no snapshot
+  * `{:error, :unsupported_run_snapshot_format}` when a pending Run uses an unknown format
   * `{:error, changeset}` when the ownership transition violates a database constraint
 
   ## Examples
@@ -73,14 +184,15 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Notes
 
-  * Only `:pending` and `:running` Runs are claimable.
-  * The first claim changes a pending Run to `:running`.
+  * A pending Run is claimable only with a snapshot in a supported format.
+  * Running Runs preserve legacy ownership and recovery behavior regardless of snapshot state.
+  * The first eligible claim changes a pending Run to `:running`.
   * Claiming an unowned or stale-owned Run increments `generation`.
   * Repeating a claim from the current active owner is idempotent and preserves `generation`.
   * Another active owner prevents the claim.
   * Runtime liveness and ownership timestamps use the PostgreSQL clock.
   * The Run row is locked while claimability and current ownership are evaluated.
-  * Public Run creation remains deferred until executable definition and RunSnapshot are ratified.
+  * Runs created through create/1 always carry a structurally valid snapshot.
   """
   @spec claim(Run.id(), RuntimeNode.id()) ::
           {:ok, ownership_token()} | {:error, claim_error()}
@@ -196,7 +308,7 @@ defmodule Leafcutter.Executions.Runs do
   end
 
   @doc """
-  Claims a bounded batch of running Runs that require recovery.
+  Claims a bounded batch of Runs that are eligible to start or recover.
 
   ## Parameters
 
@@ -222,9 +334,10 @@ defmodule Leafcutter.Executions.Runs do
 
   ## Notes
 
-  * Only Runs already in the `:running` state participate in automatic recovery.
-  * Pending Runs continue to require an explicit start until RunSnapshot is ratified.
-  * Unowned Runs and Runs whose owner heartbeat is older than the stale threshold are eligible.
+  * Pending Runs require no owner and a snapshot in a supported format.
+  * Pending Runs without snapshots or with unsupported formats are excluded.
+  * Running Runs remain eligible without requiring a snapshot.
+  * Running Runs must be unowned or have an owner heartbeat older than the stale threshold.
   * Rows are ordered by oldest `updated_at` and then identifier.
   * `FOR UPDATE SKIP LOCKED` distributes concurrent recovery batches across runtime nodes.
   * Every claimed Run receives a greater fencing generation.
@@ -258,6 +371,46 @@ defmodule Leafcutter.Executions.Runs do
     end)
   end
 
+  # OTP 28 loses the MapSet opaqueness when it analyzes Ecto.Multi.new/0.
+  # Remove this suppression when elixir-lang/elixir#14576 no longer reproduces.
+  @dialyzer {:no_opaque, [persist_new_run: 1]}
+  @spec persist_new_run(RunSnapshot.definition()) ::
+          {:ok, Run.t()} | {:error, Changeset.t()}
+  defp persist_new_run(definition) do
+    Multi.new()
+    |> Multi.insert(:run, create_run_changeset())
+    |> Multi.insert(:snapshot, fn %{run: run} ->
+      RunSnapshot.create_changeset(
+        %RunSnapshot{},
+        %{run_id: run.id, definition: definition}
+      )
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{run: run}} ->
+        {:ok, run}
+
+      {:error, _operation, %Changeset{} = changeset, _changes} ->
+        {:error, changeset}
+    end
+  end
+
+  @spec create_run_changeset() :: Changeset.t()
+  defp create_run_changeset do
+    %Run{}
+    |> Changeset.change()
+    |> Changeset.foreign_key_constraint(:owner_node_id)
+    |> Changeset.check_constraint(:status, name: :runs_status_valid)
+    |> Changeset.check_constraint(
+      :generation,
+      name: :runs_generation_non_negative
+    )
+    |> Changeset.check_constraint(
+      :owner_node_id,
+      name: :runs_ownership_fields_consistent
+    )
+  end
+
   @spec recoverable_runs_query(
           DateTime.t(),
           pos_integer(),
@@ -272,12 +425,24 @@ defmodule Leafcutter.Executions.Runs do
       )
       |> select([runtime_node], runtime_node.id)
 
+    supported_format_versions = RunSnapshot.supported_format_versions()
+
+    eligible_snapshot_run_ids =
+      RunSnapshot
+      |> where(
+        [snapshot],
+        snapshot.format_version in ^supported_format_versions
+      )
+      |> select([snapshot], snapshot.run_id)
+
     Run
-    |> where([run], run.status == :running)
     |> where(
       [run],
-      is_nil(run.owner_node_id) or
-        run.owner_node_id in subquery(stale_owner_ids)
+      (run.status == :running and
+         (is_nil(run.owner_node_id) or
+            run.owner_node_id in subquery(stale_owner_ids))) or
+        (run.status == :pending and is_nil(run.owner_node_id) and
+           run.id in subquery(eligible_snapshot_run_ids))
     )
     |> exclude_recovery_runs(excluded_run_ids)
     |> order_by([run], asc: run.updated_at, asc: run.id)
@@ -292,7 +457,7 @@ defmodule Leafcutter.Executions.Runs do
     where(
       query,
       [run],
-      not (run.id in ^excluded_run_ids)
+      run.id not in ^excluded_run_ids
     )
   end
 
@@ -331,6 +496,7 @@ defmodule Leafcutter.Executions.Runs do
 
   @spec claim_locked_run(Run.t(), RuntimeNode.id(), DateTime.t()) :: ownership_token()
   defp claim_locked_run(%Run{status: :pending} = run, runtime_node_id, database_now) do
+    ensure_pending_run_snapshot_eligible(run.id)
     persist_claim(run, runtime_node_id, database_now)
   end
 
@@ -355,6 +521,21 @@ defmodule Leafcutter.Executions.Runs do
       Repo.rollback(:owned_by_active_node)
     else
       persist_claim(run, runtime_node_id, database_now)
+    end
+  end
+
+  @spec ensure_pending_run_snapshot_eligible(Run.id()) :: :ok
+  defp ensure_pending_run_snapshot_eligible(run_id) do
+    case Repo.get(RunSnapshot, run_id) do
+      nil ->
+        Repo.rollback(:run_snapshot_not_found)
+
+      %RunSnapshot{format_version: format_version} ->
+        if format_version in RunSnapshot.supported_format_versions() do
+          :ok
+        else
+          Repo.rollback(:unsupported_run_snapshot_format)
+        end
     end
   end
 

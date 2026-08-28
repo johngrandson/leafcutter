@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-O contrato de RunSnapshot v1 não está mais aberto. Ele foi ratificado em `docs/decisions/ADR-0017-run-snapshot-v1.md` e detalhado em `docs/specifications/run-snapshot-v1.md`. A próxima atividade é sua materialização, não uma nova decisão arquitetural.
+O contrato de RunSnapshot v1 não está mais aberto. Ele foi ratificado e materializado conforme `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`. A próxima fronteira é ratificar o menor slice upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido.
 
 ## Domínio
 

@@ -89,6 +89,7 @@ Persistência atual:
 ```text
 RuntimeNode
 Run
+RunSnapshot
 ```
 
 `RuntimeNode.id` identifica uma incarnação da application runtime. `node_name` é metadata reutilizável. O heartbeat usa o relógio do PostgreSQL.
@@ -114,7 +115,7 @@ cancelled
 
 Ownership é serializado no PostgreSQL. `generation` é o fencing token monotônico.
 
-RunSnapshot, criação pública de Run e eligibility de `pending` por formato ainda não estão materializados.
+`RunSnapshot` usa o id de `Run` como primary key, congela a definition v1 estruturalmente validada e rejeita updates no PostgreSQL. `Runs.create/1` persiste Run `pending` e snapshot atomicamente. `Runs.fetch_snapshot/1` fornece leitura explícita.
 
 ### Supervision e recovery atuais
 
@@ -142,11 +143,14 @@ O Registry é local. PostgreSQL é a autoridade distribuída.
 polls every 5 seconds
 → reconstructs local trees already owned by this incarnation
 → claims unowned or stale-owned running Runs
+→ starts pending Runs with a snapshot in a supported format
 → FOR UPDATE SKIP LOCKED
 → starts local trees after commit
 ```
 
-Runs `pending` ainda não entram no recovery automático.
+Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis. Runs legadas `running` preservam recovery independentemente do snapshot.
+
+Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas de banco entram no backoff global. Erros de programação encerram o processo e são tratados pela supervisão, sem serem mascarados como falhas retryable.
 
 ### API atual
 
@@ -203,22 +207,9 @@ Promotion copia somente estado promovível; não copia secrets, Connections, Tri
 
 ### Executions completo
 
-O contrato de RunSnapshot v1 está ratificado, mas não materializado:
+RunSnapshot v1 já está materializado conforme `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`.
 
-```text
-typed definition v1
-+ shared primary key with Run
-+ atomic Run/RunSnapshot creation
-+ PostgreSQL UPDATE rejection
-+ pending eligibility by supported format
-```
-
-Detalhes canônicos:
-
-- `docs/decisions/ADR-0017-run-snapshot-v1.md`;
-- `docs/specifications/run-snapshot-v1.md`.
-
-Também planejados:
+Continuam planejados:
 
 ```text
 Record
@@ -315,14 +306,16 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-O contrato desta fronteira já foi ratificado; o próximo slice é sua materialização:
+O próximo slice deve ratificar as authorities upstream mínimas e o workflow que resolve uma definition v1:
 
 ```text
-validate typed definition v1
-↓ transaction
-Run + immutable RunSnapshot
+Catalog + Connections + Integrations mínimos
 ↓
-pending Run becomes eligible in the control plane
+EnvironmentDeployment persistido
+↓ orchestration em leafcutter_runtime
+definition v1 resolvida
+↓
+Executions.Runs.create/1
 ```
 
-Essa eligibility prova presença e versão suportada do snapshot. Ela não antecipa o resolver de EnvironmentDeployment, o carregamento no coordinator ou a execução Broadway.
+RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.

@@ -39,7 +39,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Catalog | RATIFICADO — NÃO MATERIALIZADO | — | connectors, contracts, packages e versões publicadas |
 | Connections | RATIFICADO — NÃO MATERIALIZADO | — | Connection, Secret, SecretVersion, OAuth state |
 | Integrations | RATIFICADO — NÃO MATERIALIZADO | — | Integration, EnvironmentDeployment, promotion, homologation, IdentityMapping |
-| Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, ownership, fencing, recovery | RunSnapshot, Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
+| Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
 | Notifications | RATIFICADO — NÃO MATERIALIZADO | Oban compartilhado como infraestrutura | rules, recipients e durable deliveries |
 | Audit | RATIFICADO — NÃO MATERIALIZADO | — | append-only AuditEvent |
 
@@ -119,13 +119,13 @@ Owns hoje:
 ```text
 RuntimeNode
 Run
+RunSnapshot
 ownership/fencing/recovery state
 ```
 
 Owns futuramente:
 
 ```text
-RunSnapshot
 Record
 Delivery
 Attempt

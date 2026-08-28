@@ -28,22 +28,24 @@
 - Registry local e DynamicSupervisor;
 - RunSupervisor + RunCoordinator;
 - RunRecovery por polling com `SKIP LOCKED`.
-
-## Próximo estágio: definição executável de Run
-
 - RunSnapshot 1:1 e imutável;
 - workflow público de criação de Run;
 - eligibility segura de Run `pending`;
 - references/config congeladas sem raw secrets.
 
-## Reliable integration core
+## Próximo estágio: authorities upstream e resolução
 
 - Catalog mínimo;
+- Connections e SecretVersion bindings mínimos;
+- Integration + EnvironmentDeployment persistidos;
+- resolver semântico de EnvironmentDeployment para definition v1;
+- criação de Run a partir da definition resolvida.
+
+## Reliable integration core
+
 - Contracts + JSON Schema/JSV;
 - Connector/Operation/Transport contracts;
 - Generic HTTP Connector;
-- Connections/Secrets;
-- Integration + EnvironmentDeployment;
 - PackageVersion 1 Source → N Destinations;
 - manual and automatic Run startup from snapshot.
 

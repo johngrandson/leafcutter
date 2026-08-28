@@ -1,11 +1,11 @@
 # ADR-0017 — RunSnapshot v1 como definição executável imutável
 
 - Status: Accepted
-- Estado de implementação: NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO
 
 ## Contexto
 
-`Run` materializa hoje lifecycle e ownership, mas não contém a definição necessária para executar uma integração. Por isso, uma Run `pending` ainda não pode entrar no recovery automático.
+Antes deste slice, `Run` materializava lifecycle e ownership, mas não continha a definição necessária para executar uma integração. Por isso, uma Run `pending` não podia entrar no recovery automático.
 
 Catalog, Connections e Integrations continuam ratificados para slices posteriores. A fundação de RunSnapshot deve criar um contrato persistido e versionado sem antecipar schemas ou ownership desses contexts.
 

@@ -43,8 +43,11 @@ Runs.claim(run_id, runtime_node_id)
 
 - valida claimant existente/ativo;
 - locka Run `FOR UPDATE`;
-- pending/unowned/stale-owned pode ser adquirido;
-- primeiro claim muda pending para running;
+- pending exige RunSnapshot em formato suportado;
+- pending sem snapshot retorna `:run_snapshot_not_found`;
+- pending com formato desconhecido retorna `:unsupported_run_snapshot_format`;
+- running unowned/stale-owned pode ser adquirido independentemente de snapshot;
+- primeiro claim elegível muda pending para running;
 - nova posse incrementa generation;
 - mesmo active owner recebe token idempotente;
 - outro active owner é rejeitado.
@@ -81,10 +84,13 @@ Registry é local.
 - lista tokens owned pela incarnação atual;
 - reconstrói árvore ausente sem incrementar generation;
 - reclama Runs running sem owner ou com owner expirado;
+- inicia Runs pending sem owner quando possuem snapshot em formato suportado;
+- exclui pending sem snapshot ou com formato desconhecido;
 - usa `FOR UPDATE SKIP LOCKED`, batch 25, ordering `updated_at + id`;
 - inicia árvore após commit;
-- não inicia pending;
-- aplica backoff global e por Run;
+- aplica backoff por Run a falhas de startup;
+- aplica backoff global a erros retornados pelo contrato de recovery e a falhas esperadas de banco;
+- encerra o processo em erros de programação para permitir restart supervisionado;
 - tenta release best effort no shutdown normal.
 
 ## Fencing future writes

@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial já foi concluída. A sequência atual não começa mais em uma umbrella vazia; começa em RunSnapshot sobre um control plane já funcional.
+A foundation inicial e RunSnapshot v1 já foram concluídos. A sequência atual começa na ratificação das authorities upstream mínimas e do resolver de `EnvironmentDeployment` para uma definition v1.
 
 ## Documentos
 

@@ -1,6 +1,8 @@
 defmodule LeafcutterRuntime.RunsTest do
   use ExUnit.Case, async: false
 
+  import Leafcutter.Executions.RunFixtures
+
   alias Ecto.Adapters.SQL.Sandbox
   alias Leafcutter.Executions.{Nodes, Run, RuntimeNode}
   alias Leafcutter.Executions.Runs, as: DurableRuns
@@ -293,7 +295,7 @@ defmodule LeafcutterRuntime.RunsTest do
 
   @spec insert_run() :: Run.t()
   defp insert_run do
-    Repo.insert!(%Run{})
+    pending_run_fixture()
   end
 
   @spec create_runtime_node(String.t()) :: RuntimeNode.t()

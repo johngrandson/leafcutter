@@ -3,8 +3,8 @@ defmodule LeafcutterRuntime.RunRecovery do
   Reconciles durable Run ownership with local per-Run supervision.
 
   PostgreSQL remains authoritative. This process periodically reconstructs
-  local trees already owned by the current runtime incarnation and atomically
-  claims recoverable running Runs in bounded batches.
+  local trees already owned by the current runtime incarnation, starts eligible
+  pending Runs, and atomically reclaims running Runs in bounded batches.
   """
 
   use GenServer
@@ -234,26 +234,24 @@ defmodule LeafcutterRuntime.RunRecovery do
   defp recover(state) do
     perform_recovery(state)
   rescue
-    exception ->
+    exception in [DBConnection.ConnectionError, Postgrex.Error] ->
       {:error, {:exception, Exception.message(exception)}, state}
-  catch
-    :exit, reason ->
-      {:error, {:exit, reason}, state}
-
-    kind, reason ->
-      {:error, {kind, reason}, state}
   end
 
   @spec perform_recovery(state()) ::
           {:ok, state(), non_neg_integer()}
           | {:error, DurableRuns.recovery_claim_error(), state()}
   defp perform_recovery(state) do
+    # A tree started after this snapshot is absent locally by definition and
+    # cannot be invalidated by the durable ownership snapshot that follows.
+    local_runs = RuntimeRuns.list_local()
+
     owned_tokens =
       DurableRuns.list_owned_tokens(state.runtime_node_id)
 
     next_state =
-      owned_tokens
-      |> reconcile_local_trees(state)
+      local_runs
+      |> reconcile_local_trees(owned_tokens, state)
       |> start_owned_tokens(owned_tokens)
 
     excluded_run_ids = active_retry_run_ids(next_state)
@@ -279,16 +277,17 @@ defmodule LeafcutterRuntime.RunRecovery do
   end
 
   @spec reconcile_local_trees(
+          [RuntimeRuns.local_run()],
           [DurableRuns.ownership_token()],
           state()
         ) :: state()
-  defp reconcile_local_trees(owned_tokens, state) do
+  defp reconcile_local_trees(local_runs, owned_tokens, state) do
     durable_tokens_by_run =
       Map.new(owned_tokens, fn ownership_token ->
         {ownership_token.run_id, ownership_token}
       end)
 
-    Enum.reduce(RuntimeRuns.list_local(), state, fn
+    Enum.reduce(local_runs, state, fn
       %{ownership_token: local_token}, current_state ->
         case Map.get(durable_tokens_by_run, local_token.run_id) do
           ^local_token ->
@@ -411,6 +410,7 @@ defmodule LeafcutterRuntime.RunRecovery do
   @spec grow_retry_delay(pos_integer(), pos_integer(), non_neg_integer()) ::
           pos_integer()
   defp grow_retry_delay(delay, _max_backoff, 0), do: delay
+
   defp grow_retry_delay(delay, max_backoff, _remaining) when delay >= max_backoff,
     do: max_backoff
 

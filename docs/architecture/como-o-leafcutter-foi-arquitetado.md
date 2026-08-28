@@ -148,12 +148,14 @@ O coordinator atual retém token e reage a stale ownership. Ele não recebe dado
 RunRecovery
 → poll PostgreSQL
 → reconcile tokens already owned locally
-→ claim running recoverable Runs
+→ claim running recoverable Runs and eligible pending Runs
 → FOR UPDATE SKIP LOCKED
 → start local trees after commit
 ```
 
-O scanner materializado ainda não inicia Runs `pending`. O contrato de RunSnapshot v1 foi ratificado, mas ainda não existe no código; quando materializado, presença e versão suportada provarão eligibility no control plane, não executabilidade semântica completa.
+O scanner materializado inicia Runs `pending` somente quando possuem RunSnapshot em formato suportado. Presença e versão provam eligibility no control plane, não executabilidade semântica completa. Runs legadas `running` preservam recovery independentemente do snapshot.
+
+Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas de banco usam backoff global. Erros de programação encerram o processo e são tratados pela supervisão, evitando retries silenciosos de defeitos determinísticos.
 
 # A plataforma-alvo ratificada
 
@@ -280,7 +282,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1 deixou de ser uma decisão aberta e agora aguarda materialização. Permanecem abertos os schemas de Catalog/Connections/Integrations, o resolver semântico de EnvironmentDeployment, merge e provenance de config, rolling upgrade de formatos, idempotência/invocation, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets, OpenAPI e infraestrutura de produção.
+RunSnapshot v1 deixou de ser uma decisão aberta e está materializado. Permanecem abertos os schemas de Catalog/Connections/Integrations, o resolver semântico de EnvironmentDeployment, merge e provenance de config, rolling upgrade de formatos, idempotência/invocation, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -288,10 +290,10 @@ O Leafcutter já possui uma base real de tenancy, autorização e runtime recove
 
 ```text
 present
-→ RBAC + ownership + supervision + recovery
+→ RBAC + ownership + supervision + recovery + RunSnapshot v1
 
 next
-→ materialized versioned RunSnapshot foundation
+→ upstream authorities + EnvironmentDeployment resolver
 
 future
 → durable Broadway integration data plane
