@@ -157,7 +157,7 @@ Ratificar ownership, schemas, invariantes e APIs públicas mínimas de Catalog, 
 
 ## Próxima tarefa concreta
 
-Após fechar e integrar este slice, ratificar o menor slice upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido:
+Fechar e registrar o menor contract upstream necessário para resolver uma definition v1 a partir de um `EnvironmentDeployment` persistido:
 
 ```text
 Catalog authorities mínimas
