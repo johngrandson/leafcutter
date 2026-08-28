@@ -1,7 +1,7 @@
 # RunSnapshot v1
 
 - Status decisório: Accepted
-- Estado de implementação: RATIFICADO — NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO
 - ADR: `docs/decisions/ADR-0017-run-snapshot-v1.md`
 
 ## Objetivo
