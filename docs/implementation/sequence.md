@@ -21,30 +21,30 @@
 16. RunSnapshot v1 materialization
 ```
 
-## Próximo slice
+## Próximo slice de implementação
 
 ```text
-Catalog authorities mínimas
-+ Connections e SecretVersion bindings mínimos
-+ Integration e EnvironmentDeployment persistidos
-→ resolver definition v1 em leafcutter_runtime
-→ Executions.Runs.create/1
+Connector + ConnectorVersion + Operation
+Contract + ContractVersion
+Package + PackageVersion + PackageVersionEndpoint
+→ publicação atômica
+→ versões imutáveis
 ```
 
-Ownership, schemas e APIs mínimas desses contexts precisam ser ratificados antes da implementação. O contrato de destino já materializado está em `docs/decisions/ADR-0017-run-snapshot-v1.md` e `docs/specifications/run-snapshot-v1.md`.
+O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. O primeiro sub-slice materializa somente Catalog. Connections, Integrations e o resolver permanecem posteriores e não devem ser antecipados no mesmo diff.
 
 ## Sequência ratificada posterior
 
 ```text
-Catalog/Contracts/Packages foundations
-→ Connections/Secrets
-→ Integrations/EnvironmentDeployment
+minimal Catalog authorities
+→ Connections + SecretVersion bindings
+→ Integration + EnvironmentDeployment
 → EnvironmentDeployment resolver
-→ Connector/Operation/Transport
+→ Contracts/JSV + Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
 → monitoring/retry/lifecycle
 → governance/notifications/audit
 ```
 
-A ordem fina pode mudar quando dependencies reais forem modeladas. O próximo slice não deve antecipar schemas upstream. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
+A ordem dos quatro primeiros sub-slices está ratificada pelo ADR-0018. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
