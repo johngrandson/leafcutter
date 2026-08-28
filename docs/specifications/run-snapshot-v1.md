@@ -16,7 +16,7 @@ Neste slice, o control plane usa a presença e a versão suportada do snapshot c
 
 `Leafcutter.Executions.Runs.create/1` recebe uma definition já resolvida. O futuro workflow de `EnvironmentDeployment → definition v1` pertence à orchestration em `leafcutter_runtime`; Executions não consulta internals de Catalog, Connections ou Integrations.
 
-O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. Catalog e Connections mínimos já materializam PackageVersion, ContractVersion, endpoints, Connection e SecretVersion; Integrations permanece pendente. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
+O snapshot referencia identifiers owned por contexts upstream sem assumir seus schemas físicos. Catalog e Connections mínimos já materializam PackageVersion, ContractVersion, endpoints, Connection e SecretVersion; Integrations já materializa a identidade Integration, enquanto EnvironmentDeployment permanece pendente. `PackageVersion` continua authority da topologia executável e o snapshot não cria authorities paralelas.
 
 ## Persistência
 
@@ -189,7 +189,7 @@ A validação deste slice é estrutural:
 - strings, chaves e valores de config em UTF-8 válido;
 - `secret_version_id` como UUID ou null.
 
-Catalog e Connections mínimos já conseguem provar existência isolada, integridade local e imutabilidade de PackageVersion, endpoints, Operations, ContractVersions, Connections e SecretVersions. Permanecem para Integrations e para o resolver futuro:
+Catalog, Connections e a identidade Integration já conseguem provar existência isolada, integridade local e suas invariantes materializadas. Permanecem para EnvironmentDeployment e para o resolver futuro:
 
 - composição semântica das referências de Connection e SecretVersion;
 - compatibilidade PackageVersion/ContractVersion/Connection;
@@ -355,4 +355,3 @@ Não adicionar:
 - Broadway, Record, Delivery ou qualquer data plane;
 - política concreta de retenção;
 - política de rolling upgrade de formatos.
-

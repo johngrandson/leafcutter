@@ -16,9 +16,7 @@ defmodule Leafcutter.Organizations.ActiveOrganizationTest do
 
   test "requires a caller-owned transaction" do
     assert {:error, :transaction_required} =
-             Organizations.lock_active(
-               "00000000-0000-0000-0000-000000000000"
-             )
+             Organizations.lock_active("00000000-0000-0000-0000-000000000000")
   end
 
   test "classifies a missing or disabled Organization" do

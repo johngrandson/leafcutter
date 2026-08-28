@@ -6,7 +6,7 @@
 
 **Upstream authority materialization**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog e Connections mínimos estão materializados nesta branch, incluindo topologia de PackageVersion, config não sensível e bindings exatos de SecretVersion.
+As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. As authorities upstream mínimas e o workflow `EnvironmentDeployment → definition v1` foram ratificados no ADR-0018. Catalog, Connections e a identidade de Integration estão materializados nesta branch; EnvironmentDeployment e o resolver permanecem pendentes.
 
 ## Estado materializado
 
@@ -109,6 +109,21 @@ Connections.Secrets.create_version/1
 
 Connection referencia Connector estável, guarda config JSON object não sensível e pode selecionar uma SecretVersion exata do mesmo Organization/Environment. Writes validam parents ativos sob locks compartilhados na ordem Organization → Environment; updates e disable lockam a Connection depois. FKs compostas, constraint de JSON object e trigger de binding protegem integridade no PostgreSQL. SecretVersion é única dentro de Secret e rejeita update/delete. Nenhum raw secret, ciphertext, provider locator ou credential é persistido.
 
+### Integrations
+
+Materializado:
+
+```text
+Organization
+└── Integration
+
+Integrations.create/1
+Integrations.get/1
+Integrations.disable/1
+```
+
+Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration. EnvironmentDeployment, bindings e resolver ainda não estão materializados.
+
 ### Executions e runtime
 
 Materializado:
@@ -159,7 +174,7 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 Ainda não materializados:
 
 ```text
-Integrations
+EnvironmentDeployment e bindings
 Notifications
 Audit
 Record
@@ -203,11 +218,12 @@ Catalog Connector authority materialization
 Catalog Contract authority materialization
 Catalog Package topology materialization
 Connections + SecretVersion binding materialization
+Integration identity materialization
 ```
 
 ## Em andamento
 
-Materializar Integration e EnvironmentDeployment mínimos ratificados no ADR-0018.
+Materializar EnvironmentDeployment e seus bindings mínimos ratificados no ADR-0018.
 
 ## Próxima tarefa concreta
 
@@ -215,12 +231,12 @@ Materializar o próximo sub-slice:
 
 ```text
 Integrations
-├── Integration
-└── EnvironmentDeployment
-    └── EnvironmentDeploymentBinding
+└── Integration (materialized)
+    └── EnvironmentDeployment
+        └── EnvironmentDeploymentBinding
 ```
 
-O sub-slice inclui Integration organization-scoped ligada a Package estável, um EnvironmentDeployment completo por Integration/Environment, PackageVersion, promotable/local config e o conjunto completo de bindings por endpoint.
+O sub-slice inclui um EnvironmentDeployment completo por Integration/Environment, PackageVersion, promotable/local config e o conjunto completo de bindings por endpoint.
 
 Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation ou o resolver.
 
@@ -251,4 +267,3 @@ Não implementar ainda revision/history, promotion/rollback, triggers, raw secre
 - `docs/specifications/run-ownership.md`
 - `docs/decisions/ADR-0011-run-ownership-fencing.md`
 - `docs/decisions/ADR-0016-documentacao-presente-e-futuro.md`
-

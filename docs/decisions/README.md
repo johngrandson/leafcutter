@@ -29,7 +29,7 @@ Materialized / Partial / Not materialized
 | ADR-0015 | Harness multi-agente com contrato compartilhado | MATERIALIZADO |
 | ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
 | ADR-0017 | RunSnapshot v1 imutável e criação atômica | MATERIALIZADO |
-| ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | PARCIAL — CATALOG + CONNECTIONS MÍNIMOS MATERIALIZADOS |
+| ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | PARCIAL — CATALOG + CONNECTIONS + INTEGRATION IDENTITY MATERIALIZADOS |
 
 ## Convenção de status decisório
 
@@ -48,4 +48,3 @@ Ao materializar uma decisão antes parcial ou futura, atualizar:
 4. `checkpoint/CURRENT.md`.
 
 Não reescrever um ADR para fingir que a decisão sempre teve a forma atual. Mudanças de direção devem ser registradas por novo ADR ou seção explícita de evolução.
-

@@ -74,9 +74,7 @@ defmodule Leafcutter.IntegrationsTest do
                )
 
       assert {:error, :package_not_found} =
-               Integrations.create(
-                 integration_attrs(scope, package_id: Ecto.UUID.generate())
-               )
+               Integrations.create(integration_attrs(scope, package_id: Ecto.UUID.generate()))
 
       assert {:ok, _disabled_organization} =
                Organizations.disable(scope.organization.id)
@@ -103,9 +101,7 @@ defmodule Leafcutter.IntegrationsTest do
 
     test "returns a named error when the Integration does not exist" do
       assert {:error, :not_found} =
-               Integrations.get(
-                 "00000000-0000-0000-0000-000000000000"
-               )
+               Integrations.get("00000000-0000-0000-0000-000000000000")
     end
   end
 
@@ -123,9 +119,7 @@ defmodule Leafcutter.IntegrationsTest do
 
     test "returns a named error for a missing Integration or disabled parent" do
       assert {:error, :not_found} =
-               Integrations.disable(
-                 "00000000-0000-0000-0000-000000000000"
-               )
+               Integrations.disable("00000000-0000-0000-0000-000000000000")
 
       scope = scope_fixture()
       {:ok, integration} = Integrations.create(integration_attrs(scope))

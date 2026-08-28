@@ -23,24 +23,26 @@
 18. Catalog Contract/ContractVersion materialization
 19. Catalog Package/PackageVersion/PackageVersionEndpoint materialization
 20. Connections/Secret/SecretVersion materialization
+21. Integration identity materialization
 ```
 
 ## Próximo slice de implementação
 
 ```text
-Integration + EnvironmentDeployment
-→ scope Organization/Environment
+EnvironmentDeployment + EnvironmentDeploymentBinding
+→ scope Integration/Environment
 → PackageVersion, configs e bindings completos
 ```
 
-O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Catalog e Connections mínimos estão materializados. O próximo sub-slice materializa Integration e EnvironmentDeployment; o resolver permanece posterior.
+O contract do estágio upstream completo foi ratificado no ADR-0018 e em `docs/specifications/environment-deployment-run-resolution.md`. Catalog, Connections e a identidade Integration estão materializados. O próximo sub-slice materializa EnvironmentDeployment e seus bindings; o resolver permanece posterior.
 
 ## Sequência ratificada posterior
 
 ```text
 minimal Catalog authorities (materialized)
 → Connections + SecretVersion bindings (materialized)
-→ Integration + EnvironmentDeployment
+→ Integration identity (materialized)
+→ EnvironmentDeployment + bindings
 → EnvironmentDeployment resolver
 → Contracts/JSV + Connector/Operation/Transport
 → Record/Delivery/Attempt/Checkpoint
@@ -50,4 +52,3 @@ minimal Catalog authorities (materialized)
 ```
 
 A ordem dos quatro primeiros sub-slices está ratificada pelo ADR-0018. A sequência posterior não deve pular a resolução executável de RunSnapshot para criar Broadway com definição implícita.
-

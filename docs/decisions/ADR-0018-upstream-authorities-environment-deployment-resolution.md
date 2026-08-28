@@ -1,14 +1,14 @@
 # ADR-0018 — Authorities upstream mínimas e resolução de EnvironmentDeployment
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG + CONNECTIONS MÍNIMOS
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — CATALOG + CONNECTIONS + INTEGRATION IDENTITY
 - Data: 2026-08-28
 
 ## Contexto
 
 RunSnapshot v1 já materializa o destino estrutural, versionado e imutável de uma resolução executável. A próxima fronteira precisa persistir as authorities mínimas de Catalog, Connections e Integrations e compô-las em `leafcutter_runtime` sem antecipar Package Manifest, data plane ou secrets concretos.
 
-Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog e Connections mínimos já foram materializados em sub-slices ordenados; Integrations e o resolver permanecem posteriores.
+Os schemas, APIs e a semântica do resolver foram ratificados neste ADR e na specification relacionada. Catalog, Connections e a identidade de Integration já foram materializados em sub-slices ordenados; EnvironmentDeployment e o resolver permanecem posteriores.
 
 ## Decisão
 
@@ -406,10 +406,14 @@ Materializado:
 - config não sensível validada como JSON object;
 - binding opcional e exato protegido contra SecretVersion cross-scope;
 - unicidade e imutabilidade de SecretVersion no PostgreSQL;
-- ausência de raw secret, ciphertext, provider locator e credential na persistência.
+- ausência de raw secret, ciphertext, provider locator e credential na persistência;
+- identidade `Integration` organization-scoped ligada a uma Package estável;
+- APIs públicas `Integrations.create/1`, `get/1` e `disable/1`;
+- validação de Organization ativa sob lock compartilhado e disable idempotente;
+- imutabilidade de Organization, Package e identidade da Integration no PostgreSQL.
 
 Não materializado:
-- Integrations;
+- EnvironmentDeployment e EnvironmentDeploymentBinding;
 - resolver de EnvironmentDeployment.
 
 ## Futuro preservado
@@ -431,7 +435,7 @@ Continuam fora deste slice:
 - o resolver obterá refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade poderão ser protegidas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- Integration e EnvironmentDeployment formam o próximo sub-slice.
+- EnvironmentDeployment e seus bindings formam o próximo sub-slice.
 
 ## Evidência
 
@@ -442,4 +446,3 @@ Continuam fora deste slice:
 - `docs/architecture/integration-packages.md`;
 - `docs/specifications/package-manifest-v1.md`;
 - `docs/checkpoint/CURRENT.md`.
-

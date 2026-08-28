@@ -38,7 +38,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
 | Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e endpoints | availability, manifest e build |
 | Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
-| Integrations | RATIFICADO — NÃO MATERIALIZADO | — | Integration, EnvironmentDeployment, promotion, homologation, IdentityMapping |
+| Integrations | PARCIALMENTE MATERIALIZADO | Integration identity e lifecycle mínimo | EnvironmentDeployment, promotion, homologation, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
 | Notifications | RATIFICADO — NÃO MATERIALIZADO | Oban compartilhado como infraestrutura | rules, recipients e durable deliveries |
 | Audit | RATIFICADO — NÃO MATERIALIZADO | — | append-only AuditEvent |
@@ -100,7 +100,7 @@ Continuam futuros OAuth durable state, providers/encryption, rotation, revocatio
 
 ## Integrations
 
-O modelo mínimo e suas APIs foram ratificados no ADR-0018, ainda sem implementação. Owns:
+O modelo mínimo e suas APIs foram ratificados no ADR-0018. A identidade Integration e seu lifecycle mínimo estão materializados. Owns:
 
 ```text
 Integration
@@ -111,7 +111,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration é lógica, organization-scoped e ligada a Package estável. EnvironmentDeployment contém PackageVersion, promotable/local config e bindings locais de Connection. O resolver transacional pertence a leafcutter_runtime.
+Integration é lógica, organization-scoped e ligada a Package estável. A facade pública cria, lê e desabilita essa identidade. EnvironmentDeployment, ainda não materializado, conterá PackageVersion, promotable/local config e bindings locais de Connection. O resolver transacional pertence a leafcutter_runtime.
 
 ## Executions
 
@@ -173,4 +173,3 @@ leafcutter_api
 ```
 
 Não criar `ApplicationService`, `CommandBus` ou `WorkflowEngine` genéricos por antecipação.
-

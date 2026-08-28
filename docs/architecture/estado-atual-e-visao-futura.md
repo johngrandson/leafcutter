@@ -115,6 +115,10 @@ Environment
 
 Writes validam Organization e Environment ativos por uma API pública do owner que segura locks compartilhados na ordem Organization → Environment. FKs compostas impedem scope incompatível, um trigger protege o binding de SecretVersion cross-scope e PostgreSQL rejeita update/delete de SecretVersion. Raw secret, ciphertext, provider locator, credential, OAuth e rotation permanecem fora do slice.
 
+### Integrations parcial
+
+`Leafcutter.Integrations` cria, lê e desabilita identidades Integration organization-scoped ligadas a uma Package estável. Organization, Package e name são imutáveis depois da criação. Writes validam a Organization ativa sob lock compartilhado, e disable preserva um único timestamp sob locks na ordem Organization → Integration.
+
 ### Runtime e Executions foundation
 
 Persistência atual:
@@ -220,12 +224,11 @@ retention lifecycle
 
 Raw secrets continuam fora de PackageVersion, RunSnapshot, logs, AuditEvent e respostas de API. Provider, encryption, OAuth, rotation, revocation e retention exigem decisões próprias antes de implementação.
 
-### Integrations
+### Integrations futuro
 
-O modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
+O restante do modelo mínimo foi ratificado no ADR-0018 e ainda não está materializado:
 
 ```text
-Integration
 EnvironmentDeployment
 Triggers
 HomologationRequest
@@ -233,7 +236,7 @@ Promotion history
 IdentityMapping
 ```
 
-Integration será organization-scoped e ligada a um Package estável. EnvironmentDeployment persistirá PackageVersion, promotable/local config e bindings por endpoint. Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
+EnvironmentDeployment persistirá PackageVersion, promotable/local config e bindings por endpoint. Promotion continua futura e copiará somente estado promovível; não copiará secrets, Connections, Triggers ou config local do target.
 
 ### Executions completo
 
@@ -336,14 +339,16 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog e Connections mínimos estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections e a identidade de Integration estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
 ↓
 Connections + SecretVersion bindings (materializado)
 ↓
-Integrations + EnvironmentDeployment
+Integration identity (materialized)
+↓
+EnvironmentDeployment + bindings
 ↓
 resolver em leafcutter_runtime
 ↓
@@ -351,4 +356,3 @@ Executions.Runs.create/1
 ```
 
 O ADR-0018 e a specification correspondente controlam esses sub-slices. RunSnapshot continua provando somente presença e versão suportada no control plane. O carregamento no coordinator e a execução Broadway permanecem posteriores.
-

@@ -91,7 +91,7 @@ Connection pode alterar somente config e binding para resoluções futuras; disa
 
 ## Integration e EnvironmentDeployment
 
-`Integration` será identidade lógica de uma Organization vinculada a um Package estável.
+`Integration` é uma identidade lógica materializada de uma Organization vinculada a um Package estável. Seu lifecycle mínimo expõe create, get e disable.
 
 O modelo mínimo ratificado usa no máximo um EnvironmentDeployment por Integration e Environment. O deployment guarda estado executável atual e mutável:
 
@@ -168,4 +168,3 @@ AuditEvent
 PubSub message
 → propagação efêmera, nunca authority
 ```
-

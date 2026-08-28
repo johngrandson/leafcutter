@@ -139,7 +139,7 @@ O futuro workflow de resolução pertence à orchestration em `leafcutter_runtim
 
 ## Evolução posterior
 
-Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections com Connection, Secret e SecretVersion. O formato RunSnapshot v1 permaneceu inalterado. Integrations e o resolver semântico continuam pendentes; por isso a consistência cross-context ainda não é comprovada por `Executions.Runs.create/1`.
+Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections com Connection, Secret e SecretVersion e pela identidade Integration. O formato RunSnapshot v1 permaneceu inalterado. EnvironmentDeployment e o resolver semântico continuam pendentes; por isso a consistência cross-context ainda não é comprovada por `Executions.Runs.create/1`.
 
 ## Consequências
 
@@ -165,4 +165,3 @@ Lifecycle completo, terminalização, retenção, autenticação, secrets concre
 - permitir atualização do snapshot;
 - criar primeiro Catalog, Connections e Integrations para então definir a fundação;
 - tornar Runs `pending` elegíveis sem prova persistida de definição suportada.
-

@@ -9,9 +9,9 @@ Contexts representam boundaries de domínio e podem expor facade raiz, capabilit
 
 ## Estado atual
 
-`Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, RunSnapshot, ownership e recovery. `Catalog` possui Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e PackageVersionEndpoint materializados. `Connections` possui Connection, Secret e SecretVersion com APIs segmentadas e integridade de scope.
+`Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, RunSnapshot, ownership e recovery. `Catalog` possui Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e PackageVersionEndpoint materializados. `Connections` possui Connection, Secret e SecretVersion com APIs segmentadas e integridade de scope. `Integrations` possui a identidade Integration e seu lifecycle mínimo.
 
-Availability e manifest/build do Catalog, OAuth/rotation e secret providers de Connections, Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
+Availability e manifest/build do Catalog, OAuth/rotation e secret providers de Connections, EnvironmentDeployment e bindings de Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
 
 ## Consequências
 
@@ -19,4 +19,3 @@ Availability e manifest/build do Catalog, OAuth/rotation e secret providers de C
 - referência por ID não cria dependência de API;
 - composição cross-context pertence à application layer;
 - context não é sinônimo de arquivo nem tabela.
-
