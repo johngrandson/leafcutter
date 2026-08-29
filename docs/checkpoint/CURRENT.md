@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna e a política pura do documento estão materializadas por `Leafcutter.Catalog.Types.SchemaDocument` e `Leafcutter.Catalog.Contracts.SchemaPolicy`; persistência, publicação, compilação JSV, validação de payload e propagação de executabilidade continuam pendentes.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura do documento e a boundary interna de build JSV estão materializadas por `Leafcutter.Catalog.Types.SchemaDocument`, `Leafcutter.Catalog.Contracts.SchemaPolicy` e `Leafcutter.Catalog.Contracts.SchemaBuilder`; persistência, publicação, compilação pública, validação de payload e propagação de executabilidade continuam pendentes.
 
 ## Estado materializado
 
@@ -197,7 +197,7 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-JSON Schema + JSV (slice 26A ratificado; implementação pendente)
+ContractVersion executável completo (slice 26A em materialização; persistência e APIs públicas pendentes)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -238,6 +238,8 @@ Resolver-facing authority read APIs
 Resolver scope discovery without binding reads
 EnvironmentDeployment transactional resolver
 Executable ContractVersion/JSV contract ratification
+ContractVersion schema document representation and policy
+ContractVersion internal JSV build boundary
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -245,7 +247,7 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto e a política pura de documentos object/boolean estão materializadas. A próxima fronteira é a integração interna com JSV, ainda sem mudar persistência ou API pública.
+A representação Ecto, a política pura de documentos object/boolean e a boundary interna de build JSV estão materializadas. A próxima fronteira é a persistência nullable compatível com ContractVersions identity-only legadas, ainda sem mudar a API pública.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -253,15 +255,16 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar a boundary interna de build JSV conforme ADR-0019:
+Materializar a persistência compatível com legado conforme ADR-0019:
 
 ~~~text
-policy-approved object or boolean document
-→ add JSV ~> 0.22.0 to leafcutter_core
-→ fixed Draft 2020-12 build options
-→ no atoms, custom formats or custom vocabularies
-→ deterministic internal build failure
-→ no persistence or public API change yet
+existing identity-only ContractVersions
+→ add nullable schema :jsonb with no default
+→ CHECK NULL | object | boolean
+→ reject schema IS NULL on new inserts
+→ preserve the existing update/delete immutability trigger
+→ wire SchemaDocument into ContractVersion
+→ no public publish/compile/validate change yet
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:
