@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions estão materializados; a propagação para Deployment e Run continua pendente.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions e EnvironmentDeployments estão materializados; a propagação final para Run continua pendente.
 
 ## Estado materializado
 
@@ -90,7 +90,7 @@ Catalog.Packages.get_version/1
 
 ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-O restante do slice 26A ratificado rejeitará versões legadas em novos Deployments e novas Runs resolvidas. Isso é estado futuro aprovado, não comportamento atual.
+A rejeição de versões legadas em novos Deployments está materializada. O restante do slice 26A ratificado repetirá a proteção em novas Runs resolvidas; isso permanece estado futuro aprovado, não comportamento atual.
 
 ### Connections
 
@@ -138,7 +138,7 @@ Integrations.Deployments.lock_for_resolution/1
 
 Integration referencia uma Package estável e torna Organization, Package e identidade imutáveis. Create valida a Organization ativa sob lock compartilhado; disable preserva um único timestamp sob locks na ordem Organization → Integration.
 
-EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs e compatibilidade de Connector. `fetch_resolution_scope/1` descobre somente os parent IDs imutáveis sem ler bindings; `lock_for_resolution/1` protege deployment e bindings com shared locks dentro da transação do caller. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
+EnvironmentDeployment guarda PackageVersion, promotable/local config como JSON objects e o conjunto completo de bindings por endpoint. Create e replace validam Organization, Environment, Integration e Connections ativos sob locks determinísticos, além de PackageVersion, cobertura de refs, compatibilidade de Connector e executabilidade de todas as ContractVersions projetadas. Versões legadas produzem IDs únicos e ordenados antes de qualquer persistência; Deployments históricos com legado permanecem legíveis. `fetch_resolution_scope/1` descobre somente os parent IDs imutáveis sem ler bindings; `lock_for_resolution/1` protege deployment e bindings com shared locks dentro da transação do caller. Persistência e substituição são atômicas; constraints e triggers protegem identidade imutável, unicidade por Integration/Environment, config, cobertura e compatibilidade no PostgreSQL.
 
 ### Executions e runtime
 
@@ -199,7 +199,7 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-ContractVersion executável completo (slice 26A em materialização; propagação para Deployment/Run pendente)
+ContractVersion executável completo (slice 26A em materialização; propagação para Run pendente)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -247,6 +247,7 @@ ContractVersion schema-aware publication and insert sealing
 ContractVersion public compilation and opaque validator
 ContractVersion public payload validation and safe errors
 PackageVersion executable ContractVersion enforcement
+EnvironmentDeployment executable ContractVersion enforcement
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -254,7 +255,7 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável, o sealing de novos inserts, a compilação pública, a validação de payload e a rejeição de legado em novas PackageVersions estão materializados. A próxima fronteira é repetir a proteção em `Deployments.create/1` e `replace/2`, ainda sem alterar RunSnapshot v1.
+A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável, o sealing de novos inserts, a compilação pública, a validação de payload e a rejeição de legado em novas PackageVersions e EnvironmentDeployments estão materializados. A próxima fronteira é repetir a proteção no resolver `LeafcutterRuntime.Runs.create_from_deployment/1`, ainda sem alterar RunSnapshot v1.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -262,15 +263,16 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar executabilidade na boundary de EnvironmentDeployment conforme ADR-0019:
+Materializar executabilidade na boundary final de resolução conforme ADR-0019:
 
 ~~~text
-Deployments.create/1 and replace/2 load the PackageVersion projection
+LeafcutterRuntime.Runs.create_from_deployment/1 loads the PackageVersion projection
 → collect endpoint ContractVersions whose persisted schema is nil
 → deduplicate and sort the legacy ContractVersion IDs
-→ return {:error, {:contract_versions_not_executable, ids}}
-→ roll back create or replacement completely
-→ preserve historical Deployments and RunSnapshot v1
+→ return {:error, {:environment_deployment_not_executable,
+                    {:contract_versions_not_executable, ids}}}
+→ roll back Run and RunSnapshot creation completely
+→ preserve historical Runs and RunSnapshot v1
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:

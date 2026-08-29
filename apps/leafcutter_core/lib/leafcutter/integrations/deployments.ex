@@ -11,7 +11,12 @@ defmodule Leafcutter.Integrations.Deployments do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{Packages, PackageVersion, PackageVersionEndpoint}
+  alias Leafcutter.Catalog.{
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
+  }
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Connection
 
@@ -65,12 +70,17 @@ defmodule Leafcutter.Integrations.Deployments do
              unexpected_refs: [String.t()]
            }}
 
+  @typedoc "Unique, sorted identifiers for ContractVersions without executable schema content."
+  @type contract_versions_not_executable ::
+          {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}
+
   @typedoc "Authority or semantic error returned while validating deployment state."
   @type validation_error ::
           Environments.active_scope_state_error()
           | Integrations.active_integration_state_error()
           | :package_version_not_found
           | :package_version_mismatch
+          | contract_versions_not_executable()
           | binding_mismatch()
           | {:connection_not_found, Connection.id()}
           | {:connection_disabled, Connection.id()}
@@ -105,6 +115,7 @@ defmodule Leafcutter.Integrations.Deployments do
 
   * `{:ok, deployment}` with bindings loaded when the complete state is persisted
   * `{:error, reason}` when an authority is absent, incompatible, or disabled
+  * `{:error, {:contract_versions_not_executable, ids}}` when schema content is unavailable
   * `{:error, {:binding_mismatch, details}}` when endpoint coverage is incomplete
   * `{:error, changeset}` when an attribute or database constraint is invalid
 
@@ -137,6 +148,7 @@ defmodule Leafcutter.Integrations.Deployments do
   * At most one deployment exists per Integration and Environment.
   * Missing config fields become empty JSON objects.
   * Bindings must match every PackageVersion endpoint ref exactly.
+  * PackageVersions containing identity-only ContractVersions are rejected.
   * Connections are locked once in deterministic identifier order.
   * Effective config, SecretVersion freezing, and Run creation remain outside this capability.
   """
@@ -183,7 +195,8 @@ defmodule Leafcutter.Integrations.Deployments do
   ## Notes
 
   * Parent authorities and Catalog projections are not preloaded.
-  * Lookup does not revalidate lifecycle or semantic compatibility.
+  * Lookup does not revalidate lifecycle, semantic compatibility, or executability.
+  * Historical deployments containing identity-only ContractVersions remain readable.
   * Bindings contain only ref and Connection identity.
   """
   @spec get(EnvironmentDeployment.id()) ::
@@ -323,6 +336,7 @@ defmodule Leafcutter.Integrations.Deployments do
   * `{:ok, deployment}` with the replacement bindings loaded
   * `{:error, :not_found}` when the EnvironmentDeployment does not exist
   * `{:error, reason}` when an authority is absent, incompatible, or disabled
+  * `{:error, {:contract_versions_not_executable, ids}}` when schema content is unavailable
   * `{:error, {:binding_mismatch, details}}` when endpoint coverage is incomplete
   * `{:error, changeset}` when replacement state or a database constraint is invalid
 
@@ -356,6 +370,7 @@ defmodule Leafcutter.Integrations.Deployments do
   * Missing config fields become empty JSON objects instead of preserving old values.
   * Organization, Environment, and Integration identity are immutable and ignored in attrs.
   * The deployment row is locked before its bindings and Connections are read.
+  * PackageVersions containing identity-only ContractVersions are rejected.
   * Any failure rolls back PackageVersion, config, and every binding change.
   """
   @spec replace(EnvironmentDeployment.id(), replace_attrs()) ::
@@ -416,6 +431,7 @@ defmodule Leafcutter.Integrations.Deployments do
            {:ok, package_version} <-
              fetch_package_version(package_version_id),
            :ok <- validate_package_version(package_version, integration),
+           :ok <- validate_contract_versions_executable(package_version),
            :ok <- validate_binding_refs(package_version, binding_changesets),
            :ok <-
              validate_connector_compatibility(
@@ -467,6 +483,7 @@ defmodule Leafcutter.Integrations.Deployments do
            {:ok, package_version} <-
              fetch_package_version(package_version_id),
            :ok <- validate_package_version(package_version, integration),
+           :ok <- validate_contract_versions_executable(package_version),
            :ok <- validate_binding_refs(package_version, binding_changesets),
            :ok <-
              validate_connector_compatibility(
@@ -608,6 +625,30 @@ defmodule Leafcutter.Integrations.Deployments do
       :ok
     else
       {:error, :package_version_mismatch}
+    end
+  end
+
+  @spec validate_contract_versions_executable(PackageVersion.t()) ::
+          :ok | {:error, contract_versions_not_executable()}
+  defp validate_contract_versions_executable(package_version) do
+    contract_version_ids =
+      package_version.endpoints
+      |> Enum.flat_map(fn
+        %PackageVersionEndpoint{
+          contract_version_id: contract_version_id,
+          contract_version: %ContractVersion{schema: nil}
+        } ->
+          [contract_version_id]
+
+        _executable_endpoint ->
+          []
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case contract_version_ids do
+      [] -> :ok
+      contract_version_ids -> {:error, {:contract_versions_not_executable, contract_version_ids}}
     end
   end
 
