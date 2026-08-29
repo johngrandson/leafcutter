@@ -27,7 +27,9 @@ defmodule Leafcutter.Catalog.Contracts do
             required(:version) => String.t(),
             required(:schema) => SchemaDocument.t()
           }
-          | %{required(String.t()) => term()}
+          | %{
+              required(String.t()) => String.t() | SchemaDocument.t()
+            }
 
   @typedoc "Error returned when an executable ContractVersion cannot be published."
   @type publish_error :: :contract_not_found | Changeset.t()

@@ -150,6 +150,26 @@ defmodule Leafcutter.Catalog.ContractsTest do
       assert Repo.aggregate(ContractVersion, :count) == 0
     end
 
+    test "rejects an improper list in the schema without raising" do
+      contract = contract_fixture()
+
+      improper_schema =
+        schema(%{
+          "enum" => [true | false]
+        })
+
+      assert {:error, %Changeset{} = changeset} =
+               Contracts.publish_version(contract.id, %{
+                 version: "improper-list",
+                 schema: improper_schema
+               })
+
+      assert %{schema: ["does not satisfy the executable schema policy"]} =
+               errors_on(changeset)
+
+      assert Repo.aggregate(ContractVersion, :count) == 0
+    end
+
     test "enforces version uniqueness within one Contract" do
       first_contract = contract_fixture("First")
       second_contract = contract_fixture("Second")

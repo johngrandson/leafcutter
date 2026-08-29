@@ -119,13 +119,15 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicy do
     end
   end
 
-  defp validate_json_value(value, path, depth, node_count) when is_list(value) do
+  defp validate_json_value([], path, depth, node_count) do
     with :ok <- validate_container_depth(depth, path) do
-      value
-      |> Enum.with_index()
-      |> Enum.reduce_while({:ok, node_count}, fn {nested_value, index}, {:ok, current_count} ->
-        continue_json_validation(nested_value, path ++ [index], depth, current_count)
-      end)
+      {:ok, node_count}
+    end
+  end
+
+  defp validate_json_value([head | tail], path, depth, node_count) do
+    with :ok <- validate_container_depth(depth, path) do
+      validate_json_list(head, tail, path, depth, 0, node_count)
     end
   end
 
@@ -160,6 +162,43 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicy do
       {:ok, next_count} -> {:cont, {:ok, next_count}}
       {:error, _error} = failure -> {:halt, failure}
     end
+  end
+
+  @spec validate_json_list(
+          term(),
+          term(),
+          path(),
+          pos_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, non_neg_integer()} | {:error, error()}
+  defp validate_json_list(head, tail, path, parent_depth, index, node_count) do
+    case validate_json(head, path ++ [index], nested_depth(head, parent_depth), node_count) do
+      {:ok, next_count} ->
+        validate_json_list_tail(tail, path, parent_depth, index + 1, next_count)
+
+      {:error, _error} = failure ->
+        failure
+    end
+  end
+
+  @spec validate_json_list_tail(
+          term(),
+          path(),
+          pos_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, non_neg_integer()} | {:error, error()}
+  defp validate_json_list_tail([], _path, _parent_depth, _index, node_count) do
+    {:ok, node_count}
+  end
+
+  defp validate_json_list_tail([head | tail], path, parent_depth, index, node_count) do
+    validate_json_list(head, tail, path, parent_depth, index, node_count)
+  end
+
+  defp validate_json_list_tail(_improper_tail, path, _parent_depth, index, _node_count) do
+    {:error, {:invalid_json, path ++ [index], :unsupported_value}}
   end
 
   @spec validate_container_depth(pos_integer(), path()) :: :ok | {:error, error()}
