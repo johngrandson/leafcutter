@@ -199,7 +199,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Connectors atuais
 
-`leafcutter_connectors` existe como OTP application e boundary, mas ainda não possui behaviours, transports ou implementações executáveis de connector.
+`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. Ainda não possui Transport nem implementação concreta de connector.
 
 ## Arquitetura ratificada ainda não materializada
 
@@ -226,7 +226,6 @@ Permanecem posteriores:
 ```text
 availability/deprecation metadata
 Package Manifest e build
-Operation executable contract (26B ratificado; não materializado)
 HTTP Transport and reference Operation (26C)
 ```
 
@@ -302,7 +301,7 @@ Sequência ratificada:
 → Transport + first HTTP Operation
 ```
 
-26A e 26B possuem contracts concretos ratificados; somente 26A está materializado. HTTP permanece o primeiro Transport planejado no Slice 26C; outras opções entram somente com demanda real.
+26A e a boundary in-memory de 26B estão materializados. HTTP permanece o primeiro Transport planejado no Slice 26C; outras opções entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -359,7 +358,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e o Slice 26A estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e os Slices 26A/26B estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -374,9 +373,9 @@ resolver em leafcutter_runtime (materialized)
 ↓
 ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (26A materializado)
 ↓
-Operation executable contract (26B ratificado; materialização seguinte)
+Operation executable contract (26B materializado)
 ↓
 HTTP Transport + reference Operation (26C ainda a ratificar)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. O ADR-0021 e `operation-contract.md` controlam o Slice 26B ratificado, cuja próxima fronteira é materializar somente behaviours, structs e invariantes em `leafcutter_connectors`. Transport HTTP, carregamento no coordinator e execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. O ADR-0021 e `operation-contract.md` controlam o Slice 26B materializado. A próxima fronteira é ratificar 26C antes de implementar Transport HTTP; carregamento no coordinator e execução Broadway permanecem posteriores.

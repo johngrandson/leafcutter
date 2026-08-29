@@ -1,6 +1,6 @@
 # Operation contract
 
-- Estado: RATIFICADO — NÃO MATERIALIZADO
+- Estado: MATERIALIZADO
 - Decisão: `docs/decisions/ADR-0021-operation-executavel.md`
 
 ## Objetivo
@@ -333,7 +333,20 @@ Catalog ou Contracts.
 - retry de write pode repetir efeito externo;
 - idempotency/upsert podem reduzir duplicação posteriormente, sem promessa exactly-once.
 
-## Matriz mínima de testes da materialização
+## API de validação materializada
+
+A materialização expõe predicados booleanos e não cria um segundo error contract para
+construção:
+
+- `Operation.json_value?/1`, `json_object?/1` e `cursor?/1`;
+- `valid?/1` em Error, invocations, results, Item e ItemResult;
+- `Read.Result.valid_for?/2` confronta `next_cursor` com a invocation;
+- `Write.Result.valid_for?/2` confronta results com o batch da invocation;
+- `Read.valid_return?/2` e `Write.valid_return?/2` validam o retorno completo.
+
+Os predicados não executam I/O, não resolvem módulo e não chamam Catalog ou Contracts.
+
+## Matriz de testes da materialização
 
 ### Tipos e segurança
 

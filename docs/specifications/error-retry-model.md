@@ -4,7 +4,7 @@
 
 ## Operation error in-memory
 
-O ADR-0021 ratifica `LeafcutterConnectors.Operation.Error` para callbacks executáveis:
+O ADR-0021 controla o `LeafcutterConnectors.Operation.Error` materializado para callbacks executáveis:
 
 ~~~elixir
 %Operation.Error{
@@ -21,7 +21,7 @@ O ADR-0021 ratifica `LeafcutterConnectors.Operation.Error` para callbacks execut
 }
 ~~~
 
-O struct é in-memory. Ele não define a representação serializada futura de Attempt/Delivery.
+O struct e sua validação pura estão materializados in-memory. Eles não definem a representação serializada futura de Attempt/Delivery; por isso o estado geral desta specification permanece não materializado.
 
 Não existe campo `retryable`; o caller deriva a policy da category:
 

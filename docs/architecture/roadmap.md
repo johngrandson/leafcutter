@@ -96,7 +96,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26B — Operation executável
 
-**Contract concreto ratificado no ADR-0021; ainda não materializado.**
+**Contract concreto materializado conforme o ADR-0021.**
 
 - behaviours síncronos separados de Read e Write;
 - invocation/result structs com config resolvida e credentials efêmeras;
@@ -114,7 +114,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - primeiro Connector/Operation de referência;
 - client e pool strategy.
 
-PackageVersion 1 Source → N Destinations e criação automática de Run a partir do snapshot já possuem foundations materializadas. A boundary in-memory de Operation é a próxima materialização; carregamento no runtime permanece posterior e não entra no contract-only Slice 26B.
+PackageVersion 1 Source → N Destinations, criação automática de Run e a boundary in-memory de Operation possuem foundations materializadas. A próxima fronteira é ratificar o Slice 26C; carregamento no runtime permanece posterior.
 
 ## Data plane durável
 

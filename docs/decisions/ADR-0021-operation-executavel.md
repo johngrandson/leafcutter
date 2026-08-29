@@ -1,7 +1,7 @@
 # ADR-0021 — Contrato executável de Operation
 
 - Status: Accepted
-- Estado de implementação: RATIFICADO — NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO
 
 ## Contexto
 
@@ -170,6 +170,23 @@ Transformation
 A Operation não chama `Contracts.validate/2`. Um erro JSV local não é convertido em
 chamada externa. Uma rejeição semântica do sistema externo ainda pode retornar
 `:validation` mesmo depois da validação JSON Schema local.
+
+## Estado materializado
+
+`leafcutter_connectors` contém os tipos JSON compartilhados, `Operation.Error`, os
+behaviours Read/Write e todos os invocation/result values ratificados. As invocation structs
+redigem credentials por `Inspect`.
+
+As invariantes são verificáveis por predicados puros:
+
+- `Operation.json_value?/1`, `json_object?/1` e `cursor?/1`;
+- `valid?/1` nos values;
+- `Read.Result.valid_for?/2` para avanço de cursor;
+- `Write.Result.valid_for?/2` para completude, ordem e correlação;
+- `Read.valid_return?/2` e `Write.valid_return?/2` para o retorno integral do callback.
+
+A application não inicia supervisor próprio e não adiciona dependency de Core, Ecto, Repo,
+HTTP ou runtime. Transport, module resolution e payload validation pelo caller continuam fora.
 
 ## Consequências
 

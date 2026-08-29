@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. Persistência, dialeto, compilação, validação, legado, limites e propagação de ContractVersion executável foram ratificados no ADR-0019. O ADR-0021 ratifica o contract concreto de Operation executável; sua materialização em `leafcutter_connectors` é a próxima fronteira de implementação.
+RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. ContractVersion executável está materializado conforme o ADR-0019, e a boundary executável de Operation está materializada conforme o ADR-0021. A próxima decisão arquitetural é o contract de Transport e da primeira referência HTTP no Slice 26C.
 
 ## Domínio
 

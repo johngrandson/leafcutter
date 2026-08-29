@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26B ratificado — contrato executável de Operation**
+**Slice 26B materializado — contrato executável de Operation**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O Slice 26A está completo conforme o ADR-0019, com ContractVersion executável e proteção em PackageVersion, EnvironmentDeployment e resolução de Run sem alterar RunSnapshot v1. O ADR-0021 agora ratifica o contract concreto do Slice 26B: behaviours síncronos de Read/Write, invocation/result structs, cursor JSON opaco, partial success completo e ordenado, pontos explícitos de validação e `Operation.Error` alinhado à retry taxonomy. Esse contract ainda não foi materializado em código.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O Slice 26A está completo conforme o ADR-0019. O Slice 26B também está materializado conforme o ADR-0021: behaviours síncronos de Read/Write, invocation/result structs, cursor JSON opaco, partial success completo e ordenado, `Operation.Error`, redaction de credentials e invariantes puras. RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -184,7 +184,7 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 
 ### API e connectors
 
-`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` existe como boundary vazia. Seu contract executável de Operation está ratificado no ADR-0021, mas behaviours e structs ainda não existem no código.
+`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` é uma library sem processo próprio e materializa a boundary executável de Operation. Ela não depende de Core, Ecto, Repo ou HTTP.
 
 ## Arquitetura ratificada preservada
 
@@ -198,7 +198,6 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Operation executável (contract ratificado; código pendente)
 Transport executável e referência HTTP
 Integration Packages
 Broadway data plane
@@ -250,6 +249,7 @@ PackageVersion executable ContractVersion enforcement
 EnvironmentDeployment executable ContractVersion enforcement
 Run resolution executable ContractVersion enforcement
 Executable Operation contract ratification
+Executable Operation boundary materialization
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -257,38 +257,37 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-O Slice 26A permanece integralmente materializado e RunSnapshot v1 permanece inalterado. O
-Slice 26B agora possui contract concreto ratificado no ADR-0021, mas
-`leafcutter_connectors` ainda contém somente a application foundation gerada.
+Os Slices 26A e 26B estão integralmente materializados, e RunSnapshot v1 permanece
+inalterado. A boundary de Operation é somente in-memory: não resolve módulos, não chama
+Contracts, não executa Transport e não participa do RunCoordinator.
 
-A próxima fronteira é materializar apenas a boundary in-memory de Operation. Transport e a
-primeira referência HTTP permanecem no Slice 26C.
+A próxima fronteira é ratificar o contract do Slice 26C antes de escrever Transport ou a
+primeira referência HTTP.
 
 ## Próxima tarefa concreta
 
-Materializar o contract do Slice 26B em `leafcutter_connectors`:
+Ratificar o Slice 26C, fechando somente as decisões necessárias para um primeiro caminho HTTP:
 
 ~~~text
-LeafcutterConnectors.Operation JSON types
-→ Operation.Error
-→ Read behaviour + Invocation + Result
-→ Write behaviour + Invocation + Item + ItemResult + Result
-→ credentials Inspect redaction
-→ pure invariant validation and focused fake-module tests
+Transport ownership and callback boundary
+→ request/response values
+→ first reference Operation
+→ operation_id-to-module resolution boundary
+→ timeout/status/rate-limit/vendor-error translation
+→ HTTP client and pool strategy
 ~~~
 
-A mudança não adiciona dependency para `leafcutter_core`, Ecto, Repo ou HTTP; não cria
-processo OTP; não resolve `operation_id` para módulo; não carrega Operation no
-RunCoordinator; não altera RunSnapshot v1.
+A ratificação precisa preservar a independência de `leafcutter_connectors` em relação a
+Catalog/Repo, manter credentials efêmeras e separar HTTP do RunCoordinator e do data plane.
+Nenhum código de Transport deve ser criado antes do novo ADR ser aceito.
 
-Transport behaviour, HTTP client/pool, status/vendor translation, Package Manifest, persisted
-Attempt/Delivery errors, backoff, idempotency, payload limits e Broadway continuam fora desse
-incremento.
+Package Manifest completo, persisted Attempt/Delivery errors, backoff, idempotency, payload
+limits, durable fan-out e Broadway continuam fora desse incremento.
 
 ## Principais decisões abertas
 
 - Package Manifest e build de packages;
-- materialização de Operation e resolução via Package Manifest;
+- resolução de `operation_id` via Package Manifest/build;
 - Transport executável e referência HTTP (Slice 26C);
 - data plane e durable fan-out;
 - lifecycle completo de Run;

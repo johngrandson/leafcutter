@@ -32,7 +32,7 @@ Materialized / Partial / Not materialized
 | ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | MATERIALIZADO |
 | ADR-0019 | ContractVersion executável com JSON Schema/JSV | MATERIALIZADO |
 | ADR-0020 | Base de conhecimento local derivada | MATERIALIZADO |
-| ADR-0021 | Contrato executável de Operation | RATIFICADO — NÃO MATERIALIZADO |
+| ADR-0021 | Contrato executável de Operation | MATERIALIZADO |
 
 ## Convenção de status decisório
 

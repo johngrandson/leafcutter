@@ -63,11 +63,19 @@
 - validação de scope, lifecycle, executabilidade de ContractVersion, cobertura e Connector compatibility sob locks determinísticos;
 - descoberta de scope imutável e locks de resolução por APIs públicas.
 
+### Operation executável
+
+- behaviours síncronos de Read e Write;
+- invocation/result values com credentials redigidas;
+- cursor JSON opaco e conclusão por `nil`;
+- write batch completo, ordenado e correlacionado por ref;
+- partial success e erro normalizado;
+- invariantes puras sem Transport, Repo ou processo próprio.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Operation executável (contract do Slice 26B ratificado, ainda sem código);
 - Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

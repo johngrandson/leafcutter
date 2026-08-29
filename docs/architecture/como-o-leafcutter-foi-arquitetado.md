@@ -238,7 +238,7 @@ Transport
 → protocol
 ```
 
-O ADR-0021 ratifica Read/Write behaviours síncronos: Read normaliza paginação em cursor JSON opaco e Write devolve exatamente um resultado ordenado por item. HTTP continua sendo o primeiro Transport planejado no Slice 26C.
+O ADR-0021 controla os Read/Write behaviours síncronos agora materializados: Read normaliza paginação em cursor JSON opaco e Write devolve exatamente um resultado ordenado por item. HTTP continua sendo o primeiro Transport planejado no Slice 26C.
 
 # Transformation, Enrichment e Interceptor
 
@@ -301,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. O contract de ContractVersion executável com JSON Schema/JSV está materializado integralmente sem alterar RunSnapshot v1. O contract de Operation executável está ratificado, mas ainda sem código. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Transport executável, rolling upgrade de formatos, idempotência/invocation durável futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. Os contracts executáveis de ContractVersion e Operation também estão materializados sem alterar RunSnapshot v1. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Transport executável, rolling upgrade de formatos, idempotência/invocation durável futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -311,11 +311,9 @@ O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connec
 present
 → RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
 → ContractVersion + JSON Schema/JSV + enforcement em PackageVersion/Deployment/Run
+→ Operation Read/Write behaviours + in-memory validation (26B)
 
 next
-→ materializar Operation behaviours/structs (26B)
-
-then
 → ratificar HTTP reference path (26C)
 
 future

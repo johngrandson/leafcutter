@@ -1,21 +1,27 @@
 # Connectors, Operations e Transports
 
 > **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation metadata
-> existem no Catalog. O contract concreto do Slice 26B está ratificado no ADR-0021, mas ainda
-> não foi materializado. Transport e a primeira referência HTTP pertencem ao Slice 26C.
+> existem no Catalog, e a boundary executável do Slice 26B existe em `leafcutter_connectors`.
+> Transport e a primeira referência HTTP pertencem ao Slice 26C.
 
 ## Estado materializado
 
 ~~~text
-Connector
-└── immutable ConnectorVersion
-    └── Operation metadata
+leafcutter_core
+└── Connector
+    └── immutable ConnectorVersion
+        └── Operation metadata
+
+leafcutter_connectors
+└── LeafcutterConnectors.Operation
+    ├── Read behaviour + values
+    ├── Write behaviour + values
+    └── Error
 ~~~
 
 `Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion
-com suas Operations atomicamente. Operation materializa `ref` e
-`role: source | destination`; nenhum behaviour ou result struct executável existe no código
-atual.
+com suas Operations atomicamente. `leafcutter_connectors` materializa os behaviours, structs
+e predicados puros do contract executável, sem processo próprio.
 
 ## Separação
 
@@ -30,13 +36,13 @@ Transport
 → conhece o protocolo
 ~~~
 
-Catalog possui metadata e versões. `leafcutter_connectors` possui a futura boundary
-executável sem depender de Catalog ou Repo. O runtime comporá as duas applications.
+Catalog possui metadata e versões. `leafcutter_connectors` possui a boundary executável
+sem depender de Catalog ou Repo. O runtime futuro comporá as duas applications.
 
 ContractVersion + JSON Schema/JSV é uma boundary anterior e separada, owned pelo Catalog. A
 Operation não compila nem valida ContractVersion.
 
-## Slice 26B — contract ratificado
+## Slice 26B — contract materializado
 
 Owner:
 
@@ -65,7 +71,8 @@ Write.write(Write.Invocation.t())
 ~~~
 
 Os callbacks são síncronos. Não existe processo por Operation, lifecycle callback, Transport
-callback ou dependency para `leafcutter_core`.
+callback ou dependency para `leafcutter_core`. Predicados `valid?/1`, `valid_for?/2` e
+`valid_return?/2` materializam as invariantes sem criar um novo error shape de construção.
 
 ### Read
 
@@ -121,7 +128,7 @@ Transformation
 A validação pertence ao caller em `leafcutter_runtime`, que pode usar Core e Connectors. A
 Operation não chama `Contracts.validate/2`.
 
-## Error taxonomy ratificada
+## Error taxonomy materializada na boundary
 
 | Categoria | Política |
 |---|---|
