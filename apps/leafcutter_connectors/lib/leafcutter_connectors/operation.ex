@@ -36,7 +36,7 @@ defmodule LeafcutterConnectors.Operation do
       do: true
 
   def json_value?(value) when is_binary(value), do: String.valid?(value)
-  def json_value?(value) when is_list(value), do: Enum.all?(value, &json_value?/1)
+  def json_value?(value) when is_list(value), do: json_list?(value)
   def json_value?(value) when is_map(value), do: json_object?(value)
   def json_value?(_value), do: false
 
@@ -55,6 +55,15 @@ defmodule LeafcutterConnectors.Operation do
   end
 
   def json_object?(_value), do: false
+
+  @spec json_list?(term()) :: boolean()
+  defp json_list?([]), do: true
+
+  defp json_list?([value | values]) do
+    json_value?(value) and json_list?(values)
+  end
+
+  defp json_list?(_value), do: false
 
   @doc "Returns whether a term is a valid non-nil operation cursor."
   @spec cursor?(term()) :: boolean()

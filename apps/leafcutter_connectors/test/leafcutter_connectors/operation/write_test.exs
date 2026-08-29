@@ -76,6 +76,7 @@ defmodule LeafcutterConnectors.Operation.WriteTest do
     refute Invocation.valid?(invocation([item("duplicate"), item("duplicate")]))
     refute Invocation.valid?(invocation([item("invalid", {:tuple, :payload})]))
     refute Invocation.valid?(invocation([item("  ")]))
+    refute Invocation.valid?(invocation([item("first") | :invalid_tail]))
   end
 
   test "rejects missing, extra, duplicated, reordered, and divergent results" do
@@ -90,7 +91,8 @@ defmodule LeafcutterConnectors.Operation.WriteTest do
       %Result{results: [first, second, extra]},
       %Result{results: [first, first]},
       %Result{results: [second, first]},
-      %Result{results: [first, divergent]}
+      %Result{results: [first, divergent]},
+      %Result{results: [first | :invalid_tail]}
     ]
 
     refute Enum.any?(invalid_results, &Result.valid_for?(&1, invocation))

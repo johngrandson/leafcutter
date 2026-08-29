@@ -18,13 +18,21 @@ defmodule LeafcutterConnectors.Operation.Read.Result do
   @doc "Returns whether a result has valid field values."
   @spec valid?(term()) :: boolean()
   def valid?(%__MODULE__{} = result) do
-    is_list(result.records) and
-      Enum.all?(result.records, &Operation.json_value?/1) and
+    valid_records?(result.records) and
       (is_nil(result.next_cursor) or Operation.cursor?(result.next_cursor)) and
       Operation.json_object?(result.metadata)
   end
 
   def valid?(_result), do: false
+
+  @spec valid_records?(term()) :: boolean()
+  defp valid_records?([]), do: true
+
+  defp valid_records?([record | records]) do
+    Operation.json_value?(record) and valid_records?(records)
+  end
+
+  defp valid_records?(_records), do: false
 
   @doc "Returns whether a result is valid and advances its invocation cursor."
   @spec valid_for?(term(), term()) :: boolean()

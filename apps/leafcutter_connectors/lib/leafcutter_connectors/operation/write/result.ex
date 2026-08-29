@@ -13,11 +13,26 @@ defmodule LeafcutterConnectors.Operation.Write.Result do
   @doc "Returns whether a result contains a non-empty list of valid item results."
   @spec valid?(term()) :: boolean()
   def valid?(%__MODULE__{} = result) do
-    is_list(result.results) and result.results != [] and
-      Enum.all?(result.results, &ItemResult.valid?/1)
+    valid_results?(result.results)
   end
 
   def valid?(_result), do: false
+
+  @spec valid_results?(term()) :: boolean()
+  defp valid_results?([result | results]) do
+    ItemResult.valid?(result) and valid_result_tail?(results)
+  end
+
+  defp valid_results?(_results), do: false
+
+  @spec valid_result_tail?(term()) :: boolean()
+  defp valid_result_tail?([]), do: true
+
+  defp valid_result_tail?([result | results]) do
+    ItemResult.valid?(result) and valid_result_tail?(results)
+  end
+
+  defp valid_result_tail?(_results), do: false
 
   @doc "Returns whether a result completely and orderly classifies an invocation."
   @spec valid_for?(term(), term()) :: boolean()

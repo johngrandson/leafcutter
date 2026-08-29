@@ -13,6 +13,7 @@ defmodule LeafcutterConnectors.OperationTest do
         42,
         -1.5,
         "value",
+        [],
         [1, nil, %{"nested" => [true]}],
         %{"object" => %{"value" => 1}}
       ]
@@ -83,7 +84,7 @@ defmodule LeafcutterConnectors.OperationTest do
     end
   end
 
-  defp error(overrides \\ []) do
+  defp error(overrides) do
     struct!(Error, Keyword.merge([category: :temporary, code: "temporary"], overrides))
   end
 end

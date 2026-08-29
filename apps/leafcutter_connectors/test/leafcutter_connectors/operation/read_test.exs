@@ -59,6 +59,11 @@ defmodule LeafcutterConnectors.Operation.ReadTest do
 
     refute Result.valid_for?(result, invocation)
     refute Read.valid_return?({:ok, result}, invocation)
+
+    refute Result.valid?(%Result{
+             records: [%{"id" => "first"} | :invalid_tail],
+             next_cursor: nil
+           })
   end
 
   test "treats metadata as safe non-authoritative data" do

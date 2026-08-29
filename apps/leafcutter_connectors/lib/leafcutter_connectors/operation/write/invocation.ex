@@ -28,16 +28,22 @@ defmodule LeafcutterConnectors.Operation.Write.Invocation do
   def valid?(_invocation), do: false
 
   @spec valid_items?(term()) :: boolean()
-  defp valid_items?(items) do
-    is_list(items) and items != [] and
-      Enum.all?(items, &Item.valid?/1) and unique_refs?(items)
+  defp valid_items?([_item | _items] = items) do
+    valid_items?(items, MapSet.new())
   end
 
-  @spec unique_refs?([Item.t()]) :: boolean()
-  defp unique_refs?(items) do
-    refs = Enum.map(items, & &1.ref)
-    length(refs) == MapSet.size(MapSet.new(refs))
+  defp valid_items?(_items), do: false
+
+  @spec valid_items?(term(), MapSet.t(String.t())) :: boolean()
+  defp valid_items?([], _refs), do: true
+
+  defp valid_items?([%Item{ref: ref} = item | items], refs) do
+    Item.valid?(item) and
+      not MapSet.member?(refs, ref) and
+      valid_items?(items, MapSet.put(refs, ref))
   end
+
+  defp valid_items?(_items, _refs), do: false
 end
 
 defimpl Inspect, for: LeafcutterConnectors.Operation.Write.Invocation do
