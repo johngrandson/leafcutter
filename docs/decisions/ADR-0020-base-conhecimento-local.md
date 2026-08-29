@@ -1,7 +1,7 @@
-# ADR-0019 — Base de conhecimento local derivada
+# ADR-0020 — Base de conhecimento local derivada
 
 - Status: Accepted
-- Estado de implementação: NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO
 
 ## Contexto
 

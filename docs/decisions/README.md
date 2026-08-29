@@ -30,11 +30,8 @@ Materialized / Partial / Not materialized
 | ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
 | ADR-0017 | RunSnapshot v1 imutável e criação atômica | MATERIALIZADO |
 | ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | MATERIALIZADO |
-<<<<<<< HEAD
 | ADR-0019 | ContractVersion executável com JSON Schema/JSV | RATIFICADO — NÃO MATERIALIZADO |
-=======
-| ADR-0019 | Base de conhecimento local derivada | NÃO MATERIALIZADO |
->>>>>>> 9b7a387 (docs: ratify local knowledge base governance)
+| ADR-0020 | Base de conhecimento local derivada | MATERIALIZADO |
 
 ## Convenção de status decisório
 

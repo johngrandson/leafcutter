@@ -238,11 +238,18 @@ Resolver-facing authority read APIs
 Resolver scope discovery without binding reads
 EnvironmentDeployment transactional resolver
 Executable ContractVersion/JSV contract ratification
+Local derived knowledge base governance
+Local knowledge schema and Claude adapters
+Knowledge lint in mix quality
 ```
 
 ## Em andamento
 
 Preparar a materialização estritamente limitada do Slice 26A conforme ADR-0019 e `contract-version-execution.md`.
+
+O fechamento da base de conhecimento local é uma capacidade de harness e
+documentação; não altera o estado atual de produto/runtime nem a próxima
+fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
