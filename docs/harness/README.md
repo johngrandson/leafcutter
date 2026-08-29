@@ -2,6 +2,9 @@
 
 O harness mantém continuidade entre desenvolvedor, Codex, Claude Code e outros agentes sem transformar conversa em fonte de verdade.
 
+A base em `docs/knowledge/` guarda conhecimento derivado. `AGENTS.md`,
+`CURRENT.md` e o operating model continuam sendo o contrato dos agentes.
+
 ## Arquivos
 
 - `CODEX_OPERATING_MODEL.md`: modos de trabalho e limites.

@@ -31,6 +31,16 @@ O repositório é a fonte de contexto do trabalho.
 
 Esta é a ordem de leitura canônica; os demais documentos referenciam esta seção. Em sessões do Codex e do Claude Code, este arquivo e o passo 1 são carregados automaticamente (hooks de `SessionStart`, ADR-0015).
 
+## Base de conhecimento local
+
+Depois da leitura canônica, consulte `docs/knowledge/INDEX.md` quando a tarefa
+envolver semântica de domínio, ambiguidade conhecida, correção humana ou uma
+decisão que possa ter sido sintetizada anteriormente.
+
+A base é derivada e não normativa. Em conflito, volte à ordem de autoridade
+deste arquivo. Consulta e lint não alteram a base. Escritas exigem pedido
+explícito ou aprovação de uma proposta concreta.
+
 ## Fonte de verdade
 
 ```text
