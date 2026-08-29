@@ -6,8 +6,8 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
 
   alias Leafcutter.Catalog.{
     Connectors,
-    ContractVersion,
     Contracts,
+    ContractVersion,
     Packages,
     PackageVersion,
     PackageVersionEndpoint

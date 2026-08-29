@@ -17,6 +17,7 @@ defmodule Leafcutter.Integrations.Deployments do
     PackageVersion,
     PackageVersionEndpoint
   }
+
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Connection
 
