@@ -21,4 +21,19 @@ defmodule Leafcutter.Catalog.Contracts.Validator do
       root: root
     }
   end
+
+  @doc false
+  @spec contract_version_id(t()) :: ContractVersion.id()
+  def contract_version_id(%__MODULE__{contract_version_id: contract_version_id}) do
+    contract_version_id
+  end
+
+  @doc false
+  @spec validate(t(), term()) :: {:ok, term()} | {:error, JSV.ValidationError.t()}
+  def validate(%__MODULE__{root: root}, payload) do
+    case JSV.validate(payload, root, cast: false, cast_formats: false) do
+      {:ok, validated_payload} -> {:ok, validated_payload}
+      {:error, %JSV.ValidationError{} = error} -> {:error, error}
+    end
+  end
 end

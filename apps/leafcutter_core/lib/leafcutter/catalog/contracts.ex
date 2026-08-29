@@ -6,13 +6,17 @@ defmodule Leafcutter.Catalog.Contracts do
   New ContractVersions are published with an immutable JSON Schema document
   that satisfies the Leafcutter policy and completes a JSV build before the
   row is inserted. Persisted versions can be compiled explicitly into opaque,
-  reusable Leafcutter validators.
+  reusable Leafcutter validators and used to validate JSON payloads without
+  rebuilding the schema.
   """
 
   alias Ecto.Changeset
 
   alias Leafcutter.Catalog.{Contract, ContractVersion}
+  alias Leafcutter.Catalog.Contracts.PayloadPolicy
   alias Leafcutter.Catalog.Contracts.SchemaBuilder
+  alias Leafcutter.Catalog.Contracts.ValidationError
+  alias Leafcutter.Catalog.Contracts.ValidationErrorNormalizer
   alias Leafcutter.Catalog.Contracts.Validator
   alias Leafcutter.Catalog.Types.SchemaDocument
   alias Leafcutter.Repo
@@ -33,6 +37,9 @@ defmodule Leafcutter.Catalog.Contracts do
 
   @typedoc "A named failure returned when a ContractVersion cannot be compiled."
   @type compile_error :: :not_found | :schema_unavailable | :schema_compilation_failed
+
+  @typedoc "A safe public failure returned when a payload cannot be validated."
+  @type validation_error :: ValidationError.t()
 
   @doc """
   Creates a stable Contract identity.
@@ -240,6 +247,86 @@ defmodule Leafcutter.Catalog.Contracts do
           {:ok, root} -> {:ok, Validator.new(id, root)}
           {:error, _reason} -> {:error, :schema_compilation_failed}
         end
+    end
+  end
+
+  @doc """
+  Validates one JSON payload with a compiled ContractVersion validator.
+
+  ## Parameters
+
+  * `validator` - The opaque validator returned by `compile/1`
+  * `payload` - The JSON-compatible Elixir term to validate
+
+  ## Returns
+
+  * `{:ok, payload}` with the exact original term when validation succeeds
+  * `{:error, validation_error}` when the term is not JSON-compatible or violates
+    the schema
+
+  ## Examples
+
+      iex> {:ok, contract} =
+      ...>   Leafcutter.Catalog.Contracts.create(%{
+      ...>     name: "Validation Example"
+      ...>   })
+
+      iex> {:ok, version} =
+      ...>   Leafcutter.Catalog.Contracts.publish_version(
+      ...>     contract.id,
+      ...>     %{version: "1", schema: true}
+      ...>   )
+
+      iex> {:ok, validator} =
+      ...>   Leafcutter.Catalog.Contracts.compile(version.id)
+
+      iex> Leafcutter.Catalog.Contracts.validate(
+      ...>   validator,
+      ...>   %{"amount" => 1.0}
+      ...> )
+      {:ok, %{"amount" => 1.0}}
+
+  ## Notes
+
+  * Non-JSON Elixir terms are rejected before JSV receives the payload.
+  * JSV casting and format casting are disabled.
+  * Validation errors expose only JSON values, string keys, stable paths and
+    keyword kinds; payload-dependent messages are omitted.
+  * Validation does not access the Repo, resolve references or rebuild the root.
+  """
+  @spec validate(validator(), term()) ::
+          {:ok, term()} | {:error, validation_error()}
+  def validate(validator, payload) do
+    contract_version_id = Validator.contract_version_id(validator)
+
+    case PayloadPolicy.validate(payload) do
+      {:ok, approved_payload} ->
+        validate_approved_payload(validator, approved_payload, payload)
+
+      {:error, payload_error} ->
+        {:error,
+         %ValidationError{
+           contract_version_id: contract_version_id,
+           reason: :invalid_json,
+           details: PayloadPolicy.error_details(payload_error)
+         }}
+    end
+  end
+
+  @spec validate_approved_payload(validator(), term(), term()) ::
+          {:ok, term()} | {:error, validation_error()}
+  defp validate_approved_payload(validator, approved_payload, original_payload) do
+    case Validator.validate(validator, approved_payload) do
+      {:ok, _jsv_payload} ->
+        {:ok, original_payload}
+
+      {:error, %JSV.ValidationError{} = jsv_error} ->
+        {:error,
+         %ValidationError{
+           contract_version_id: Validator.contract_version_id(validator),
+           reason: :schema_violation,
+           details: ValidationErrorNormalizer.normalize(jsv_error)
+         }}
     end
   end
 
