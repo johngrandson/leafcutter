@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A implementação do ADR-0019 ainda não começou.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A materialização do ADR-0019 começou pelo tipo interno `Leafcutter.Catalog.Types.SchemaDocument`; persistência, publicação, compilação, validação e propagação de executabilidade continuam pendentes.
 
 ## Estado materializado
 
@@ -86,7 +86,7 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion ainda materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion ainda materializa somente identidade, nasce publicada e é imutável no PostgreSQL. O tipo interno `SchemaDocument` já representa raízes object/boolean sem envelope e preserva o load de `nil` legado, mas ainda não está ligado ao schema persistido ou à boundary pública de publicação. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
 O slice 26A ratificado acrescentará schema JSONB object/boolean imutável, publicação com validação/build JSV, `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
 
@@ -245,7 +245,7 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-Preparar a materialização estritamente limitada do Slice 26A conforme ADR-0019 e `contract-version-execution.md`.
+A materialização do Slice 26A foi iniciada pela representação Ecto interna de documentos object/boolean. A próxima fronteira é a política pura do documento, ainda sem mudar persistência ou API pública.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -253,16 +253,16 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar somente ContractVersion executável com JSON Schema/JSV:
+Materializar a política pura do documento de ContractVersion conforme ADR-0019:
 
 ~~~text
-nullable schema JSONB preserving legacy rows
-→ required schema for every new publication
-→ fixed Draft 2020-12 and local-only refs
-→ complete JSV build before insert
-→ Contracts.compile/1 + validate/2
-→ executability checks in PackageVersion, deployment and resolver
-→ RunSnapshot v1 unchanged
+JSON-compatible values with deterministic paths
+→ object or boolean root
+→ canonical Draft 2020-12 dialect
+→ fragment-only $ref and $dynamicRef
+→ reject jsv-cast and x-jsv-cast
+→ size, depth and node limits
+→ no persistence or public API change yet
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:
