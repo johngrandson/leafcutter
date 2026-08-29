@@ -44,7 +44,20 @@
 29. repeat the executability check in EnvironmentDeployment → Run resolution
 ```
 
-O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/specifications/environment-deployment-run-resolution.md`. O contrato exato do Slice 26A foi ratificado no ADR-0019 e em `docs/specifications/contract-version-execution.md`; sua materialização alcança PackageVersion, EnvironmentDeployment e resolução de Run. Operation e HTTP não entram no mesmo slice.
+O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/specifications/environment-deployment-run-resolution.md`. O contrato exato do Slice 26A foi ratificado no ADR-0019 e em `docs/specifications/contract-version-execution.md`; sua materialização alcança PackageVersion, EnvironmentDeployment e resolução de Run.
+
+## Etapa concluída do Slice 26B
+
+~~~text
+30. executable Operation contract ratification
+→ Read/Write behaviours and invocation/result structs
+→ opaque JSON cursor with nil terminal state
+→ complete ordered per-item Write results
+→ normalized Operation error and validation points
+→ no Transport or runtime materialization
+~~~
+
+O ADR-0021 e `docs/specifications/operation-contract.md` controlam o contract concreto. HTTP não entra no mesmo slice.
 
 ## Sequência ratificada posterior
 
@@ -55,7 +68,7 @@ minimal Catalog authorities (materialized)
 → EnvironmentDeployment + bindings (materialized)
 → EnvironmentDeployment resolver (materialized)
 → ContractVersion executable + JSON Schema/JSV through PackageVersion/Deployment/Run (26A, materialized)
-→ Operation executable contracts (26B, pending ratification)
+→ Operation executable contract (26B, ratified; materialization next)
 → HTTP Transport + reference Operation (26C, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -63,4 +76,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018, e o Slice 26A completou a propagação por Deployment e Run. A próxima etapa ratifica o contract concreto de 26B antes de qualquer implementação; 26C permanece separado. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run e o contract de 26B foi ratificado. A próxima etapa materializa somente a boundary de Operation em `leafcutter_connectors`; 26C permanece separado. A sequência posterior não deve criar Broadway com definição implícita.

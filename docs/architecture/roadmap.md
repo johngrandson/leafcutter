@@ -96,13 +96,14 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26B — Operation executável
 
-**Posterior; contract concreto ainda deve ser ratificado.**
+**Contract concreto ratificado no ADR-0021; ainda não materializado.**
 
-- source/destination behaviours;
-- invocation input;
-- result e partial-success semantics;
-- pagination boundary;
-- pontos exatos de validação dos Contracts.
+- behaviours síncronos separados de Read e Write;
+- invocation/result structs com config resolvida e credentials efêmeras;
+- cursor JSON opaco, com `nil` como conclusão;
+- result por item completo, ordenado e correlacionado por ref;
+- pontos source/destination explícitos de validação dos Contracts;
+- error struct alinhado à retry taxonomy.
 
 ### Slice 26C — referência HTTP
 
@@ -113,7 +114,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - primeiro Connector/Operation de referência;
 - client e pool strategy.
 
-PackageVersion 1 Source → N Destinations e criação automática de Run a partir do snapshot já possuem foundations materializadas. O carregamento de validators/operations no runtime permanece posterior ao Slice 26A.
+PackageVersion 1 Source → N Destinations e criação automática de Run a partir do snapshot já possuem foundations materializadas. A boundary in-memory de Operation é a próxima materialização; carregamento no runtime permanece posterior e não entra no contract-only Slice 26B.
 
 ## Data plane durável
 

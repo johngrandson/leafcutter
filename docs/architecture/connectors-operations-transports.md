@@ -1,6 +1,8 @@
 # Connectors, Operations e Transports
 
-> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation existem como metadata no Catalog. O contract concreto de Operation executável pertence ao Slice 26B; Transport e a primeira referência HTTP pertencem ao Slice 26C.
+> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation metadata
+> existem no Catalog. O contract concreto do Slice 26B está ratificado no ADR-0021, mas ainda
+> não foi materializado. Transport e a primeira referência HTTP pertencem ao Slice 26C.
 
 ## Estado materializado
 
@@ -10,7 +12,10 @@ Connector
     └── Operation metadata
 ~~~
 
-`Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion com suas Operations atomicamente. Operation materializa `ref` e `role: source | destination`; behaviour executável, paginação, requests, responses e Transport não existem no código atual.
+`Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion
+com suas Operations atomicamente. Operation materializa `ref` e
+`role: source | destination`; nenhum behaviour ou result struct executável existe no código
+atual.
 
 ## Separação
 
@@ -25,24 +30,111 @@ Transport
 → conhece o protocolo
 ~~~
 
-Catalog possui metadata e versões. `leafcutter_connectors` possuirá behaviours e implementações executáveis.
+Catalog possui metadata e versões. `leafcutter_connectors` possui a futura boundary
+executável sem depender de Catalog ou Repo. O runtime comporá as duas applications.
 
-ContractVersion + JSON Schema/JSV é uma boundary anterior e separada, owned pelo Catalog. O Slice 26A ratificado no ADR-0019 não adiciona behaviour ou Transport a `leafcutter_connectors`.
+ContractVersion + JSON Schema/JSV é uma boundary anterior e separada, owned pelo Catalog. A
+Operation não compila nem valida ContractVersion.
 
-## Slice 26B — Operation executável
+## Slice 26B — contract ratificado
 
-Ainda exige ratificação concreta.
+Owner:
 
-Direções conceituais preservadas:
+~~~text
+leafcutter_connectors
+└── LeafcutterConnectors.Operation
+    ├── Error
+    ├── Read
+    │   ├── Invocation
+    │   └── Result
+    └── Write
+        ├── Invocation
+        ├── Item
+        ├── ItemResult
+        └── Result
+~~~
 
-- Read Operation normaliza paginação independentemente de `page`, `offset`, cursor ou `next_url`;
-- Write Operation recebe batch já transformado e validado;
-- resultado por item preserva sucesso parcial;
-- auth/config chegam resolvidos;
-- Operation não conhece internals de Organization, Integration, Run ou Transformation;
-- pontos source/destination de `Contracts.validate/2` serão explícitos.
+Callbacks:
 
-Ainda estão abertos signatures, structs, cursor semantics, ordering/completeness de partial results e integração com retry taxonomy.
+~~~elixir
+Read.read(Read.Invocation.t())
+→ {:ok, Read.Result.t()} | {:error, Operation.Error.t()}
+
+Write.write(Write.Invocation.t())
+→ {:ok, Write.Result.t()} | {:error, Operation.Error.t()}
+~~~
+
+Os callbacks são síncronos. Não existe processo por Operation, lifecycle callback, Transport
+callback ou dependency para `leafcutter_core`.
+
+### Read
+
+~~~text
+resolved config + ephemeral credentials + opaque cursor
+→ one ordered page
+→ records + next_cursor + safe metadata
+~~~
+
+`nil` como input inicia a leitura. `next_cursor: nil` encerra a leitura; não existe
+`done?`. Cursores não nulos são JSON-compatible, persistíveis, opacos e precisam representar
+progresso. Page, offset, vendor cursor e next URL ficam escondidos nessa representação.
+
+### Write
+
+~~~text
+ordered validated items with unique refs
+→ complete ordered item results
+→ success or normalized error per ref
+~~~
+
+Cada result repete o input `ref`, preserva ordem e cobre exatamente um item. Misturar
+successes e errors é o partial success normal. Um erro no callback inteiro significa que a
+Operation não conseguiu produzir uma classificação completa e confiável para o batch.
+
+### Config e credentials
+
+Config chega como JSON object não sensível já resolvido para a Operation. Credentials chegam
+em map opaco e efêmero, são redigidas por `Inspect` e nunca entram em cursor, result, error,
+metadata ou persistência.
+
+A boundary não expõe Organization, Integration, Deployment, Run, Connection, SecretVersion ou
+a origem de cada valor resolvido.
+
+## Validação de Contracts
+
+Source:
+
+~~~text
+Read.read/1
+→ Contracts.validate(source_contract_version_id, payload)
+→ future durable source processing
+~~~
+
+Destination:
+
+~~~text
+Transformation
+→ Contracts.validate(destination_contract_version_id, payload)
+→ Write.write/1
+~~~
+
+A validação pertence ao caller em `leafcutter_runtime`, que pode usar Core e Connectors. A
+Operation não chama `Contracts.validate/2`.
+
+## Error taxonomy ratificada
+
+| Categoria | Política |
+|---|---|
+| `validation` | sem retry automático |
+| `authentication` | recuperação explícita, sem retry temporizado |
+| `rate_limited` | retry posterior |
+| `timeout` | retry, com efeito externo possivelmente desconhecido |
+| `temporary` | retry posterior |
+| `permanent` | sem retry automático |
+
+`Operation.Error` contém category, code estável, message segura opcional,
+`retry_after_ms` limitado e metadata JSON segura. Não contém `retryable`: a policy deriva
+da category. O schema persistido de Attempt/Delivery continua posterior.
 
 ## Slice 26C — Transport e referência HTTP
 
@@ -51,29 +143,25 @@ HTTP permanece o primeiro Transport planejado. O slice deverá ratificar:
 - Transport behaviour;
 - request/response boundary;
 - primeiro Connector/Operation de referência;
+- resolução do módulo executável para a referência publicada;
 - HTTP client e pool strategy;
-- timeout e rate-limit translation.
+- timeout, status, rate-limit e vendor-error translation.
 
 Database, SFTP e outros transports só entram com demanda real.
 
-## Error taxonomy conceitual
-
-~~~text
-validation
-authentication
-rate_limited
-timeout
-temporary
-permanent
-~~~
-
-A taxonomy final e sua representação concreta precisam ser confrontadas com `error-retry-model.md` durante 26B.
-
 ## Restrições
 
-- não criar GenServer por Connector sem lifecycle real;
+- não criar GenServer por Connector/Operation sem lifecycle real;
 - não esconder Transformation dentro da Operation;
-- não persistir secrets em Connector metadata;
+- não persistir ou inspecionar credentials;
 - não acoplar runtime genérico a detalhes de HTTP;
-- não implementar múltiplos transports por antecipação;
-- não introduzir Operation/Transport durante a materialização do Slice 26A.
+- não colocar Catalog/Repo dentro de `leafcutter_connectors`;
+- não introduzir Connector behaviour sem uma necessidade além de Operation;
+- não implementar múltiplos transports por antecipação.
+
+## Referências
+
+- `docs/decisions/ADR-0008-connector-operation-transport.md`
+- `docs/decisions/ADR-0021-operation-executavel.md`
+- `docs/specifications/operation-contract.md`
+- `docs/specifications/error-retry-model.md`

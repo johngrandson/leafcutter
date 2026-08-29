@@ -22,10 +22,14 @@ Materializado no Catalog:
 - Operation metadata com `ref` e role source/destination;
 - publicação atômica e sealing no PostgreSQL.
 
-Ainda não materializado:
+Ratificado, ainda não materializado:
 
-- behaviours executáveis de Connector e Operation;
-- paginação e partial-success contracts;
+- behaviours, invocation/result structs e error contract de Operation definidos no ADR-0021;
+- paginação opaca e partial-success completo/ordenado definidos no ADR-0021.
+
+Ainda não ratificado:
+
+- behaviour executável de Connector, caso uma necessidade além de Operation apareça;
 - Transport e implementação HTTP.
 
 ## Consequências
@@ -45,4 +49,4 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 26C Transport + first HTTP reference Operation
 ~~~
 
-O ADR-0019 controla somente 26A e não materializa esta decisão além da metadata já existente. Signatures, structs e behaviours de Operation continuam pendentes de ratificação no Slice 26B; Transport HTTP permanece no Slice 26C.
+O ADR-0019 controla somente 26A. O ADR-0021 ratifica signatures, structs, paginação, partial success, validação e error contract do Slice 26B, ainda sem materialização em código. Transport HTTP permanece no Slice 26C.

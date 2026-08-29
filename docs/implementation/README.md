@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O Slice 26A ratificado no ADR-0019 está concluído desde ContractVersion + JSON Schema/JSV até as proteções em PackageVersion, EnvironmentDeployment e resolução de Run. A próxima tarefa é ratificar o contract concreto de Operation no Slice 26B antes de implementá-lo; HTTP permanece separado no Slice 26C.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O Slice 26A ratificado no ADR-0019 está concluído. O contract concreto de Operation do Slice 26B está ratificado no ADR-0021 e ainda não foi materializado; a próxima tarefa implementa somente behaviours, structs e invariantes em `leafcutter_connectors`. HTTP permanece separado no Slice 26C.
 
 ## Documentos
 

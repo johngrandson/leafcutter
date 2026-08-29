@@ -13,7 +13,7 @@ Novas ContractVersions persistem schema Draft 2020-12 imutável, são validadas 
 
 ## Futuro ratificado
 
-Source e destination payloads serão validados nos pontos a ratificar no Slice 26B. Uma futura adoção de referências externas exigirá resolução e empacotamento antes da publicação.
+Source e destination payloads serão validados nos pontos ratificados pelo ADR-0021, ainda não materializados. Uma futura adoção de referências externas exigirá resolução e empacotamento antes da publicação.
 
 ## Consequências
 

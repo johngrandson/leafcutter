@@ -67,7 +67,7 @@
 
 ### Core de integração
 
-- Operation executável (Slice 26B ainda a ratificar);
+- Operation executável (contract do Slice 26B ratificado, ainda sem código);
 - Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

@@ -2,12 +2,12 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. Persistência, dialeto, compilação, validação, legado, limites e propagação de ContractVersion executável foram ratificados no ADR-0019. A próxima decisão arquitetural após materializar 26A será o contract concreto de Operation executável (26B).
+RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. Persistência, dialeto, compilação, validação, legado, limites e propagação de ContractVersion executável foram ratificados no ADR-0019. O ADR-0021 ratifica o contract concreto de Operation executável; sua materialização em `leafcutter_connectors` é a próxima fronteira de implementação.
 
 ## Domínio
 
 - provenance futura de Organization/Environment/Integration/Deployment;
-- modelo futuro de invocation/idempotency além da semântica atual de criar Runs distintas;
+- modelo durável futuro de invocation/idempotency além da semântica atual de criar Runs distintas;
 - histórico de deployment;
 - homologation evidence e promotion records;
 - Record/Delivery/Attempt/Checkpoint;
@@ -30,9 +30,7 @@ RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentD
 
 - Package Manifest JSON Schema v1;
 - package inclusion no build/release;
-- assinatura exata dos behaviours e result structs de Operation (26B);
-- pagination e partial-success semantics (26B);
-- pontos source/destination de validação de payload (26B);
+- mapping de `operation_id` para módulo executável via Package Manifest/build;
 - Transport behaviour e primeira Operation HTTP (26C);
 - HTTP client e pool strategy;
 - payload/body/batch limits no primeiro execution path;

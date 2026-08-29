@@ -226,7 +226,7 @@ Permanecem posteriores:
 ```text
 availability/deprecation metadata
 Package Manifest e build
-Operation executable contract (26B)
+Operation executable contract (26B ratificado; não materializado)
 HTTP Transport and reference Operation (26C)
 ```
 
@@ -302,7 +302,7 @@ Sequência ratificada:
 → Transport + first HTTP Operation
 ```
 
-Somente 26A possui contract concreto ratificado. HTTP permanece o primeiro Transport planejado; outras opções entram somente com demanda real.
+26A e 26B possuem contracts concretos ratificados; somente 26A está materializado. HTTP permanece o primeiro Transport planejado no Slice 26C; outras opções entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -374,9 +374,9 @@ resolver em leafcutter_runtime (materialized)
 ↓
 ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (26A materializado)
 ↓
-Operation executable (26B ainda a ratificar)
+Operation executable contract (26B ratificado; materialização seguinte)
 ↓
 HTTP Transport + reference Operation (26C ainda a ratificar)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` repete a checagem de executabilidade no instante de criação. A próxima fronteira é ratificar o contract concreto de Operation no Slice 26B antes de implementá-lo; o carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. O ADR-0021 e `operation-contract.md` controlam o Slice 26B ratificado, cuja próxima fronteira é materializar somente behaviours, structs e invariantes em `leafcutter_connectors`. Transport HTTP, carregamento no coordinator e execução Broadway permanecem posteriores.

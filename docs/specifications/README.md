@@ -10,7 +10,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 | `contract-version-execution.md` | MATERIALIZADO |
 | `durable-fanout.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
-| `operation-contract.md` | CONCEITO RATIFICADO — CONTRACT CONCRETO DO SLICE 26B ABERTO |
+| `operation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `package-manifest-v1.md` | DRAFT / ABERTO |
 | `source-identity.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `transformation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |

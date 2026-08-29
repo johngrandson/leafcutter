@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26A concluído — ContractVersion executável com JSON Schema/JSV**
+**Slice 26B ratificado — contrato executável de Operation**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do Slice 26A foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions, EnvironmentDeployments e Runs resolvidas estão materializados. O Slice 26A está completo e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O Slice 26A está completo conforme o ADR-0019, com ContractVersion executável e proteção em PackageVersion, EnvironmentDeployment e resolução de Run sem alterar RunSnapshot v1. O ADR-0021 agora ratifica o contract concreto do Slice 26B: behaviours síncronos de Read/Write, invocation/result structs, cursor JSON opaco, partial success completo e ordenado, pontos explícitos de validação e `Operation.Error` alinhado à retry taxonomy. Esse contract ainda não foi materializado em código.
 
 ## Estado materializado
 
@@ -184,7 +184,7 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 
 ### API e connectors
 
-`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` existe como boundary, mas ainda não possui contracts executáveis.
+`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` existe como boundary vazia. Seu contract executável de Operation está ratificado no ADR-0021, mas behaviours e structs ainda não existem no código.
 
 ## Arquitetura ratificada preservada
 
@@ -198,7 +198,8 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Connector/Operation/Transport executáveis
+Operation executável (contract ratificado; código pendente)
+Transport executável e referência HTTP
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -248,6 +249,7 @@ ContractVersion public payload validation and safe errors
 PackageVersion executable ContractVersion enforcement
 EnvironmentDeployment executable ContractVersion enforcement
 Run resolution executable ContractVersion enforcement
+Executable Operation contract ratification
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -255,47 +257,39 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-O Slice 26A está integralmente materializado: representação e persistência compatíveis com legado, publicação com JSV, compilação, validação de payload e proteção nas boundaries de PackageVersion, EnvironmentDeployment e resolução de Run. RunSnapshot v1 permanece inalterado.
+O Slice 26A permanece integralmente materializado e RunSnapshot v1 permanece inalterado. O
+Slice 26B agora possui contract concreto ratificado no ADR-0021, mas
+`leafcutter_connectors` ainda contém somente a application foundation gerada.
 
-A próxima fronteira de produto é ratificar o contract concreto de Operation executável no Slice 26B antes de alterar código. Transport e a primeira referência HTTP permanecem no Slice 26C.
+A próxima fronteira é materializar apenas a boundary in-memory de Operation. Transport e a
+primeira referência HTTP permanecem no Slice 26C.
 
 ## Próxima tarefa concreta
 
-Ratificar o contract concreto do Slice 26B — Operation executável:
+Materializar o contract do Slice 26B em `leafcutter_connectors`:
 
 ~~~text
-Operation metadata already materialized
-→ define behaviour names, signatures and invocation types
-→ define read/write result structs
-→ ratify cursor, pagination and partial-success semantics
-→ define explicit source/destination payload validation points
-→ align the concrete error contract with the retry taxonomy
-→ keep Transport HTTP and protocol execution in Slice 26C
+LeafcutterConnectors.Operation JSON types
+→ Operation.Error
+→ Read behaviour + Invocation + Result
+→ Write behaviour + Invocation + Item + ItemResult + Result
+→ credentials Inspect redaction
+→ pure invariant validation and focused fake-module tests
 ~~~
 
-Nenhuma implementação de Operation executável deve começar antes dessa ratificação.
+A mudança não adiciona dependency para `leafcutter_core`, Ecto, Repo ou HTTP; não cria
+processo OTP; não resolve `operation_id` para módulo; não carrega Operation no
+RunCoordinator; não altera RunSnapshot v1.
 
-O workflow upstream já materializado e que deve ser preservado é:
-
-```text
-LeafcutterRuntime.Runs.create_from_deployment/1
-→ uma transação compartilhada
-→ descoberta preliminar somente dos parent IDs imutáveis
-→ locks via APIs públicas na ordem ratificada
-→ revalidação semântica das authorities
-→ deep merge de promotable_config + local_config
-→ definition v1 congelando Connection config e SecretVersion ID
-→ Executions.Runs.create/1
-```
-
-O resolver ordena destinations pela posição do PackageVersionEndpoint, faz rollback integral em qualquer falha e cria Runs distintas em chamadas bem-sucedidas repetidas.
-
-Não implementar no Slice 26A behaviours/result structs de Operation, Transport, HTTP client/pool, pagination, partial success, carregamento no coordinator, payload limits, cache global, refs externas ou data plane.
+Transport behaviour, HTTP client/pool, status/vendor translation, Package Manifest, persisted
+Attempt/Delivery errors, backoff, idempotency, payload limits e Broadway continuam fora desse
+incremento.
 
 ## Principais decisões abertas
 
 - Package Manifest e build de packages;
-- Connector/Operation/Transport executáveis (Slices 26B/26C);
+- materialização de Operation e resolução via Package Manifest;
+- Transport executável e referência HTTP (Slice 26C);
 - data plane e durable fan-out;
 - lifecycle completo de Run;
 - autenticação e secrets;
@@ -306,20 +300,17 @@ Não implementar no Slice 26A behaviours/result structs de Operation, Transport,
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0021-operation-executavel.md`
+- `docs/specifications/operation-contract.md`
+- `docs/decisions/ADR-0008-connector-operation-transport.md`
+- `docs/architecture/connectors-operations-transports.md`
+- `docs/specifications/error-retry-model.md`
+- `docs/decisions/ADR-0009-at-least-once.md`
+- `docs/decisions/ADR-0005-broadway-como-data-plane.md`
+- `docs/decisions/ADR-0010-fanout-duravel-sem-fila-externa.md`
+- `docs/architecture/runtime-otp-broadway.md`
+- `docs/architecture/transformations-enrichments-interceptors.md`
+- `docs/architecture/estado-atual-e-visao-futura.md`
+- `docs/architecture/decisoes-em-aberto.md`
 - `docs/decisions/ADR-0019-contract-version-executavel-json-schema-jsv.md`
 - `docs/specifications/contract-version-execution.md`
-- `docs/decisions/ADR-0006-json-schema-jsv.md`
-- `docs/architecture/contracts-json-schema.md`
-- `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
-- `docs/specifications/environment-deployment-run-resolution.md`
-- `docs/decisions/ADR-0017-run-snapshot-v1.md`
-- `docs/specifications/run-snapshot-v1.md`
-- `docs/architecture/estado-atual-e-visao-futura.md`
-- `docs/architecture/modelo-conceitual.md`
-- `docs/architecture/runtime-otp-broadway.md`
-- `docs/architecture/durabilidade-e-recovery.md`
-- `docs/architecture/contextos-e-ownership.md`
-- `docs/architecture/decisoes-em-aberto.md`
-- `docs/specifications/run-ownership.md`
-- `docs/decisions/ADR-0011-run-ownership-fencing.md`
-- `docs/decisions/ADR-0016-documentacao-presente-e-futuro.md`

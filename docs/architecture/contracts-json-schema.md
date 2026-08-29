@@ -133,7 +133,7 @@ Payload/body/batch limits serão ratificados com o primeiro execution path.
 → Transport + first HTTP Operation
 ~~~
 
-O slice 26A não decide onde source/destination invocam validação, semântica de partial success, pagination, HTTP client/pool ou lifecycle do data plane.
+O ADR-0021 posterior ao Slice 26A ratifica os pontos source/destination de validação, paginação opaca e partial success da Operation. HTTP client/pool e lifecycle do data plane permanecem posteriores.
 
 ## Especificação próxima do código
 
