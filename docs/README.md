@@ -79,6 +79,13 @@ A convenção completa está em `architecture/estado-atual-e-visao-futura.md` e 
 
 `research/README.md` contém material não normativo. Pesquisa pode motivar uma proposta, mas não substitui ADR nem ratificação.
 
+### Base de conhecimento
+
+A base de conhecimento é **DERIVADA**: ela facilita consultas locais, mas não
+substitui código, testes, ADRs, documentação ratificada, specifications,
+OpenAPI ou `CURRENT.md`. Consulte [o schema](knowledge/README.md) e [o índice
+de roteamento](knowledge/INDEX.md).
+
 ### Templates
 
 `templates/README.md` contém modelos para ADR, checkpoint e milestone já alinhados à separação entre presente e futuro.
