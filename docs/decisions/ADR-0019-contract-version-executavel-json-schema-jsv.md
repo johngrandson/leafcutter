@@ -1,7 +1,7 @@
 # ADR-0019 — ContractVersion executável com JSON Schema/JSV
 
 - Status: Accepted
-- Estado de implementação: RATIFICADO — NÃO MATERIALIZADO
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES
 - Data: 2026-08-29
 
 ## Contexto
@@ -10,13 +10,19 @@ O ADR-0006 escolheu JSON Schema Draft 2020-12 e JSV para os contracts externos. 
 
 O menor próximo slice precisa tornar uma `ContractVersion` publicável, compilável e reutilizável para validação sem antecipar os behaviours de Operation, o Transport HTTP ou o data plane. Ele também precisa preservar as versões identity-only já persistidas e manter RunSnapshot v1 estável.
 
+## Estado materializado
+
+A representação Ecto, a política de documento, o build JSV interno, a persistência nullable compatível com legado, a publicação schema-aware, a compilação pública, a validação de payload e a rejeição de ContractVersions legadas em novas PackageVersions estão materializados.
+
+Continuam pendentes a rejeição em `Integrations.Deployments.create/1` e `replace/2` e a repetição da proteção em `LeafcutterRuntime.Runs.create_from_deployment/1`. RunSnapshot v1 permanece inalterado.
+
 ## Decisão
 
 ### Escopo e ownership
 
 O slice 26A pertence a `Leafcutter.Catalog.Contracts`, em `leafcutter_core`.
 
-Ele materializará:
+O escopo ratificado compreende:
 
 - schema imutável em `ContractVersion`;
 - validação e compilação no instante da publicação;
@@ -190,12 +196,12 @@ RunSnapshot v1 não muda e não haverá format v2 neste slice. A definition cont
 - nenhum acesso externo pode ocorrer durante compile ou validate;
 - o contrato público não fica acoplado aos structs e mensagens do JSV;
 - object e boolean schemas têm round-trip físico fiel no mesmo campo JSONB;
-- PackageVersion, deployment e resolver impedem novas Runs baseadas em contratos identity-only;
+- ao completar a propagação, PackageVersion, deployment e resolver impedirão novas Runs baseadas em contratos identity-only;
 - Operation/Transport podem ser ratificados depois sobre uma boundary de contract já executável.
 
 ## Provas exigidas na materialização
 
-A specification relacionada define a matriz detalhada. No mínimo, a implementação deverá provar:
+A specification relacionada define a matriz detalhada. No mínimo, a materialização completa deve provar:
 
 - round-trip de object, `true` e `false` pelo Ecto type e PostgreSQL;
 - preservação de linha legada com `schema: nil`;

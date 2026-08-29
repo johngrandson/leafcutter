@@ -1,6 +1,6 @@
 # Contracts e JSON Schema
 
-> **Status: IDENTIDADE MATERIALIZADA; SLICE EXECUTÁVEL RATIFICADO E NÃO MATERIALIZADO.**
+> **Status: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES.**
 >
 > ADRs canônicos: ADR-0006 e ADR-0019.
 
@@ -10,22 +10,22 @@ O Catalog materializa:
 
 ~~~text
 Contract
-└── ContractVersion identity-only
+└── ContractVersion executable
+    └── immutable schema JSONB
 ~~~
 
-`Leafcutter.Catalog.Contracts` expõe `create/1`, `get/1` e `publish_version/2`. Uma versão atual contém identidade, version opaca e publication timestamp; nasce publicada e PostgreSQL rejeita update/delete.
+`Leafcutter.Catalog.Contracts` expõe `create/1`, `get/1`, `publish_version/2`, `compile/1` e `validate/2`. Novas versões exigem schema object ou boolean, validado e construído com JSV antes do insert; o PostgreSQL preserva schema nullable para rows legadas, rejeita novos inserts sem schema e impede update/delete.
 
-O código atual ainda:
+O código atual:
 
-- não persiste schema;
-- não depende de JSV;
-- não compila validator;
-- não valida payload;
-- permite que PackageVersion referencie uma ContractVersion identity-only.
+- preserva ContractVersions identity-only legadas como históricas e não executáveis;
+- compila um validator Leafcutter opaco por chamada;
+- valida payload JSON sem Repo, rebuild ou casting;
+- rejeita novas PackageVersions que referenciem ContractVersion legada.
 
-RunSnapshot v1 congela somente `contract_version_id`. Isso é intencional e não muda no próximo slice.
+As proteções em EnvironmentDeployment create/replace e na resolução de Run continuam pendentes. RunSnapshot v1 congela somente `contract_version_id` e permanece inalterado.
 
-## Slice 26A ratificado
+## Slice 26A
 
 O ADR-0019 torna cada nova `ContractVersion` um documento JSON Schema Draft 2020-12 executável:
 
@@ -83,16 +83,16 @@ Não haverá cache global inicial. O futuro processo de Run manterá os validato
 
 O schema permanece owned pelo Catalog e não é copiado para PackageVersion, EnvironmentDeployment ou RunSnapshot.
 
-Novos writes aplicam:
+Novos writes aplicam ou aplicarão, conforme o estado indicado:
 
 ~~~text
-PackageVersion publication
+PackageVersion publication (materializado)
 → rejects legacy ContractVersion
 
-EnvironmentDeployment create/replace
+EnvironmentDeployment create/replace (pendente)
 → rejects PackageVersion with legacy ContractVersion
 
-EnvironmentDeployment → Run resolver
+EnvironmentDeployment → Run resolver (pendente)
 → rechecks all final ContractVersion IDs
 ~~~
 

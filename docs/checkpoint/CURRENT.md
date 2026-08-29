@@ -259,7 +259,7 @@ A representação Ecto, a política pura, a boundary interna de build JSV, a per
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
-fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
+fronteira concreta em `Deployments.create/1` e `replace/2`.
 
 ## Próxima tarefa concreta
 

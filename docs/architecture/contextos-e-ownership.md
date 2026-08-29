@@ -36,7 +36,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Context | Estado | Materializado | Preservado para o futuro |
 |---|---|---|---|
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
-| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation metadata, Contract, ContractVersion identity-only, Package, PackageVersion e endpoints | ContractVersion schema/JSV ratificado; Operation executável, availability, manifest e build posteriores |
+| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation metadata, Contract, ContractVersion executável com schema/JSV, Package, PackageVersion e endpoints com rejeição de legado | propagação por Deployment/Run; Operation executável, availability, manifest e build posteriores |
 | Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
 | Integrations | MATERIALIZADO — SLICE MÍNIMO | Integration, EnvironmentDeployment, bindings e lifecycle mínimo | promotion, homologation, Triggers, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |
@@ -81,9 +81,9 @@ Package + PackageVersion
 publication and availability
 ```
 
-Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. ConnectorVersion e Operations são publicados atomicamente e protegidos contra append, update e delete após o sealing. ContractVersion ainda materializa somente uma identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais igualmente imutáveis.
+Operation pertence a ConnectorVersion. Não existe OperationVersion inicial. ConnectorVersion e Operations são publicados atomicamente e protegidos contra append, update e delete após o sealing. Novas ContractVersions publicam schema JSONB object/boolean imutável, validado e construído com JSV; versões identity-only legadas permanecem históricas e não executáveis. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais igualmente imutáveis e rejeitando versões legadas em novas publicações.
 
-O ADR-0019 ratifica, sem materializar ainda, schema JSONB object/boolean imutável em novas ContractVersions e as APIs públicas `Catalog.Contracts.compile/1` e `validate/2`. Compilação, normalização de erros e política de referência pertencem ao Catalog. PackageVersion, Integrations e runtime apenas consomem a executabilidade por suas boundaries; schema e validator não mudam de owner.
+As APIs públicas `Catalog.Contracts.compile/1` e `validate/2` estão materializadas. Compilação, normalização de erros e política de referência pertencem ao Catalog. PackageVersion já consome a executabilidade em sua boundary; Integrations e runtime ainda devem repetir a proteção nas boundaries ratificadas. Schema e validator não mudam de owner.
 
 ## Connections
 

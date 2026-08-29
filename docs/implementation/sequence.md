@@ -29,20 +29,22 @@
 24. resolver scope discovery without binding reads
 25. EnvironmentDeployment transactional resolver
 26. executable ContractVersion/JSV contract ratification (frontier Slice 26A)
-```
-
-## Próximo slice de implementação
-
-```text
-27. materialize frontier Slice 26A
+27. executable ContractVersion/JSV materialization through PackageVersion
 → ContractVersion schema JSONB object/boolean
 → publication-time Draft 2020-12 validation + JSV build
 → Contracts.compile/1 + validate/2
-→ legacy executability checks at existing write/resolution boundaries
+→ PackageVersion legacy executability check
 → RunSnapshot v1 unchanged
 ```
 
-O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/specifications/environment-deployment-run-resolution.md`. O contrato exato do Slice 26A foi ratificado no ADR-0019 e em `docs/specifications/contract-version-execution.md`. A materialização deve permanecer restrita a esse documento; Operation e HTTP não entram no mesmo slice.
+## Próximas etapas do Slice 26A
+
+```text
+28. reject legacy ContractVersions in EnvironmentDeployment create/replace
+29. repeat the executability check in EnvironmentDeployment → Run resolution
+```
+
+O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/specifications/environment-deployment-run-resolution.md`. O contrato exato do Slice 26A foi ratificado no ADR-0019 e em `docs/specifications/contract-version-execution.md`; sua materialização alcança hoje PackageVersion. O restante deve permanecer restrito a esse documento; Operation e HTTP não entram no mesmo slice.
 
 ## Sequência ratificada posterior
 
@@ -52,7 +54,8 @@ minimal Catalog authorities (materialized)
 → Integration identity (materialized)
 → EnvironmentDeployment + bindings (materialized)
 → EnvironmentDeployment resolver (materialized)
-→ ContractVersion executable + JSON Schema/JSV (26A, ratified)
+→ ContractVersion executable + JSON Schema/JSV through PackageVersion (26A, materialized)
+→ EnvironmentDeployment + Run executability propagation (26A, pending)
 → Operation executable contracts (26B, pending ratification)
 → HTTP Transport + reference Operation (26C, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
@@ -61,4 +64,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018. O Slice 26A deve ser materializado e provado antes da ratificação concreta de 26B/26C. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018. O Slice 26A deve completar e provar a propagação por Deployment e Run antes da ratificação concreta de 26B/26C. A sequência posterior não deve criar Broadway com definição implícita.

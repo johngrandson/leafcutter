@@ -40,7 +40,8 @@
 - Operations source/destination;
 - publicação atômica e sealing no PostgreSQL;
 - conteúdo publicado protegido contra append, update e delete;
-- Contract e ContractVersion identity-only, publicados e imutáveis;
+- Contract e ContractVersion com publicação executável por schema object/boolean, publicados e imutáveis;
+- compilação/validação reutilizáveis e rejeição de legado em novas PackageVersions;
 - Package e PackageVersion com topologia relacional 1 Source → 1..N Destinations;
 - endpoints ordenados pinando Operation e ContractVersion;
 - cardinalidade, compatibilidade e imutabilidade protegidas no PostgreSQL.
@@ -80,7 +81,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26A — ContractVersion executável
 
-**Contrato ratificado no ADR-0019; implementação pendente.**
+**Parcialmente materializado: Catalog e PackageVersion concluídos; Deployment e resolver pendentes.**
 
 - schema JSONB object/boolean imutável em novas ContractVersions;
 - versões identity-only legadas preservadas e não executáveis;
@@ -89,7 +90,8 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - refs somente locais e nenhuma resolução externa;
 - `Contracts.compile/1` e `validate/2`;
 - validator reutilizado pelo futuro processo de Run, sem cache global inicial;
-- PackageVersion, deployment e resolver rejeitando versões legadas;
+- PackageVersion rejeitando versões legadas, materializado;
+- deployment e resolver rejeitando versões legadas, pendentes;
 - RunSnapshot v1 inalterado.
 
 ### Slice 26B — Operation executável

@@ -99,7 +99,7 @@ Package
     └── PackageVersionEndpoint
 ```
 
-`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. Não existe campo `schema`, dependência JSV, compile ou validate na `main` atual. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract, publicação de ContractVersion com schema Draft 2020-12 object/boolean, compilação explícita e validação reutilizável de payload. Versões identity-only legadas permanecem legíveis com `schema: nil`, mas novos inserts exigem schema e o PostgreSQL preserva a imutabilidade. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas, rejeita ContractVersions legadas em novas publicações e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
 ### Connections mínimo
 
@@ -205,7 +205,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Catalog futuro
 
-O modelo mínimo ratificado no ADR-0018 está materializado. O próximo incremento, ratificado no ADR-0019 mas ainda não materializado, é o Slice 26A:
+O modelo mínimo ratificado no ADR-0018 e a parte do Slice 26A owned pelo Catalog estão materializados:
 
 ```text
 ContractVersion.schema JSONB object | boolean
@@ -219,7 +219,7 @@ ContractVersion.schema JSONB object | boolean
 → RunSnapshot v1 unchanged
 ```
 
-O schema permanece owned pelo Catalog. Novas PackageVersions não referenciam versões legadas; deployment create/replace e o resolver repetem a proteção nas boundaries correspondentes. Nenhum estado histórico é reescrito.
+O schema permanece owned pelo Catalog e novas PackageVersions não referenciam versões legadas. A parte ainda não materializada do Slice 26A é a propagação da mesma proteção por deployment create/replace e pelo resolver de Run. Nenhum estado histórico será reescrito.
 
 Permanecem posteriores:
 
@@ -372,11 +372,15 @@ EnvironmentDeployment + bindings (materialized)
 ↓
 resolver em leafcutter_runtime (materialized)
 ↓
-ContractVersion executable + JSON Schema/JSV (26A ratificado)
+ContractVersion executable + JSON Schema/JSV até PackageVersion (26A materializado)
+↓
+proteção em EnvironmentDeployment create/replace (próxima tarefa de 26A)
+↓
+proteção final no resolver de Run (pendente em 26A)
 ↓
 Operation executable (26B ainda a ratificar)
 ↓
 HTTP Transport + reference Operation (26C ainda a ratificar)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone concluído. O ADR-0019 e `contract-version-execution.md` controlam o próximo slice, ainda sem código. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A parcialmente materializado e sua próxima boundary em EnvironmentDeployment. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` ainda deverá repetir a checagem de executabilidade no instante de criação. O carregamento no coordinator e a execução Broadway permanecem posteriores.

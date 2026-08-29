@@ -35,9 +35,11 @@
 - Operations source/destination;
 - publicação atômica de versão e Operations;
 - sealing e imutabilidade no PostgreSQL;
-- Contract e ContractVersion identity-only;
+- Contract e ContractVersion com publicação executável por schema JSONB object/boolean;
+- publicação com validação e build JSV, compilação e validação reutilizáveis;
 - Package, PackageVersion e endpoints relacionais;
 - topologia 1 Source → 1..N Destinations publicada atomicamente;
+- rejeição de ContractVersions identity-only legadas em novas PackageVersions;
 - ordem, references, role compatibility e imutabilidade protegidas no banco.
 
 ### Connections mínimo
@@ -64,7 +66,7 @@
 
 ### Core de integração
 
-- ContractVersion + JSON Schema/JSV (Slice 26A ratificado, não materializado);
+- propagação da executabilidade por EnvironmentDeployment e resolução de Run (restante do Slice 26A);
 - Operation executável (Slice 26B ainda a ratificar);
 - Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
 - Integration Packages;

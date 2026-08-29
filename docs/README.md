@@ -65,7 +65,7 @@ A convenção completa está em `architecture/estado-atual-e-visao-futura.md` e 
 
 ### Specifications
 
-`specifications/README.md` diferencia contracts já materializados de specifications ratificadas ainda não materializadas, incluindo o Slice 26A de ContractVersion executável.
+`specifications/README.md` diferencia contracts materializados, parcialmente materializados e ratificados ainda sem implementação; o Slice 26A de ContractVersion executável aparece com seu estado parcial atual.
 
 ### Produto
 

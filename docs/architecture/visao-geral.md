@@ -43,9 +43,9 @@ Package
     └── ordered PackageVersionEndpoints
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis.
+ConnectorVersion e suas Operations são publicadas atomicamente. Novas ContractVersions publicam schema Draft 2020-12 object/boolean, validado e construído com JSV, e expõem compile/validate; versões identity-only legadas permanecem históricas. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis e rejeitando versões legadas em novas publicações.
 
-O próximo slice foi ratificado no ADR-0019, mas ainda não está materializado: novas ContractVersions receberão schema JSONB object/boolean, build JSV na publicação e APIs de compile/validate. Operation executável e HTTP permanecem nos Slices 26B/26C.
+O Slice 26A ratificado no ADR-0019 está materializado até PackageVersion. A próxima etapa aplica a mesma proteção em EnvironmentDeployment create/replace e depois no resolver de Run. Operation executável e HTTP permanecem nos Slices 26B/26C.
 
 ### Connections mínimo
 

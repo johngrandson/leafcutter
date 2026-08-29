@@ -1,6 +1,6 @@
 # ContractVersion executável — specification
 
-> **Status: RATIFICADO — NÃO MATERIALIZADO.**
+> **Status: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES.**
 >
 > Owner: `Leafcutter.Catalog.Contracts` em `leafcutter_core`.
 >
@@ -19,7 +19,11 @@ persisted ContractVersion
 → validate many JSON payloads
 ~~~
 
-O slice também impede que novos PackageVersions, EnvironmentDeployments e Runs dependam de ContractVersions identity-only legadas.
+O slice completo também impede que novos PackageVersions, EnvironmentDeployments e Runs dependam de ContractVersions identity-only legadas.
+
+## Estado de implementação
+
+Estão materializados o documento persistido, a política e os limites, a publicação com build completo, `Contracts.compile/1`, `Contracts.validate/2` e a rejeição de legado em novas PackageVersions. A próxima etapa é aplicar a mesma proteção em deployment create/replace; a checagem final no resolver de Run permanece posterior.
 
 ## Estado de entrada
 

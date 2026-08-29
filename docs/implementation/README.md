@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O menor recorte seguinte foi ratificado no ADR-0019: materializar ContractVersion + JSON Schema/JSV como Slice 26A. Operation executável e HTTP permanecem separados nos Slices 26B/26C e ainda exigem seus próprios contracts concretos.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. O Slice 26A ratificado no ADR-0019 está materializado desde ContractVersion + JSON Schema/JSV até a rejeição de legado em PackageVersion; a próxima tarefa é propagar a proteção por EnvironmentDeployment e, depois, pelo resolver de Run. Operation executável e HTTP permanecem separados nos Slices 26B/26C e ainda exigem seus próprios contracts concretos.
 
 ## Documentos
 
