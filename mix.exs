@@ -68,7 +68,10 @@ defmodule Leafcutter.MixProject do
         Mix.raise("#{label} failed: python3 executable not found")
 
     {output, status} =
-      System.cmd(python3, args, stderr_to_stdout: true)
+      System.cmd(python3, args,
+        stderr_to_stdout: true,
+        env: [{"PYTHONDONTWRITEBYTECODE", "1"}]
+      )
 
     IO.write(output)
 
