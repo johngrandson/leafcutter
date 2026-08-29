@@ -38,8 +38,10 @@ envolver semântica de domínio, ambiguidade conhecida, correção humana ou uma
 decisão que possa ter sido sintetizada anteriormente.
 
 A base é derivada e não normativa. Em conflito, volte à ordem de autoridade
-deste arquivo. Consulta e lint não alteram a base. Escritas exigem pedido
-explícito ou aprovação de uma proposta concreta.
+deste arquivo. Consulta e lint não alteram a base. Um pedido explícito de
+captura autoriza somente uma escrita em `docs/knowledge/proposals/`. Escrever
+em uma coleção ativa exige aprovação explícita do conteúdo exato de uma
+proposta já persistida.
 
 ## Fonte de verdade
 

@@ -12,23 +12,10 @@ cria autoridade paralela nem substitui uma fonte canônica.
 
 ## Autoridade e conflitos
 
-A ordem completa de autoridade é:
-
-```text
-Código + testes
-    ↓
-ADRs aceitos
-    ↓
-Documentação arquitetural ratificada
-    ↓
-Specifications e OpenAPI versionados
-    ↓
-CURRENT.md para o ponto de continuidade
-    ↓
-Base de conhecimento DERIVADA
-    ↓
-Research e conversas como apoio
-```
+A seção `Fonte de verdade` de `AGENTS.md` define a ordem canônica completa.
+Esta base ocupa somente a posição derivada indicada ali, depois de
+`CURRENT.md` e antes de conversas e memória de agentes. Este documento não
+mantém uma segunda cópia da ordem.
 
 `DERIVADA` classifica a autoridade desta camada. Não é um novo estado de
 implementação e não altera o vocabulário de ADR-0016. Em qualquer conflito,
@@ -37,7 +24,10 @@ mutação em `log.md` quando aplicável.
 
 ## Camadas
 
-- `syntheses.md`, `gotchas.md` e `pins.md`: entradas ativas derivadas.
+- `syntheses.md`, `gotchas.md` e `pins.md`: coleções-base obrigatórias de
+  entradas ativas derivadas.
+- `syntheses/*.md`, `gotchas/*.md` e `pins/*.md`: shards ativos opcionais por
+  context ou capacidade.
 - `raw/`: fontes humanas imutáveis, usadas como evidência.
 - `proposals/`: candidatos persistidos ainda não aprovados.
 - `log.md`: registro de mutações aprovadas; não é fonte para consultas.
@@ -94,12 +84,17 @@ target: docs/knowledge/gotchas.md
 updated: 2026-08-29
 ```
 
-`target` deve ser exatamente um destes paths: `docs/knowledge/gotchas.md`,
-`docs/knowledge/pins.md` ou `docs/knowledge/syntheses.md`. O `entry_id` usa o
-prefixo semântico correspondente: `G-`, `PIN-` ou `SYN-`. O corpo da proposta
-contém um bloco cercado `markdown` com a entrada candidata completa, no schema
-Markdown exato do tipo de destino, incluindo todos os campos exigidos. Este
-README é schema e referência; nunca é um target de entrada ativa.
+`target` deve ser uma coleção ativa permitida: uma coleção-base
+`docs/knowledge/gotchas.md`, `docs/knowledge/pins.md` ou
+`docs/knowledge/syntheses.md`, ou um shard de um nível sob o diretório
+correspondente. O `entry_id` usa o prefixo semântico do target: `G-`, `PIN-`
+ou `SYN-`. Um shard usado como target deve existir e aparecer em `INDEX.md`
+pelo path completo `docs/knowledge/<coleção>/<slug>.md`, escrito como inline
+code simples em um item `- Derivados:` de nível raiz; captura não cria shards
+implicitamente. O corpo da proposta contém um bloco cercado `markdown` com a
+entrada candidata completa, no schema Markdown exato do tipo de destino,
+incluindo todos os campos exigidos e sem placeholders. Este README é schema e
+referência; nunca é um target de entrada ativa.
 
 Pedido explícito para capturar autoriza criar ou atualizar somente esse arquivo
 de proposta. O fluxo normal é: ler schema e fonte canônica, preparar o
@@ -136,12 +131,13 @@ entrada ativa.
 
 ## Política de escrita e revisão
 
-Agentes não criam facts ativos por inferência. Toda escrita por agente exige
-pedido explícito do usuário ou aprovação humana explícita antes da ação,
-inclusive criar, editar, remover ou promover entradas ativas. Alterações em
-sínteses, gotchas e pins exigem evidência rastreável. Pins provocam
-reconciliação; não prevalecem sobre código, testes, ADRs, specifications ou
-`CURRENT.md`.
+Agentes não criam facts ativos por inferência. Um pedido explícito de captura
+autoriza somente criar ou atualizar a proposta correspondente. Criar, editar
+ou promover uma entrada ativa exige aprovação humana do conteúdo exato da
+proposta persistida. Remover uma entrada ativa exige direção humana explícita.
+Toda mutação ativa exige evidência rastreável e registro em `log.md`. Pins
+provocam reconciliação; não prevalecem sobre código, testes, ADRs,
+specifications ou `CURRENT.md`.
 
 ## Segurança e privacidade
 
@@ -153,9 +149,16 @@ novos arquivos em `raw/`, preservando a fonte original.
 ## Critérios para dividir arquivos
 
 Mantenha cada arquivo ativo focado em um tipo de entrada e com até 200 linhas.
-Divida por context ou capacidade ratificada quando a rota deixar de ser clara;
-atualize `INDEX.md` e preserve links de provenance. Não crie topologia de
-múltiplos projetos, camadas globais ou abstrações antes de existir necessidade.
+As coleções-base continuam obrigatórias. Quando a rota deixar de ser clara,
+mova entradas para shards opcionais de um nível, usando um slug semântico:
+`syntheses/<slug>.md`, `gotchas/<slug>.md` ou `pins/<slug>.md`. Cada shard usa
+o mesmo frontmatter `type` e o mesmo prefixo de ID da coleção-base. Atualize
+`INDEX.md` com o path completo `docs/knowledge/<coleção>/<slug>.md` para rotear
+o shard, escrito como inline code simples em um item `- Derivados:` de nível
+raiz, e preserve links de provenance. Outros itens, code spans com múltiplos
+backticks, blockquotes, exemplos e blocos de código não estabelecem rotas. Não
+crie subdiretórios adicionais, topologia de múltiplos projetos, camadas globais
+ou abstrações antes de existir necessidade.
 
 Os workflows de extração e consolidação podem voltar quando houver uma extração
 explicitamente solicitada ou arquivos ativos acima de 200 linhas.

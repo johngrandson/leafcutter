@@ -65,4 +65,8 @@ derivados que o resumo do context indicar como relevantes. `raw/`,
 
 Consulte o schema em `README.md` antes de escrever. O lint estrito é
 `python3 docs/scripts/kb_lint.py --kb docs/knowledge --strict` e apenas
-reporta achados.
+reporta achados. Quando uma coleção for dividida, adicione o shard exato ao
+context correspondente neste índice usando o path completo
+`docs/knowledge/<coleção>/<slug>.md` como inline code simples em um item
+`- Derivados:` de nível raiz. Outros itens, code spans com múltiplos backticks,
+blockquotes, exemplos e blocos de código não estabelecem rotas.

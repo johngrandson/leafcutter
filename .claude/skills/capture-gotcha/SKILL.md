@@ -8,25 +8,17 @@ disable-model-invocation: true
 
 This skill is explicitly invoked, never an automatic task wrap-up action.
 
-1. Read `docs/knowledge/README.md` and applicable canonical sources.
-2. Select one target: gotcha → `docs/knowledge/gotchas.md`, pin →
-   `docs/knowledge/pins.md`, synthesis → `docs/knowledge/syntheses.md`.
-   `docs/knowledge/README.md` is schema only, never an active target.
+1. Read `docs/knowledge/README.md`, `docs/knowledge/INDEX.md`, and applicable
+   canonical sources.
+2. Resolve one active target allowed by the current schema and routing. Use a
+   routed shard when `INDEX.md` names one; otherwise use the collection-base
+   path. `docs/knowledge/README.md` is schema only, never an active target.
 3. Prepare the complete candidate in the target's exact Markdown schema,
    including its `G-`, `PIN-`, or `SYN-` ID and all required fields.
 4. If the developer requests show-only or no-write, render the candidate and
-   stop. Otherwise, explicit capture authorizes only
-   `docs/knowledge/proposals/<semantic-id>.md`, never an active write. Its
-   frontmatter is exactly:
-
-   ```yaml
-   type: proposal
-   entry_id: <semantic-id>
-   target: <one active collection path>
-   updated: YYYY-MM-DD
-   ```
-
-   Its body is one fenced `markdown` block containing the candidate.
+   stop. Otherwise, follow the canonical proposal format and lifecycle in
+   `docs/knowledge/README.md`. Explicit capture authorizes only the persisted
+   proposal, never an active write.
 5. Show the exact persisted proposal and request approval. It is not authority
    and is excluded from normal consultation.
 6. After exact approval, promote the same body to the selected active file,

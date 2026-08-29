@@ -25,16 +25,23 @@ ACTIVE_COLLECTIONS = {
     "pins.md": ("PIN", "pins"),
 }
 PROPOSAL_FIELDS = {"type", "entry_id", "target", "updated"}
-PROPOSAL_TARGETS = {
-    f"docs/knowledge/{path}": prefix
-    for path, (prefix, _) in ACTIVE_COLLECTIONS.items()
-}
 ENTRY_ID = re.compile(r"^(?:SYN|G|PIN)-[a-z0-9]+(?:-[a-z0-9]+)+$")
-ENTRY_HEADING = re.compile(r"^## ((?:SYN|G|PIN)-\S+)\s*$", re.MULTILINE)
+ENTRY_HEADING = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+DOCUMENT_HEADING = re.compile(r"^#[ \t]+.+?[ \t]*$")
+ATX_LIKE_HEADING = re.compile(r"^[ \t]*#{1,6}.*$", re.MULTILINE)
+COLLECTION_SHARD = re.compile(
+    r"^(syntheses|gotchas|pins)/[a-z0-9]+(?:-[a-z0-9]+)*\.md$"
+)
 REFERENCE = re.compile(r"\[\[((?:SYN|G|PIN)-[^\]]+)\]\]")
-FENCED_CODE = re.compile(r"```.*?```", re.DOTALL)
+FENCE_OPENING = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 FENCED_MARKDOWN = re.compile(r"\A\s*```markdown\n(?P<candidate>.*?)```\s*\Z", re.DOTALL)
-INLINE_CODE = re.compile(r"`[^`\n]*`")
+INLINE_CODE = re.compile(r"`([^`\n]*)`")
+DERIVED_ROUTE_ITEM = re.compile(r"^- Derivados:[^\r\n]+$", re.MULTILINE)
+MULTI_BACKTICKS = re.compile(r"`{2,}")
+SHARD_ROUTE = re.compile(
+    r"(?<!`)`(docs/knowledge/(?:syntheses|gotchas|pins)/"
+    r"[a-z0-9]+(?:-[a-z0-9]+)*\.md)`(?!`)"
+)
 PLACEHOLDER = re.compile(r"<[^>]+>|\bXXX\b|example\s*[-:]", re.IGNORECASE)
 REQUIRED_FIELDS = {
     "SYN": {"Contexto", "Síntese", "Autoridade", "Evidência", "Estado"},
@@ -53,7 +60,16 @@ class Finding:
     message: str
 
 
-def parse_frontmatter(text: str) -> dict[str, str] | None:
+@dataclass(frozen=True)
+class Frontmatter:
+    """Parsed fields plus syntax defects from the supported flat format."""
+
+    fields: dict[str, str]
+    duplicate_fields: tuple[str, ...]
+    malformed_lines: int
+
+
+def parse_frontmatter(text: str) -> Frontmatter | None:
     """Parse the flat frontmatter subset required by knowledge-base documents."""
     if not text.startswith("---\n"):
         return None
@@ -62,12 +78,19 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
     if end == -1:
         return None
 
-    result = {}
+    fields = {}
+    duplicate_fields = set()
+    malformed_lines = 0
     for line in text[4:end].splitlines():
         key, separator, value = line.partition(":")
-        if separator and key:
-            result[key.strip()] = value.strip()
-    return result
+        key = key.strip()
+        if not separator or not key:
+            malformed_lines += 1
+            continue
+        if key in fields:
+            duplicate_fields.add(key)
+        fields[key] = value.strip()
+    return Frontmatter(fields, tuple(sorted(duplicate_fields)), malformed_lines)
 
 
 def frontmatter_body(text: str) -> str:
@@ -84,21 +107,89 @@ def entry_blocks(text: str):
         yield match.group(1), text[match.end() : end]
 
 
-def fields_in(block: str) -> dict[str, str]:
-    """Return labeled list fields and their trimmed values from an entry block."""
-    return {
-        match.group(1): match.group(2).strip()
-        for match in re.finditer(r"^- ([^:\n]+):(.*)$", block, re.MULTILINE)
-    }
+def fields_in(block: str) -> tuple[dict[str, str], tuple[str, ...]]:
+    """Return labeled list fields and duplicate labels from an entry block."""
+    fields = {}
+    duplicate_fields = set()
+    for match in re.finditer(r"^- ([^:\n]+):(.*)$", block, re.MULTILINE):
+        field = match.group(1)
+        if field in fields:
+            duplicate_fields.add(field)
+        fields[field] = match.group(2).strip()
+    return fields, tuple(sorted(duplicate_fields))
 
 
-def active_markdown_files(kb: Path) -> list[Path]:
-    """Return non-raw Markdown files in deterministic path order."""
+def knowledge_files(kb: Path) -> list[Path]:
+    """Return files outside the root raw directory in deterministic order."""
     return [
         path
-        for path in sorted(kb.rglob("*.md"))
-        if "raw" not in path.relative_to(kb).parts
+        for path in sorted(kb.rglob("*"))
+        if (path.is_file() or path.is_symlink())
+        and path.relative_to(kb).parts[0] != "raw"
     ]
+
+
+def active_collection_contract(relative_path: str) -> tuple[str, str] | None:
+    """Return the semantic prefix and type for a base collection or shard."""
+    if relative_path in ACTIVE_COLLECTIONS:
+        return ACTIVE_COLLECTIONS[relative_path]
+
+    match = COLLECTION_SHARD.fullmatch(relative_path)
+    if match is None:
+        return None
+    return ACTIVE_COLLECTIONS[f"{match.group(1)}.md"]
+
+
+def proposal_target_contract(target: str) -> tuple[str, str] | None:
+    """Return the active collection contract selected by a proposal target."""
+    prefix = "docs/knowledge/"
+    if not target.startswith(prefix):
+        return None
+    return active_collection_contract(target.removeprefix(prefix))
+
+
+def strip_fenced_code(text: str) -> str:
+    """Remove CommonMark-style fenced blocks while preserving line boundaries."""
+    result = []
+    fence_character = None
+    fence_length = 0
+
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        if fence_character is None:
+            opening = FENCE_OPENING.match(content)
+            if opening is None:
+                result.append(line)
+                continue
+
+            fence = opening.group(1)
+            if fence[0] == "`" and "`" in content[opening.end() :]:
+                result.append(line)
+                continue
+
+            fence_character = fence[0]
+            fence_length = len(fence)
+        elif re.fullmatch(
+            rf" {{0,3}}{re.escape(fence_character)}{{{fence_length},}}[ \t]*",
+            content,
+        ):
+            fence_character = None
+            fence_length = 0
+
+        if line.endswith(("\n", "\r")):
+            result.append("\n")
+
+    return "".join(result)
+
+
+def index_route_values(text: str) -> set[str]:
+    """Return canonical shard routes declared by root Derivados items."""
+    route_values = set()
+    for item in DERIVED_ROUTE_ITEM.findall(strip_fenced_code(text)):
+        if MULTI_BACKTICKS.search(item):
+            continue
+        route_values.update(SHARD_ROUTE.findall(item))
+    return route_values
 
 
 def is_dynamic_proposal(relative_path: str) -> bool:
@@ -108,7 +199,7 @@ def is_dynamic_proposal(relative_path: str) -> bool:
 
 
 def append_document_checks(findings: list[Finding], relative_path: str, text: str) -> None:
-    """Append placeholder and line-limit checks shared by non-raw documents."""
+    """Append placeholder and line-limit checks for one active collection."""
     if PLACEHOLDER.search(text):
         findings.append(
             Finding("ERROR", relative_path, "placeholder left in active content")
@@ -122,23 +213,69 @@ def append_document_checks(findings: list[Finding], relative_path: str, text: st
             Finding("WARN", relative_path, f"{line_count} lines exceeds {MAX_LINES}"))
 
 
-def append_required_collection_checks(
-    findings: list[Finding], relative_path: str, frontmatter: dict[str, str] | None
+def append_heading_syntax_finding(
+    findings: list[Finding],
+    relative_path: str,
+    text: str,
+    *,
+    allow_document_heading: bool,
 ) -> None:
-    """Append frontmatter findings for one required collection file."""
-    expected_type = REQUIRED_COLLECTION_TYPES[relative_path]
+    """Reject headings outside the active-entry Markdown grammar."""
+    document_heading_seen = False
+    for match in ATX_LIKE_HEADING.finditer(text):
+        line = match.group(0)
+        if ENTRY_HEADING.fullmatch(line):
+            continue
+        if (
+            allow_document_heading
+            and not document_heading_seen
+            and DOCUMENT_HEADING.fullmatch(line)
+        ):
+            document_heading_seen = True
+            continue
+        findings.append(Finding("ERROR", relative_path, "invalid heading syntax"))
+        return
+
+
+def append_frontmatter_syntax_findings(
+    findings: list[Finding], relative_path: str, frontmatter: Frontmatter
+) -> None:
+    """Append deterministic findings for malformed or duplicate fields."""
+    if frontmatter.malformed_lines:
+        findings.append(
+            Finding("ERROR", relative_path, "frontmatter contains malformed lines")
+        )
+    if frontmatter.duplicate_fields:
+        findings.append(
+            Finding(
+                "ERROR",
+                relative_path,
+                "frontmatter duplicate fields: "
+                + ", ".join(frontmatter.duplicate_fields),
+            )
+        )
+
+
+def append_collection_frontmatter_checks(
+    findings: list[Finding],
+    relative_path: str,
+    frontmatter: Frontmatter | None,
+    expected_type: str,
+) -> None:
+    """Append frontmatter findings for one schema-controlled document."""
     if frontmatter is None:
         findings.append(Finding("ERROR", relative_path, "missing frontmatter"))
         return
 
-    actual_type = frontmatter.get("type")
+    append_frontmatter_syntax_findings(findings, relative_path, frontmatter)
+    actual_type = frontmatter.fields.get("type")
     if actual_type not in SUPPORTED_TYPES:
         findings.append(Finding("ERROR", relative_path, "unsupported frontmatter type"))
     elif actual_type != expected_type:
         findings.append(
             Finding("ERROR", relative_path, f"frontmatter type must be {expected_type}")
         )
-    elif not frontmatter.get("updated"):
+    elif not frontmatter.fields.get("updated"):
         findings.append(Finding("ERROR", relative_path, "frontmatter missing updated"))
 
 
@@ -146,7 +283,16 @@ def append_entry_field_findings(
     findings: list[Finding], relative_path: str, entry_id: str, block: str, prefix: str
 ) -> None:
     """Append required-label and required-value findings for an entry block."""
-    fields = fields_in(block)
+    fields, duplicate_fields = fields_in(block)
+    if duplicate_fields:
+        findings.append(
+            Finding(
+                "ERROR",
+                relative_path,
+                f"{entry_id} duplicate fields: {', '.join(duplicate_fields)}",
+            )
+        )
+
     missing = sorted(REQUIRED_FIELDS[prefix] - fields.keys())
     if missing:
         findings.append(
@@ -158,7 +304,10 @@ def append_entry_field_findings(
         )
 
     empty = sorted(
-        field for field in REQUIRED_FIELDS[prefix] if field in fields and not fields[field]
+        field
+        for field in REQUIRED_FIELDS[prefix]
+        if field in fields
+        and not INLINE_CODE.sub(lambda match: match.group(1), fields[field]).strip()
     )
     if empty:
         findings.append(
@@ -178,8 +327,19 @@ def lint_active_collection(
     text: str,
 ) -> None:
     """Validate one active collection and collect its definitions and references."""
-    prefix, _ = ACTIVE_COLLECTIONS[relative_path]
-    entry_text = FENCED_CODE.sub("", text)
+    contract = active_collection_contract(relative_path)
+    if contract is None:
+        raise ValueError(f"missing active collection contract for {relative_path}")
+
+    prefix, _ = contract
+    append_document_checks(findings, relative_path, text)
+    entry_text = strip_fenced_code(text)
+    append_heading_syntax_finding(
+        findings,
+        relative_path,
+        entry_text,
+        allow_document_heading=True,
+    )
     reference_text = INLINE_CODE.sub("", entry_text)
     references.extend(
         (reference, relative_path) for reference in REFERENCE.findall(reference_text)
@@ -227,7 +387,30 @@ def append_proposal_field_findings(
         )
         return
 
-    blocks = list(entry_blocks(match.group("candidate")))
+    candidate = match.group("candidate")
+    if PLACEHOLDER.search(candidate):
+        findings.append(
+            Finding("ERROR", relative_path, "placeholder left in candidate content")
+        )
+
+    if ENTRY_HEADING.match(candidate.lstrip()) is None:
+        findings.append(
+            Finding(
+                "ERROR",
+                relative_path,
+                "proposal candidate must start with its entry",
+            )
+        )
+        return
+
+    append_heading_syntax_finding(
+        findings,
+        relative_path,
+        candidate,
+        allow_document_heading=False,
+    )
+
+    blocks = list(entry_blocks(candidate))
     if len(blocks) != 1:
         findings.append(
             Finding("ERROR", relative_path, "proposal candidate must contain one entry")
@@ -241,15 +424,23 @@ def append_proposal_field_findings(
         )
         return
 
-    prefix = PROPOSAL_TARGETS.get(target)
-    if prefix and ENTRY_ID.fullmatch(candidate_id) and candidate_id.startswith(f"{prefix}-"):
+    contract = proposal_target_contract(target)
+    if (
+        contract
+        and ENTRY_ID.fullmatch(candidate_id)
+        and candidate_id.startswith(f"{contract[0]}-")
+    ):
         append_entry_field_findings(
-            findings, relative_path, candidate_id, candidate_block, prefix
+            findings, relative_path, candidate_id, candidate_block, contract[0]
         )
 
 
 def lint_dynamic_proposal(
-    findings: list[Finding], relative_path: str, text: str
+    findings: list[Finding],
+    relative_path: str,
+    text: str,
+    kb: Path,
+    index_routes: set[str],
 ) -> None:
     """Validate one persisted proposal without resolving it as active content."""
     frontmatter = parse_frontmatter(text)
@@ -257,21 +448,23 @@ def lint_dynamic_proposal(
         findings.append(Finding("ERROR", relative_path, "missing frontmatter"))
         return
 
-    if set(frontmatter) != PROPOSAL_FIELDS:
+    append_frontmatter_syntax_findings(findings, relative_path, frontmatter)
+    fields = frontmatter.fields
+    if set(fields) != PROPOSAL_FIELDS:
         findings.append(
             Finding("ERROR", relative_path, "proposal frontmatter fields are invalid")
         )
-    if frontmatter.get("type") != "proposal":
+    if fields.get("type") != "proposal":
         findings.append(
             Finding("ERROR", relative_path, "proposal frontmatter type must be proposal")
         )
-    if not frontmatter.get("updated"):
+    if not fields.get("updated"):
         findings.append(
             Finding("ERROR", relative_path, "proposal frontmatter missing updated")
         )
 
-    entry_id = frontmatter.get("entry_id", "")
-    target = frontmatter.get("target", "")
+    entry_id = fields.get("entry_id", "")
+    target = fields.get("target", "")
     if not ENTRY_ID.fullmatch(entry_id):
         findings.append(Finding("ERROR", relative_path, f"invalid ID {entry_id}"))
     elif Path(relative_path).name != f"{entry_id}.md":
@@ -279,8 +472,8 @@ def lint_dynamic_proposal(
             Finding("ERROR", relative_path, f"proposal filename must be {entry_id}.md")
         )
 
-    prefix = PROPOSAL_TARGETS.get(target)
-    if prefix is None:
+    contract = proposal_target_contract(target)
+    if contract is None:
         findings.append(
             Finding(
                 "ERROR",
@@ -288,12 +481,33 @@ def lint_dynamic_proposal(
                 "proposal target must be an active collection path",
             )
         )
-    elif ENTRY_ID.fullmatch(entry_id) and not entry_id.startswith(f"{prefix}-"):
+    elif ENTRY_ID.fullmatch(entry_id) and not entry_id.startswith(f"{contract[0]}-"):
         findings.append(
             Finding(
                 "ERROR", relative_path, "proposal entry_id prefix does not match target"
             )
         )
+
+    if contract is not None:
+        target_path = target.removeprefix("docs/knowledge/")
+        if target_path not in ACTIVE_COLLECTIONS:
+            shard = kb / target_path
+            if not shard.is_file() or shard.is_symlink():
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        relative_path,
+                        "proposal target shard does not exist",
+                    )
+                )
+            elif target not in index_routes:
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        relative_path,
+                        "proposal target shard is not routed by INDEX.md",
+                    )
+                )
 
     append_proposal_field_findings(
         findings, relative_path, entry_id, target, frontmatter_body(text)
@@ -305,25 +519,65 @@ def lint(kb: Path) -> list[Finding]:
     findings = []
     definitions = {}
     references = []
+    documents = {}
 
     for relative_path in sorted(REQUIRED_FILES):
         if not (kb / relative_path).is_file():
             findings.append(Finding("ERROR", relative_path, "required file missing"))
 
-    for path in active_markdown_files(kb):
+    for path in knowledge_files(kb):
         relative_path = path.relative_to(kb).as_posix()
-        text = path.read_text(encoding="utf-8")
-        append_document_checks(findings, relative_path, text)
+        if path.is_symlink():
+            findings.append(
+                Finding("ERROR", relative_path, "symbolic links are not allowed")
+            )
+            continue
+        if path.suffix != ".md":
+            findings.append(
+                Finding("ERROR", relative_path, "unexpected knowledge file")
+            )
+            continue
 
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            findings.append(Finding("ERROR", relative_path, "invalid UTF-8"))
+            continue
+        documents[relative_path] = text
+
+    index_routes = index_route_values(documents.get("INDEX.md", ""))
+    for relative_path, text in documents.items():
         if relative_path in REQUIRED_COLLECTION_TYPES:
             frontmatter = parse_frontmatter(text)
-            append_required_collection_checks(findings, relative_path, frontmatter)
+            append_collection_frontmatter_checks(
+                findings,
+                relative_path,
+                frontmatter,
+                REQUIRED_COLLECTION_TYPES[relative_path],
+            )
             if relative_path in ACTIVE_COLLECTIONS:
                 lint_active_collection(
                     findings, definitions, references, relative_path, text
                 )
+        elif contract := active_collection_contract(relative_path):
+            frontmatter = parse_frontmatter(text)
+            append_collection_frontmatter_checks(
+                findings, relative_path, frontmatter, contract[1]
+            )
+            target = f"docs/knowledge/{relative_path}"
+            if target not in index_routes:
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        relative_path,
+                        "collection shard is not routed by INDEX.md",
+                    )
+                )
+            lint_active_collection(
+                findings, definitions, references, relative_path, text
+            )
         elif is_dynamic_proposal(relative_path):
-            lint_dynamic_proposal(findings, relative_path, text)
+            lint_dynamic_proposal(findings, relative_path, text, kb, index_routes)
         else:
             findings.append(Finding("ERROR", relative_path, "unexpected Markdown file"))
 
