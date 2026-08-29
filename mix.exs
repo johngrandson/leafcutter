@@ -63,8 +63,12 @@ defmodule Leafcutter.MixProject do
   end
 
   defp run_python!(label, args) do
+    python3 =
+      System.find_executable("python3") ||
+        Mix.raise("#{label} failed: python3 executable not found")
+
     {output, status} =
-      System.cmd("python3", args, stderr_to_stdout: true)
+      System.cmd(python3, args, stderr_to_stdout: true)
 
     IO.write(output)
 
