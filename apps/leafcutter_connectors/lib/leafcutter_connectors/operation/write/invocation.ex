@@ -29,21 +29,22 @@ defmodule LeafcutterConnectors.Operation.Write.Invocation do
 
   @spec valid_items?(term()) :: boolean()
   defp valid_items?([_item | _items] = items) do
-    valid_items?(items, MapSet.new())
+    valid_items?(items, %{})
   end
 
   defp valid_items?(_items), do: false
 
-  @spec valid_items?(term(), MapSet.t(String.t())) :: boolean()
-  defp valid_items?([], _refs), do: true
+  @spec valid_items?(term(), %{optional(String.t()) => true}) :: boolean()
+  defp valid_items?([], _seen_refs), do: true
 
-  defp valid_items?([%Item{ref: ref} = item | items], refs) do
+  defp valid_items?([%Item{ref: ref} = item | items], seen_refs)
+       when is_binary(ref) do
     Item.valid?(item) and
-      not MapSet.member?(refs, ref) and
-      valid_items?(items, MapSet.put(refs, ref))
+      not Map.has_key?(seen_refs, ref) and
+      valid_items?(items, Map.put(seen_refs, ref, true))
   end
 
-  defp valid_items?(_items, _refs), do: false
+  defp valid_items?(_items, _seen_refs), do: false
 end
 
 defimpl Inspect, for: LeafcutterConnectors.Operation.Write.Invocation do
