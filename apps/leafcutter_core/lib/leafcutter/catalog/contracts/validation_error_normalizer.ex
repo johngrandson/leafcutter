@@ -23,12 +23,14 @@ defmodule Leafcutter.Catalog.Contracts.ValidationErrorNormalizer do
   end
 
   @spec normalize_unit(map()) :: ValidationError.details()
-  defp normalize_unit(%{
-         "valid" => valid,
-         "instanceLocation" => instance_location,
-         "evaluationPath" => evaluation_path,
-         "schemaLocation" => schema_location
-       } = unit)
+  defp normalize_unit(
+         %{
+           "valid" => valid,
+           "instanceLocation" => instance_location,
+           "evaluationPath" => evaluation_path,
+           "schemaLocation" => schema_location
+         } = unit
+       )
        when is_boolean(valid) and is_binary(instance_location) and
               is_binary(evaluation_path) and is_binary(schema_location) do
     normalized = %{
