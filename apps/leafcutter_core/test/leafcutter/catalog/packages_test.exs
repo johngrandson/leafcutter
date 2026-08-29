@@ -1,5 +1,5 @@
 defmodule Leafcutter.Catalog.PackagesTest do
-  use Leafcutter.DataCase, async: true
+  use Leafcutter.DataCase, async: false
 
   alias Ecto.Adapters.SQL
   alias Ecto.Changeset
@@ -145,6 +145,39 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert Enum.map(package_version.endpoints, & &1.ref) == ["source", "crm"]
     end
 
+    test "treats a false boolean schema as executable" do
+      package = package_fixture()
+      topology = topology_fixture()
+
+      {:ok, contract} = Contracts.create(%{name: "Reject All"})
+
+      {:ok, contract_version} =
+        Contracts.publish_version(contract.id, %{
+          version: "1",
+          schema: false
+        })
+
+      attrs =
+        topology
+        |> publication_attrs()
+        |> Map.update!(
+          :source,
+          &Map.put(&1, :contract_version_id, contract_version.id)
+        )
+        |> Map.update!(:destinations, fn destinations ->
+          Enum.map(destinations, fn destination ->
+            Map.put(destination, :contract_version_id, contract_version.id)
+          end)
+        end)
+
+      assert {:ok, package_version} =
+               Packages.publish_version(package.id, attrs)
+
+      assert Enum.all?(package_version.endpoints, fn endpoint ->
+               endpoint.contract_version_id == contract_version.id
+             end)
+    end
+
     test "returns package_not_found without persisting a version" do
       topology = topology_fixture()
 
@@ -266,6 +299,66 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
     end
 
+    test "rejects a legacy source ContractVersion and rolls back publication" do
+      package = package_fixture()
+      topology = topology_fixture()
+      legacy_contract_version = legacy_contract_version_fixture("source-legacy")
+
+      attrs =
+        publication_attrs(topology,
+          source:
+            topology
+            |> source_attrs()
+            |> Map.put(:contract_version_id, legacy_contract_version.id)
+        )
+
+      assert {:error, %Changeset{} = changeset} =
+               Packages.publish_version(package.id, attrs)
+
+      assert %{contract_version_id: [_ | _]} = errors_on(changeset)
+      assert {_message, metadata} = Keyword.fetch!(changeset.errors, :contract_version_id)
+      assert Keyword.fetch!(metadata, :validation) == :contract_version_executable
+
+      assert Repo.aggregate(PackageVersion, :count) == 0
+      assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
+      assert is_nil(Repo.get!(ContractVersion, legacy_contract_version.id).schema)
+    end
+
+    test "rolls back earlier endpoints when several destinations reference legacy versions" do
+      package = package_fixture()
+      topology = topology_fixture()
+      first_legacy = legacy_contract_version_fixture("first-destination-legacy")
+      second_legacy = legacy_contract_version_fixture("second-destination-legacy")
+
+      attrs =
+        publication_attrs(topology,
+          destinations: [
+            destination_attrs(topology),
+            %{
+              ref: "warehouse",
+              operation_id: topology.second_destination_operation.id,
+              contract_version_id: first_legacy.id
+            },
+            %{
+              ref: "archive",
+              operation_id: topology.second_destination_operation.id,
+              contract_version_id: second_legacy.id
+            }
+          ]
+        )
+
+      assert {:error, %Changeset{} = changeset} =
+               Packages.publish_version(package.id, attrs)
+
+      assert %{contract_version_id: [_ | _]} = errors_on(changeset)
+      assert Repo.aggregate(PackageVersion, :count) == 0
+      assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
+
+      assert Enum.all?([first_legacy.id, second_legacy.id], fn id ->
+               is_nil(Repo.get!(ContractVersion, id).schema)
+             end)
+    end
+
     test "enforces version uniqueness within one Package" do
       first_package = package_fixture("First")
       second_package = package_fixture("Second")
@@ -320,6 +413,26 @@ defmodule Leafcutter.Catalog.PackagesTest do
         assert %ConnectorVersion{} = endpoint.operation.connector_version
         assert %ContractVersion{} = endpoint.contract_version
       end
+    end
+
+    test "keeps a historical PackageVersion with a legacy ContractVersion readable" do
+      package = package_fixture()
+      topology = topology_fixture()
+      legacy_contract_version = legacy_contract_version_fixture("historical")
+
+      historical =
+        historical_package_version_fixture(
+          package,
+          topology,
+          legacy_contract_version
+        )
+
+      assert {:ok, fetched} = Packages.get_version(historical.id)
+
+      assert Enum.any?(fetched.endpoints, fn endpoint ->
+               endpoint.contract_version_id == legacy_contract_version.id and
+                 is_nil(endpoint.contract_version.schema)
+             end)
     end
 
     test "returns a named error when the PackageVersion does not exist" do
@@ -502,6 +615,94 @@ defmodule Leafcutter.Catalog.PackagesTest do
       second_destination_operation: Map.fetch!(operations_by_ref, "write_warehouse"),
       contract_version: contract_version
     }
+  end
+
+  @spec legacy_contract_version_fixture(String.t()) :: ContractVersion.t()
+  defp legacy_contract_version_fixture(version) do
+    {:ok, contract} =
+      Contracts.create(%{
+        name: "Legacy Contract #{System.unique_integer()}"
+      })
+
+    contract_version_id = Ecto.UUID.generate()
+    {:ok, dumped_contract_id} = Ecto.UUID.dump(contract.id)
+    {:ok, dumped_contract_version_id} = Ecto.UUID.dump(contract_version_id)
+
+    SQL.query!(
+      Repo,
+      "ALTER TABLE contract_versions DISABLE TRIGGER contract_versions_require_schema",
+      []
+    )
+
+    try do
+      SQL.query!(
+        Repo,
+        """
+        INSERT INTO contract_versions (
+          id,
+          contract_id,
+          version,
+          schema,
+          published_at,
+          inserted_at
+        )
+        VALUES ($1, $2, $3, NULL, clock_timestamp(), clock_timestamp())
+        """,
+        [dumped_contract_version_id, dumped_contract_id, version]
+      )
+    after
+      SQL.query!(
+        Repo,
+        "ALTER TABLE contract_versions ENABLE TRIGGER contract_versions_require_schema",
+        []
+      )
+    end
+
+    Repo.get!(ContractVersion, contract_version_id)
+  end
+
+  @spec historical_package_version_fixture(
+          Package.t(),
+          topology_fixture(),
+          ContractVersion.t()
+        ) :: PackageVersion.t()
+  defp historical_package_version_fixture(package, topology, legacy_contract_version) do
+    package_version =
+      %PackageVersion{}
+      |> PackageVersion.publish_changeset(%{
+        package_id: package.id,
+        version: "historical"
+      })
+      |> Repo.insert!()
+
+    endpoints = [
+      %{
+        ref: "source",
+        role: :source,
+        position: nil,
+        operation_id: topology.source_operation.id,
+        contract_version_id: legacy_contract_version.id
+      },
+      %{
+        ref: "destination",
+        role: :destination,
+        position: 0,
+        operation_id: topology.first_destination_operation.id,
+        contract_version_id: topology.contract_version.id
+      }
+    ]
+
+    for attrs <- endpoints do
+      %PackageVersionEndpoint{}
+      |> PackageVersionEndpoint.publish_changeset(
+        Map.put(attrs, :package_version_id, package_version.id)
+      )
+      |> Repo.insert!()
+    end
+
+    package_version
+    |> Changeset.change(published_at: DateTime.utc_now(:microsecond))
+    |> Repo.update!()
   end
 
   @spec publication_attrs(topology_fixture(), keyword()) :: map()

@@ -3,7 +3,8 @@ defmodule Leafcutter.Catalog.Packages do
   Public capability module for Package identities and immutable topologies.
 
   PackageVersion and PackageVersionEndpoint rows are published atomically as
-  a relational projection independent from the draft Package Manifest.
+  a relational projection independent from the draft Package Manifest. Every
+  new endpoint must pin an executable ContractVersion.
   """
 
   import Ecto.Query
@@ -161,6 +162,7 @@ defmodule Leafcutter.Catalog.Packages do
   * The source endpoint is first and has no position.
   * Destination endpoints follow in their persisted position order.
   * Each Operation includes its immutable ConnectorVersion association.
+  * Historical endpoints that pin identity-only ContractVersions remain readable.
   * The projection has no availability filtering in this slice.
   """
   @spec get_version(PackageVersion.id()) ::
@@ -236,6 +238,7 @@ defmodule Leafcutter.Catalog.Packages do
   * Destination position is derived from list order and is not caller supplied.
   * Endpoint refs are unique across the complete PackageVersion.
   * Every endpoint role must match its referenced Operation role.
+  * Every referenced ContractVersion must contain persisted executable schema content.
   * Publication seals the version after inserting every endpoint.
   * An incomplete or unsealed PackageVersion cannot cross the transaction boundary.
   * Published version and endpoint rows cannot be appended, updated, or deleted.
@@ -412,6 +415,7 @@ defmodule Leafcutter.Catalog.Packages do
       operation_id: attribute(attrs, :operation_id),
       contract_version_id: attribute(attrs, :contract_version_id)
     })
+    |> validate_contract_version_executable()
     |> Repo.insert()
     |> case do
       {:ok, %PackageVersionEndpoint{} = endpoint} ->
@@ -419,6 +423,35 @@ defmodule Leafcutter.Catalog.Packages do
 
       {:error, changeset} ->
         Repo.rollback(changeset)
+    end
+  end
+
+  @spec validate_contract_version_executable(Changeset.t()) :: Changeset.t()
+  defp validate_contract_version_executable(changeset) do
+    case Changeset.fetch_field(changeset, :contract_version_id) do
+      {_source, contract_version_id} when is_binary(contract_version_id) ->
+        legacy_contract_version? =
+          ContractVersion
+          |> where(
+            [contract_version],
+            contract_version.id == ^contract_version_id and
+              is_nil(contract_version.schema)
+          )
+          |> Repo.exists?()
+
+        if legacy_contract_version? do
+          Changeset.add_error(
+            changeset,
+            :contract_version_id,
+            "does not reference an executable ContractVersion",
+            validation: :contract_version_executable
+          )
+        else
+          changeset
+        end
+
+      _missing_or_invalid ->
+        changeset
     end
   end
 

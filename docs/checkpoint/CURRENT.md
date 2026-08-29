@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública com validator opaco e a validação segura de payload estão materializados; a propagação de executabilidade continua pendente.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions estão materializados; a propagação para Deployment e Run continua pendente.
 
 ## Estado materializado
 
@@ -88,9 +88,9 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-O restante do slice 26A ratificado rejeitará versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
+O restante do slice 26A ratificado rejeitará versões legadas em novos Deployments e novas Runs resolvidas. Isso é estado futuro aprovado, não comportamento atual.
 
 ### Connections
 
@@ -199,7 +199,7 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-ContractVersion executável completo (slice 26A em materialização; propagação pendente)
+ContractVersion executável completo (slice 26A em materialização; propagação para Deployment/Run pendente)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -246,6 +246,7 @@ ContractVersion nullable schema persistence
 ContractVersion schema-aware publication and insert sealing
 ContractVersion public compilation and opaque validator
 ContractVersion public payload validation and safe errors
+PackageVersion executable ContractVersion enforcement
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -253,7 +254,7 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável, o sealing de novos inserts, a compilação pública e a validação de payload com erro normalizado estão materializados. A próxima fronteira é impedir novas referências a versões legadas, começando pela publicação de PackageVersion e ainda sem alterar RunSnapshot v1.
+A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável, o sealing de novos inserts, a compilação pública, a validação de payload e a rejeição de legado em novas PackageVersions estão materializados. A próxima fronteira é repetir a proteção em `Deployments.create/1` e `replace/2`, ainda sem alterar RunSnapshot v1.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -261,15 +262,15 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar a primeira boundary de propagação de executabilidade conforme ADR-0019:
+Materializar executabilidade na boundary de EnvironmentDeployment conforme ADR-0019:
 
 ~~~text
-Packages.publish_version/2 receives source and destination contract_version_ids
-→ fetch every referenced ContractVersion inside the publication transaction
-→ reject each legacy row whose persisted schema is nil
-→ attach the error to contract_version_id in the endpoint changeset
-→ roll back the complete PackageVersion publication on any failure
-→ preserve existing PackageVersions and historical reads
+Deployments.create/1 and replace/2 load the PackageVersion projection
+→ collect endpoint ContractVersions whose persisted schema is nil
+→ deduplicate and sort the legacy ContractVersion IDs
+→ return {:error, {:contract_versions_not_executable, ids}}
+→ roll back create or replacement completely
+→ preserve historical Deployments and RunSnapshot v1
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:
