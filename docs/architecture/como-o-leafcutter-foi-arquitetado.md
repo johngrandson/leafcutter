@@ -214,7 +214,7 @@ Promotion levará estado promovível aprovado sem copiar credenciais ou config l
 
 Source e destination payloads serão validados com JSON Schema Draft 2020-12 via JSV.
 
-O ADR-0019 ratifica a boundary de ContractVersion executável, publicação, compilação e validação do Slice 26A. Essa parte e a proteção em PackageVersion estão materializadas; a propagação por EnvironmentDeployment e pelo resolver de Run permanece pendente. Os pontos source/destination que chamarão a validação pertencem ao Slice 26B.
+O ADR-0019 ratifica a boundary de ContractVersion executável, publicação, compilação e validação do Slice 26A. O slice está materializado por PackageVersion, EnvironmentDeployment e pelo resolver de Run, que repetem a proteção contra versões legadas. Os pontos source/destination que chamarão a validação pertencem ao Slice 26B.
 
 ```text
 external source
@@ -301,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. O contract de ContractVersion executável com JSON Schema/JSV está materializado até PackageVersion; as proteções em EnvironmentDeployment e na resolução de Run ainda faltam. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Operation/Transport executáveis, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. O contract de ContractVersion executável com JSON Schema/JSV está materializado integralmente sem alterar RunSnapshot v1. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Operation/Transport executáveis, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -310,13 +310,13 @@ O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connec
 ```text
 present
 → RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
-→ ContractVersion + JSON Schema/JSV + PackageVersion enforcement
+→ ContractVersion + JSON Schema/JSV + enforcement em PackageVersion/Deployment/Run
 
 next
-→ concluir propagação em EnvironmentDeployment e resolução de Run (Slice 26A)
+→ ratificar Operation executável (26B)
 
 then
-→ ratificar Operation executável (26B) e HTTP reference path (26C)
+→ ratificar HTTP reference path (26C)
 
 future
 → durable Broadway integration data plane

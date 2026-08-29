@@ -1,7 +1,7 @@
 # ADR-0019 — ContractVersion executável com JSON Schema/JSV
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES
+- Estado de implementação: MATERIALIZADO
 - Data: 2026-08-29
 
 ## Contexto
@@ -12,9 +12,9 @@ O menor próximo slice precisa tornar uma `ContractVersion` publicável, compil�
 
 ## Estado materializado
 
-A representação Ecto, a política de documento, o build JSV interno, a persistência nullable compatível com legado, a publicação schema-aware, a compilação pública, a validação de payload e a rejeição de ContractVersions legadas em novas PackageVersions estão materializados.
+A representação Ecto, a política de documento, o build JSV interno, a persistência nullable compatível com legado, a publicação schema-aware, a compilação pública, a validação de payload e a rejeição de ContractVersions legadas nas boundaries de PackageVersion, EnvironmentDeployment e resolução de Run estão materializados.
 
-Continuam pendentes a rejeição em `Integrations.Deployments.create/1` e `replace/2` e a repetição da proteção em `LeafcutterRuntime.Runs.create_from_deployment/1`. RunSnapshot v1 permanece inalterado.
+`LeafcutterRuntime.Runs.create_from_deployment/1` devolve o erro envelopado ratificado antes de criar Run ou RunSnapshot. RunSnapshot v1 permanece inalterado.
 
 ## Decisão
 
@@ -196,12 +196,12 @@ RunSnapshot v1 não muda e não haverá format v2 neste slice. A definition cont
 - nenhum acesso externo pode ocorrer durante compile ou validate;
 - o contrato público não fica acoplado aos structs e mensagens do JSV;
 - object e boolean schemas têm round-trip físico fiel no mesmo campo JSONB;
-- ao completar a propagação, PackageVersion, deployment e resolver impedirão novas Runs baseadas em contratos identity-only;
+- PackageVersion, deployment e resolver impedem novas Runs baseadas em contratos identity-only;
 - Operation/Transport podem ser ratificados depois sobre uma boundary de contract já executável.
 
 ## Provas exigidas na materialização
 
-A specification relacionada define a matriz detalhada. No mínimo, a materialização completa deve provar:
+A specification relacionada define a matriz detalhada. A materialização completa prova:
 
 - round-trip de object, `true` e `false` pelo Ecto type e PostgreSQL;
 - preservação de linha legada com `schema: nil`;

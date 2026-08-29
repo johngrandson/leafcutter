@@ -11,7 +11,12 @@ defmodule LeafcutterRuntime.Runs do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{Packages, PackageVersion, PackageVersionEndpoint}
+  alias Leafcutter.Catalog.{
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
+  }
   alias Leafcutter.Connections
   alias Leafcutter.Connections.{Connection, Secrets, SecretVersion}
   alias Leafcutter.Executions.Run
@@ -59,6 +64,7 @@ defmodule LeafcutterRuntime.Runs do
           | :environment_disabled
           | :integration_disabled
           | :package_version_mismatch
+          | {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}
           | {:binding_mismatch,
              %{
                required(:missing_refs) => [String.t()],
@@ -112,6 +118,7 @@ defmodule LeafcutterRuntime.Runs do
   * One outer Repo transaction owns discovery, authority locks, resolution, and Run creation.
   * Mutable authorities are locked in the ratified deterministic order.
   * Catalog projections and SecretVersion identities are read without locks because they are immutable.
+  * ContractVersion executability is revalidated from the immutable PackageVersion projection.
   * Effective config recursively merges promotable config with local config taking precedence.
   * Connection config and the exact current SecretVersion identifier are copied into definition v1.
   * The workflow does not start a local Run tree or perform any external effect.
@@ -142,6 +149,7 @@ defmodule LeafcutterRuntime.Runs do
          {:ok, package_version} <-
            fetch_package_version(deployment.package_version_id),
          :ok <- validate_package_version(package_version, integration),
+         :ok <- validate_contract_versions_executable(package_version),
          :ok <- validate_binding_refs(package_version, deployment.bindings),
          :ok <-
            validate_connector_compatibility(
@@ -286,6 +294,34 @@ defmodule LeafcutterRuntime.Runs do
       :ok
     else
       not_executable(:package_version_mismatch)
+    end
+  end
+
+  @spec validate_contract_versions_executable(PackageVersion.t()) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}}}
+  defp validate_contract_versions_executable(package_version) do
+    contract_version_ids =
+      package_version.endpoints
+      |> Enum.flat_map(fn
+        %PackageVersionEndpoint{
+          contract_version_id: contract_version_id,
+          contract_version: %ContractVersion{schema: nil}
+        } ->
+          [contract_version_id]
+
+        _executable_endpoint ->
+          []
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case contract_version_ids do
+      [] -> :ok
+      contract_version_ids ->
+        not_executable({:contract_versions_not_executable, contract_version_ids})
     end
   end
 

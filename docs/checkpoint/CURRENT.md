@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26A — ContractVersion executável com JSON Schema/JSV**
+**Slice 26A concluído — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions e EnvironmentDeployments estão materializados; a propagação final para Run continua pendente.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do Slice 26A foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware, o sealing de novos inserts, a compilação pública, a validação segura de payload e a rejeição de legado em novas PackageVersions, EnvironmentDeployments e Runs resolvidas estão materializados. O Slice 26A está completo e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -90,7 +90,7 @@ Catalog.Packages.get_version/1
 
 ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-A rejeição de versões legadas em novos Deployments está materializada. O restante do slice 26A ratificado repetirá a proteção em novas Runs resolvidas; isso permanece estado futuro aprovado, não comportamento atual.
+A rejeição de versões legadas em novas PackageVersions, novos Deployments e novas Runs resolvidas está materializada. PackageVersions, Deployments, Runs e RunSnapshots históricos permanecem legíveis sem reescrita.
 
 ### Connections
 
@@ -159,7 +159,7 @@ Runs.claim_recoverable/3
 LeafcutterRuntime.Runs.create_from_deployment/1
 ```
 
-Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. `create_from_deployment/1` resolve authorities por APIs públicas dentro de uma única transação, calcula effective config, preserva destination order e congela Connection config e SecretVersion ID antes de criar a Run `pending`. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
+Run possui status mínimo, owner, generation e ownership timestamp. RunSnapshot congela a definition executável estruturalmente validada e versionada. `create_from_deployment/1` resolve authorities por APIs públicas dentro de uma única transação, revalida a executabilidade de todas as ContractVersions projetadas, calcula effective config, preserva destination order e congela Connection config e SecretVersion ID antes de criar a Run `pending`. Versões legadas produzem erro envelopado com IDs únicos e ordenados sem persistir Run ou RunSnapshot. A validação rejeita strings que não sejam UTF-8 antes da serialização JSONB. PostgreSQL é authority de liveness, ownership, fencing e imutabilidade persistida do snapshot.
 
 Supervision tree:
 
@@ -199,7 +199,6 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-ContractVersion executável completo (slice 26A em materialização; propagação para Run pendente)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -248,6 +247,7 @@ ContractVersion public compilation and opaque validator
 ContractVersion public payload validation and safe errors
 PackageVersion executable ContractVersion enforcement
 EnvironmentDeployment executable ContractVersion enforcement
+Run resolution executable ContractVersion enforcement
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -255,25 +255,25 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável, o sealing de novos inserts, a compilação pública, a validação de payload e a rejeição de legado em novas PackageVersions e EnvironmentDeployments estão materializados. A próxima fronteira é repetir a proteção no resolver `LeafcutterRuntime.Runs.create_from_deployment/1`, ainda sem alterar RunSnapshot v1.
+O Slice 26A está integralmente materializado: representação e persistência compatíveis com legado, publicação com JSV, compilação, validação de payload e proteção nas boundaries de PackageVersion, EnvironmentDeployment e resolução de Run. RunSnapshot v1 permanece inalterado.
 
-O fechamento da base de conhecimento local é uma capacidade de harness e
-documentação; não altera o estado atual de produto/runtime nem a próxima
-fronteira concreta em `Deployments.create/1` e `replace/2`.
+A próxima fronteira de produto é ratificar o contract concreto de Operation executável no Slice 26B antes de alterar código. Transport e a primeira referência HTTP permanecem no Slice 26C.
 
 ## Próxima tarefa concreta
 
-Materializar executabilidade na boundary final de resolução conforme ADR-0019:
+Ratificar o contract concreto do Slice 26B — Operation executável:
 
 ~~~text
-LeafcutterRuntime.Runs.create_from_deployment/1 loads the PackageVersion projection
-→ collect endpoint ContractVersions whose persisted schema is nil
-→ deduplicate and sort the legacy ContractVersion IDs
-→ return {:error, {:environment_deployment_not_executable,
-                    {:contract_versions_not_executable, ids}}}
-→ roll back Run and RunSnapshot creation completely
-→ preserve historical Runs and RunSnapshot v1
+Operation metadata already materialized
+→ define behaviour names, signatures and invocation types
+→ define read/write result structs
+→ ratify cursor, pagination and partial-success semantics
+→ define explicit source/destination payload validation points
+→ align the concrete error contract with the retry taxonomy
+→ keep Transport HTTP and protocol execution in Slice 26C
 ~~~
+
+Nenhuma implementação de Operation executável deve começar antes dessa ratificação.
 
 O workflow upstream já materializado e que deve ser preservado é:
 

@@ -18,6 +18,7 @@
 - criação atômica de Run + RunSnapshot v1;
 - criação transacional de Run a partir de EnvironmentDeployment;
 - congelamento de PackageVersion, ContractVersions, destination order, effective config, Connections e SecretVersion IDs;
+- revalidação de ContractVersions executáveis antes de persistir Run e RunSnapshot;
 - per-Run supervision;
 - automatic recovery de Runs `running` e `pending` elegíveis;
 - concorrência distribuída baseada em PostgreSQL.
@@ -59,14 +60,13 @@
 - um EnvironmentDeployment completo por Integration/Environment;
 - PackageVersion, promotable/local config e bindings completos por endpoint;
 - create/get/replace atômicos;
-- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos;
+- validação de scope, lifecycle, executabilidade de ContractVersion, cobertura e Connector compatibility sob locks determinísticos;
 - descoberta de scope imutável e locks de resolução por APIs públicas.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- propagação da executabilidade por EnvironmentDeployment e resolução de Run (restante do Slice 26A);
 - Operation executável (Slice 26B ainda a ratificar);
 - Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
 - Integration Packages;

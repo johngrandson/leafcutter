@@ -119,7 +119,7 @@ Writes validam Organization e Environment ativos por uma API pública do owner q
 
 `Leafcutter.Integrations` cria, lê e desabilita identidades Integration organization-scoped ligadas a uma Package estável. Organization, Package e name são imutáveis depois da criação. Writes validam a Organization ativa sob lock compartilhado, e disable preserva um único timestamp sob locks na ordem Organization → Integration.
 
-`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
+`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível e executável, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
 
 ### Runtime e Executions foundation
 
@@ -156,7 +156,7 @@ Ownership é serializado no PostgreSQL. `generation` é o fencing token monotôn
 
 `RunSnapshot` usa o id de `Run` como primary key, congela a definition v1 estruturalmente validada e rejeita updates no PostgreSQL. `Runs.create/1` persiste Run `pending` e snapshot atomicamente. `Runs.fetch_snapshot/1` fornece leitura explícita.
 
-`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, calcula effective config e cria Run + RunSnapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
+`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, revalida todas as ContractVersions, calcula effective config e cria Run + RunSnapshot. Versões legadas produzem IDs únicos e ordenados no erro sem persistir Run ou snapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
 
 ### Supervision e recovery atuais
 
@@ -205,7 +205,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Catalog futuro
 
-O modelo mínimo ratificado no ADR-0018 e a parte do Slice 26A owned pelo Catalog estão materializados:
+O modelo mínimo ratificado no ADR-0018 e o Slice 26A estão materializados:
 
 ```text
 ContractVersion.schema JSONB object | boolean
@@ -219,7 +219,7 @@ ContractVersion.schema JSONB object | boolean
 → RunSnapshot v1 unchanged
 ```
 
-O schema permanece owned pelo Catalog e novas PackageVersions não referenciam versões legadas. A parte ainda não materializada do Slice 26A é a propagação da mesma proteção por deployment create/replace e pelo resolver de Run. Nenhum estado histórico será reescrito.
+O schema permanece owned pelo Catalog. Novas PackageVersions, novos deployments/replacements e novas resoluções de Run rejeitam versões legadas sem reescrever estado histórico.
 
 Permanecem posteriores:
 
@@ -359,7 +359,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections, Integration, EnvironmentDeployment e seu resolver transacional estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e o Slice 26A estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -372,15 +372,11 @@ EnvironmentDeployment + bindings (materialized)
 ↓
 resolver em leafcutter_runtime (materialized)
 ↓
-ContractVersion executable + JSON Schema/JSV até PackageVersion (26A materializado)
-↓
-proteção em EnvironmentDeployment create/replace (próxima tarefa de 26A)
-↓
-proteção final no resolver de Run (pendente em 26A)
+ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (26A materializado)
 ↓
 Operation executable (26B ainda a ratificar)
 ↓
 HTTP Transport + reference Operation (26C ainda a ratificar)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A parcialmente materializado e sua próxima boundary em EnvironmentDeployment. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` ainda deverá repetir a checagem de executabilidade no instante de criação. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` repete a checagem de executabilidade no instante de criação. A próxima fronteira é ratificar o contract concreto de Operation no Slice 26B antes de implementá-lo; o carregamento no coordinator e a execução Broadway permanecem posteriores.

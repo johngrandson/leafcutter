@@ -81,7 +81,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26A — ContractVersion executável
 
-**Parcialmente materializado: Catalog e PackageVersion concluídos; Deployment e resolver pendentes.**
+**Materializado integralmente em Catalog, PackageVersion, EnvironmentDeployment e resolução de Run.**
 
 - schema JSONB object/boolean imutável em novas ContractVersions;
 - versões identity-only legadas preservadas e não executáveis;
@@ -91,7 +91,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - `Contracts.compile/1` e `validate/2`;
 - validator reutilizado pelo futuro processo de Run, sem cache global inicial;
 - PackageVersion rejeitando versões legadas, materializado;
-- deployment e resolver rejeitando versões legadas, pendentes;
+- EnvironmentDeployment create/replace e resolver rejeitando versões legadas, materializados;
 - RunSnapshot v1 inalterado.
 
 ### Slice 26B — Operation executável

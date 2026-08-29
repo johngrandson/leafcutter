@@ -1,10 +1,16 @@
 defmodule LeafcutterRuntime.RunsResolutionTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
+  alias Ecto.Adapters.SQL
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.Packages
+  alias Leafcutter.Catalog.{
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
+  }
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Secrets
   alias Leafcutter.Executions.{Run, RunSnapshot}
@@ -184,6 +190,48 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
     end
 
+    test "rejects legacy ContractVersions without persisting a Run" do
+      fixture = ResolutionFixtures.deployment_fixture()
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      first_legacy =
+        legacy_contract_version_fixture(
+          fixture.contract.id,
+          "resolver-first"
+        )
+
+      second_legacy =
+        legacy_contract_version_fixture(
+          fixture.contract.id,
+          "resolver-second"
+        )
+
+      historical_package_version =
+        historical_package_version_fixture(
+          fixture,
+          second_legacy,
+          [
+            {"warehouse", first_legacy},
+            {"crm", second_legacy}
+          ]
+        )
+
+      fixture.deployment
+      |> Changeset.change(package_version_id: historical_package_version.id)
+      |> Repo.update!()
+
+      expected_ids = Enum.sort([first_legacy.id, second_legacy.id])
+
+      assert {:error,
+              {:environment_deployment_not_executable,
+               {:contract_versions_not_executable, ^expected_ids}}} =
+               Runs.create_from_deployment(fixture.deployment.id)
+
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
     test "returns deterministic binding mismatch refs" do
       fixture = ResolutionFixtures.deployment_fixture()
 
@@ -214,6 +262,91 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       assert Repo.aggregate(Run, :count) == 0
       assert Repo.aggregate(RunSnapshot, :count) == 0
     end
+  end
+
+  defp legacy_contract_version_fixture(contract_id, version) do
+    contract_version_id = Ecto.UUID.generate()
+    {:ok, dumped_contract_id} = Ecto.UUID.dump(contract_id)
+    {:ok, dumped_contract_version_id} = Ecto.UUID.dump(contract_version_id)
+
+    SQL.query!(
+      Repo,
+      "ALTER TABLE contract_versions DISABLE TRIGGER contract_versions_require_schema",
+      []
+    )
+
+    try do
+      SQL.query!(
+        Repo,
+        """
+        INSERT INTO contract_versions (
+          id,
+          contract_id,
+          version,
+          schema,
+          published_at,
+          inserted_at
+        )
+        VALUES ($1, $2, $3, NULL, clock_timestamp(), clock_timestamp())
+        """,
+        [dumped_contract_version_id, dumped_contract_id, version]
+      )
+    after
+      SQL.query!(
+        Repo,
+        "ALTER TABLE contract_versions ENABLE TRIGGER contract_versions_require_schema",
+        []
+      )
+    end
+
+    Repo.get!(ContractVersion, contract_version_id)
+  end
+
+  defp historical_package_version_fixture(
+         fixture,
+         source_contract_version,
+         destinations
+       ) do
+    package_version =
+      %PackageVersion{}
+      |> PackageVersion.publish_changeset(%{
+        package_id: fixture.package.id,
+        version: "legacy"
+      })
+      |> Repo.insert!()
+
+    source = %{
+      ref: "source",
+      role: :source,
+      position: nil,
+      operation_id: fixture.source_operation.id,
+      contract_version_id: source_contract_version.id
+    }
+
+    destination_endpoints =
+      destinations
+      |> Enum.with_index()
+      |> Enum.map(fn {{ref, contract_version}, position} ->
+        %{
+          ref: ref,
+          role: :destination,
+          position: position,
+          operation_id: fixture.destination_operation.id,
+          contract_version_id: contract_version.id
+        }
+      end)
+
+    for attrs <- [source | destination_endpoints] do
+      %PackageVersionEndpoint{}
+      |> PackageVersionEndpoint.publish_changeset(
+        Map.put(attrs, :package_version_id, package_version.id)
+      )
+      |> Repo.insert!()
+    end
+
+    package_version
+    |> Changeset.change(published_at: DateTime.utc_now(:microsecond))
+    |> Repo.update!()
   end
 
   defp expected_definition(fixture) do

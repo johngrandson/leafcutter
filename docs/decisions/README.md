@@ -17,7 +17,7 @@ Materialized / Partial / Not materialized
 | ADR-0003 | Comunicação síncrona, PubSub e trabalho durável | PARCIAL |
 | ADR-0004 | OTP operacional; PostgreSQL durável | MATERIALIZADO NO CONTROL PLANE |
 | ADR-0005 | Broadway como data plane | NÃO MATERIALIZADO |
-| ADR-0006 | JSON Schema 2020-12 + JSV | PARCIAL — EXECUÇÃO MATERIALIZADA ATÉ PACKAGEVERSION; PROPAGAÇÃO PENDENTE |
+| ADR-0006 | JSON Schema 2020-12 + JSV | MATERIALIZADO — SLICE 26A CONCLUÍDO |
 | ADR-0007 | Integration Packages fora de `apps/` | ESTRUTURA RATIFICADA; BUILD ABERTO |
 | ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA DE CONNECTOR/OPERATION |
 | ADR-0009 | Semântica `at-least-once` | MATERIALIZADA COMO PRINCÍPIO; DATA PLANE PENDENTE |
@@ -30,7 +30,7 @@ Materialized / Partial / Not materialized
 | ADR-0016 | Separação documental entre presente, futuro e aberto | MATERIALIZADO NESTA REVISÃO |
 | ADR-0017 | RunSnapshot v1 imutável e criação atômica | MATERIALIZADO |
 | ADR-0018 | Authorities upstream mínimas e resolução de EnvironmentDeployment | MATERIALIZADO |
-| ADR-0019 | ContractVersion executável com JSON Schema/JSV | PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES |
+| ADR-0019 | ContractVersion executável com JSON Schema/JSV | MATERIALIZADO |
 | ADR-0020 | Base de conhecimento local derivada | MATERIALIZADO |
 
 ## Convenção de status decisório

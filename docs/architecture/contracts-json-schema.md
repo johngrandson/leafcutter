@@ -1,6 +1,6 @@
 # Contracts e JSON Schema
 
-> **Status: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES.**
+> **Status: MATERIALIZADO — SLICE 26A CONCLUÍDO.**
 >
 > ADRs canônicos: ADR-0006 e ADR-0019.
 
@@ -21,9 +21,10 @@ O código atual:
 - preserva ContractVersions identity-only legadas como históricas e não executáveis;
 - compila um validator Leafcutter opaco por chamada;
 - valida payload JSON sem Repo, rebuild ou casting;
-- rejeita novas PackageVersions que referenciem ContractVersion legada.
+- rejeita novas PackageVersions e novos EnvironmentDeployments que referenciem ContractVersion legada;
+- revalida todas as ContractVersions na resolução de uma nova Run.
 
-As proteções em EnvironmentDeployment create/replace e na resolução de Run continuam pendentes. RunSnapshot v1 congela somente `contract_version_id` e permanece inalterado.
+As proteções em EnvironmentDeployment create/replace e na resolução de Run estão materializadas. RunSnapshot v1 congela somente `contract_version_id` e permanece inalterado.
 
 ## Slice 26A
 
@@ -83,16 +84,16 @@ Não haverá cache global inicial. O futuro processo de Run manterá os validato
 
 O schema permanece owned pelo Catalog e não é copiado para PackageVersion, EnvironmentDeployment ou RunSnapshot.
 
-Novos writes aplicam ou aplicarão, conforme o estado indicado:
+Novos writes aplicam:
 
 ~~~text
 PackageVersion publication (materializado)
 → rejects legacy ContractVersion
 
-EnvironmentDeployment create/replace (pendente)
+EnvironmentDeployment create/replace (materializado)
 → rejects PackageVersion with legacy ContractVersion
 
-EnvironmentDeployment → Run resolver (pendente)
+EnvironmentDeployment → Run resolver (materializado)
 → rechecks all final ContractVersion IDs
 ~~~
 

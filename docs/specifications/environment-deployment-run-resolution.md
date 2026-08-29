@@ -391,6 +391,8 @@ O resolver não adiciona Organization, Environment, Integration ou Deployment ID
         | :environment_disabled
         | :integration_disabled
         | :package_version_mismatch
+        | {:contract_versions_not_executable,
+           nonempty_list(ContractVersion.id())}
         | {:binding_mismatch,
            %{
              missing_refs: [String.t()],
@@ -421,6 +423,7 @@ Falha confirmada causa rollback integral.
 - descobre somente os parent IDs imutáveis antes dos locks;
 - bloqueia e revalida todas as authorities mutáveis na ordem ratificada;
 - lê Catalog e SecretVersions imutáveis por APIs públicas;
+- rejeita ContractVersions identity-only com IDs únicos e ordenados;
 - calcula effective config conforme o merge aprovado;
 - preserva destination order da PackageVersion;
 - congela Connection config e SecretVersion ID exato;
@@ -442,7 +445,7 @@ Falha confirmada causa rollback integral.
 - alteração concorrente de deployment ou Connection não produz snapshot híbrido;
 - definition v1 contém refs e configs resolvidas corretas;
 - destination order segue PackageVersionEndpoint.position;
-- erro semântico não persiste Run;
+- erro semântico, inclusive ContractVersion legada, não persiste Run nem RunSnapshot;
 - duas chamadas válidas criam Runs distintas;
 - Run resultante permanece pending e elegível para RunRecovery;
 - `mix quality` passa.
@@ -465,4 +468,4 @@ Falha confirmada causa rollback integral.
 
 ## Evolução posterior
 
-O ADR-0019 e `contract-version-execution.md` ratificam o Slice 26A posterior a esta specification: novas ContractVersions terão schema/JSV e as novas boundaries de PackageVersion, deployment e resolver rejeitarão versões identity-only legadas. Esta specification continua sendo a prova do resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudam.
+O ADR-0019 e `contract-version-execution.md` materializam o Slice 26A posterior a esta specification: novas ContractVersions possuem schema/JSV e as boundaries de PackageVersion, deployment e resolver rejeitam versões identity-only legadas. Esta specification continua sendo a prova do resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudaram.

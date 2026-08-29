@@ -1,6 +1,6 @@
 # ContractVersion executável — specification
 
-> **Status: PARCIALMENTE MATERIALIZADO — ATÉ PACKAGEVERSION; DEPLOYMENT E RUN PENDENTES.**
+> **Status: MATERIALIZADO.**
 >
 > Owner: `Leafcutter.Catalog.Contracts` em `leafcutter_core`.
 >
@@ -23,7 +23,7 @@ O slice completo também impede que novos PackageVersions, EnvironmentDeployment
 
 ## Estado de implementação
 
-Estão materializados o documento persistido, a política e os limites, a publicação com build completo, `Contracts.compile/1`, `Contracts.validate/2` e a rejeição de legado em novas PackageVersions. A próxima etapa é aplicar a mesma proteção em deployment create/replace; a checagem final no resolver de Run permanece posterior.
+Estão materializados o documento persistido, a política e os limites, a publicação com build completo, `Contracts.compile/1`, `Contracts.validate/2` e a rejeição de legado em novas PackageVersions, novos ou substituídos EnvironmentDeployments e novas Runs resolvidas. RunSnapshot v1 permanece inalterado e todo estado histórico continua legível.
 
 ## Estado de entrada
 

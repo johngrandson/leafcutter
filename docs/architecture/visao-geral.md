@@ -45,7 +45,7 @@ Package
 
 ConnectorVersion e suas Operations são publicadas atomicamente. Novas ContractVersions publicam schema Draft 2020-12 object/boolean, validado e construído com JSV, e expõem compile/validate; versões identity-only legadas permanecem históricas. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis e rejeitando versões legadas em novas publicações.
 
-O Slice 26A ratificado no ADR-0019 está materializado até PackageVersion. A próxima etapa aplica a mesma proteção em EnvironmentDeployment create/replace e depois no resolver de Run. Operation executável e HTTP permanecem nos Slices 26B/26C.
+O Slice 26A ratificado no ADR-0019 está materializado em PackageVersion, EnvironmentDeployment create/replace e no resolver de Run. Operation executável e HTTP permanecem nos Slices 26B/26C.
 
 ### Connections mínimo
 
@@ -67,9 +67,9 @@ Organization
         └── EnvironmentDeploymentBinding
 ```
 
-Integration referencia Package estável. EnvironmentDeployment seleciona PackageVersion, promotable/local config e o conjunto completo de Connections por endpoint. Create e replace validam authorities ativas sob locks determinísticos e persistem o agregado atomicamente.
+Integration referencia Package estável. EnvironmentDeployment seleciona PackageVersion, promotable/local config e o conjunto completo de Connections por endpoint. Create e replace validam authorities ativas e ContractVersions executáveis sob locks determinísticos e persistem o agregado atomicamente.
 
-`LeafcutterRuntime.Runs.create_from_deployment/1` resolve esse estado por APIs públicas dentro de uma única transação e congela PackageVersion, ContractVersions, destination order, effective config, Connection configs e SecretVersion IDs em uma nova RunSnapshot v1.
+`LeafcutterRuntime.Runs.create_from_deployment/1` resolve esse estado por APIs públicas dentro de uma única transação, revalida ContractVersions executáveis e congela PackageVersion, ContractVersions, destination order, effective config, Connection configs e SecretVersion IDs em uma nova RunSnapshot v1.
 
 ### Runtime
 
