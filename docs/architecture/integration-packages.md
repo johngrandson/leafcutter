@@ -54,11 +54,11 @@ Package pode depender de contracts públicos de `leafcutter_connectors`. Não de
 
 ## Build futuro
 
-Packages instalados serão compilados na mesma release inicial. O mecanismo físico para incluí-los no dependency graph continua aberto e deverá ser explícito e auditável.
+Packages instalados serão compilados na mesma release inicial. O mecanismo físico para incluí-los no dependency graph continua aberto e deverá ser explícito e auditável. O ADR-0022 coloca essa binding executável no incremento 26C2, antes da primeira Operation real.
 
 ## Manifest
 
-O JSON Schema definitivo do `manifest.json` ainda não está fechado. Não tratar exemplos atuais como contract final.
+O JSON Schema definitivo do `manifest.json` e o vínculo de refs para módulos compilados ainda não estão fechados. Não tratar exemplos atuais como contract final.
 
 ## Não antecipar
 

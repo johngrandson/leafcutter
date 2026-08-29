@@ -105,16 +105,37 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - pontos source/destination explícitos de validação dos Contracts;
 - error struct alinhado à retry taxonomy.
 
-### Slice 26C — referência HTTP
+### Slice 26C1 — Transport HTTP
 
-**Posterior; contract concreto ainda deve ser ratificado.**
+**Contract concreto ratificado no ADR-0022; ainda não materializado.**
 
-- Transport behaviour;
-- HTTP request/response boundary;
-- primeiro Connector/Operation de referência;
-- client e pool strategy.
+- facade HTTP e Adapter behaviour síncrono;
+- Request/Response/Error com validation e Inspect redigido;
+- exatamente uma tentativa, sem redirect ou retry;
+- Finch HTTP/1 com pool nomeado supervisionado;
+- timeouts finitos e response body cap;
+- testes determinísticos com servidor local.
 
-PackageVersion 1 Source → N Destinations, criação automática de Run e a boundary in-memory de Operation possuem foundations materializadas. A próxima fronteira é ratificar o Slice 26C; carregamento no runtime permanece posterior.
+### Slice 26C2 — Package binding e module resolution
+
+**Aberto; deve preceder qualquer Operation de produto.**
+
+- Package Manifest/build explícito e auditável;
+- binding versionada de refs para módulos compilados;
+- resolução de `operation_id` sem registry temporário ou atom dinâmico.
+
+### Slice 26C3 — primeira referência HTTP
+
+**Aberto; depende da escolha de um sistema externo real.**
+
+- primeira Connector/Operation publicada;
+- autenticação e codec vendor-specific;
+- status, rate-limit e vendor-error mapping;
+- conformance tests sem credentials reais.
+
+PackageVersion 1 Source → N Destinations, criação automática de Run e a boundary in-memory de
+Operation possuem foundations materializadas. A próxima fronteira é materializar somente
+26C1; carregamento no runtime permanece posterior a 26C2/26C3.
 
 ## Data plane durável
 

@@ -49,6 +49,16 @@ Um `{:error, Operation.Error.t()}` no callback inteiro significa ausência de cl
 completa e confiável. Quando essa falha é retryable, o runtime assume que efeitos externos
 podem ter ocorrido e preserva at-least-once.
 
+## HTTP boundary
+
+O ADR-0022 ratifica `HTTP.Error` como erro de protocolo/conexão separado de
+`Operation.Error`. Todo status HTTP bem-formado continua sendo Response. A Operation futura
+decide status, `Retry-After` e vendor body, produzindo somente code/metadata allowlisted.
+
+Timeout de Transport normalmente vira `Operation.Error{category: :timeout}`; pool/connection
+unavailable normalmente vira `:temporary`. A matriz concreta permanece em 26C3 porque depende
+do primeiro sistema externo.
+
 ## Delivery futura
 
 Delivery retryable usará `available_at` futuro e incrementará attempt count. Broadway não
@@ -60,4 +70,4 @@ Ainda precisam ser ratificados:
 - Delivery statuses para authentication e terminal errors;
 - backoff, jitter e max attempts;
 - reset/recovery explícito após mudança de configuração;
-- tradução de HTTP status, headers e vendor errors no Slice 26C.
+- matriz concreta de HTTP status, headers e vendor errors na Operation 26C3.

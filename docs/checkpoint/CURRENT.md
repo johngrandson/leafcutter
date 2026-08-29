@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26B materializado — contrato executável de Operation**
+**Slice 26C1 ratificado — boundary de Transport HTTP**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O Slice 26A está completo conforme o ADR-0019. O Slice 26B também está materializado conforme o ADR-0021: behaviours síncronos de Read/Write, invocation/result structs, cursor JSON opaco, partial success completo e ordenado, `Operation.Error`, redaction de credentials e invariantes puras. RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A e 26B estão completos conforme os ADRs 0019 e 0021. O ADR-0022 ratifica a boundary HTTP do incremento 26C1 e separa Package Manifest/module resolution (26C2) da primeira Operation real (26C3). Nenhum código HTTP foi materializado e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -198,7 +198,8 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Transport executável e referência HTTP
+Transport HTTP ratificado — não materializado
+Module resolution e referência HTTP real
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -250,6 +251,7 @@ EnvironmentDeployment executable ContractVersion enforcement
 Run resolution executable ContractVersion enforcement
 Executable Operation contract ratification
 Executable Operation boundary materialization
+HTTP Transport contract and Slice 26C sequencing ratification
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -257,38 +259,44 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-Os Slices 26A e 26B estão integralmente materializados, e RunSnapshot v1 permanece
-inalterado. A boundary de Operation é somente in-memory: não resolve módulos, não chama
-Contracts, não executa Transport e não participa do RunCoordinator.
+Os Slices 26A e 26B estão integralmente materializados. O contract do Transport HTTP 26C1
+está ratificado no ADR-0022, mas ainda não existe no código. A decisão preserva
+`leafcutter_connectors` como owner e introduz processo somente para o lifecycle real do pool.
 
-A próxima fronteira é ratificar o contract do Slice 26C antes de escrever Transport ou a
-primeira referência HTTP.
+Package Manifest/build e module resolution foram movidos explicitamente para 26C2. A
+primeira Operation de produto e sua matriz vendor-specific pertencem a 26C3. Não existe
+registry temporário de UUID, filesystem discovery ou módulo derivado de string persistida.
 
 ## Próxima tarefa concreta
 
-Ratificar o Slice 26C, fechando somente as decisões necessárias para um primeiro caminho HTTP:
+Materializar somente o incremento 26C1:
 
 ~~~text
-Transport ownership and callback boundary
-→ request/response values
-→ first reference Operation
-→ operation_id-to-module resolution boundary
-→ timeout/status/rate-limit/vendor-error translation
-→ HTTP client and pool strategy
+HTTP facade + Adapter behaviour
+→ Request/Response/Error values + pure validation and redacted Inspect
+→ Finch HTTP/1 dependency + named supervised pool
+→ one-attempt streaming with finite timeouts and response body limits
+→ deterministic local conformance tests
 ~~~
 
-A ratificação precisa preservar a independência de `leafcutter_connectors` em relação a
-Catalog/Repo, manter credentials efêmeras e separar HTTP do RunCoordinator e do data plane.
-Nenhum código de Transport deve ser criado antes do novo ADR ser aceito.
+A implementação pertence a `leafcutter_connectors`, não depende de Core/Repo/runtime e não
+publica Connector, Package ou Operation no Catalog. Todo status HTTP retorna Response; somente
+falhas de protocolo/conexão viram `HTTP.Error`. Redirect, retry, JSON codec, cookie jar,
+HTTP/2 e public streaming permanecem desabilitados.
 
-Package Manifest completo, persisted Attempt/Delivery errors, backoff, idempotency, payload
-limits, durable fan-out e Broadway continuam fora desse incremento.
+Os testes usam servidor local e precisam provar uma única tentativa, body cap, timeout/error
+normalization, headers/trailers ordenados e ausência de path/query/headers/body em Inspect,
+logs e eventos Leafcutter.
+
+Package Manifest completo, persisted Attempt/Delivery errors, backoff, idempotency, request
+payload/batch limits gerais, durable fan-out e Broadway continuam fora desse incremento.
 
 ## Principais decisões abertas
 
-- Package Manifest e build de packages;
-- resolução de `operation_id` via Package Manifest/build;
-- Transport executável e referência HTTP (Slice 26C);
+- Package Manifest e inclusão auditável de packages no build (26C2);
+- binding versionado e resolução de `operation_id` para módulo compilado (26C2);
+- primeiro sistema externo/Operation e status/rate-limit/vendor mapping (26C3);
+- request payload/batch limits além do response body cap do Transport;
 - data plane e durable fan-out;
 - lifecycle completo de Run;
 - autenticação e secrets;
@@ -299,11 +307,15 @@ limits, durable fan-out e Broadway continuam fora desse incremento.
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
+- `docs/specifications/http-transport.md`
 - `docs/decisions/ADR-0021-operation-executavel.md`
 - `docs/specifications/operation-contract.md`
 - `docs/decisions/ADR-0008-connector-operation-transport.md`
 - `docs/architecture/connectors-operations-transports.md`
 - `docs/specifications/error-retry-model.md`
+- `docs/specifications/package-manifest-v1.md`
+- `docs/architecture/integration-packages.md`
 - `docs/decisions/ADR-0009-at-least-once.md`
 - `docs/decisions/ADR-0005-broadway-como-data-plane.md`
 - `docs/decisions/ADR-0010-fanout-duravel-sem-fila-externa.md`

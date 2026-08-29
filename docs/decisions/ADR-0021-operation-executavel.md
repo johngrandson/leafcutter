@@ -222,3 +222,10 @@ HTTP ou runtime. Transport, module resolution e payload validation pelo caller c
 - categories e `retry_after_ms` obedecem a matriz;
 - valores duráveis rejeitam termos não JSON e UTF-8 inválido;
 - nenhuma dependency para Core, processo OTP ou detalhe HTTP é introduzido.
+
+## Evolução posterior
+
+O ADR-0022 divide o antigo Slice 26C: Transport HTTP pertence a 26C1; Package Manifest/build
+binding e module resolution pertencem a 26C2; a primeira Operation real e sua tradução
+vendor-specific pertencem a 26C3. Essa evolução não altera a boundary materializada por este
+ADR.

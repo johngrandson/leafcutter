@@ -19,7 +19,7 @@ Materialized / Partial / Not materialized
 | ADR-0005 | Broadway como data plane | NÃO MATERIALIZADO |
 | ADR-0006 | JSON Schema 2020-12 + JSV | MATERIALIZADO — SLICE 26A CONCLUÍDO |
 | ADR-0007 | Integration Packages fora de `apps/` | ESTRUTURA RATIFICADA; BUILD ABERTO |
-| ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA DE CONNECTOR/OPERATION |
+| ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA + OPERATION; HTTP RATIFICADO |
 | ADR-0009 | Semântica `at-least-once` | MATERIALIZADA COMO PRINCÍPIO; DATA PLANE PENDENTE |
 | ADR-0010 | Fan-out durável sem fila externa inicial | NÃO MATERIALIZADO |
 | ADR-0011 | Ownership por RuntimeNode + generation/fencing | MATERIALIZADO, INCLUINDO RECOVERY |
@@ -33,6 +33,7 @@ Materialized / Partial / Not materialized
 | ADR-0019 | ContractVersion executável com JSON Schema/JSV | MATERIALIZADO |
 | ADR-0020 | Base de conhecimento local derivada | MATERIALIZADO |
 | ADR-0021 | Contrato executável de Operation | MATERIALIZADO |
+| ADR-0022 | Transport HTTP e sequência do Slice 26C | NÃO MATERIALIZADO |
 
 ## Convenção de status decisório
 

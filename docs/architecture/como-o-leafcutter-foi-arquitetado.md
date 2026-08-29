@@ -238,7 +238,7 @@ Transport
 → protocol
 ```
 
-O ADR-0021 controla os Read/Write behaviours síncronos agora materializados: Read normaliza paginação em cursor JSON opaco e Write devolve exatamente um resultado ordenado por item. HTTP continua sendo o primeiro Transport planejado no Slice 26C.
+O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 ratifica o primeiro Transport como uma boundary HTTP-specific, bounded e de uma tentativa; Package Manifest/module resolution e a primeira referência real permanecem separados em 26C2/26C3.
 
 # Transformation, Enrichment e Interceptor
 
@@ -301,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. Os contracts executáveis de ContractVersion e Operation também estão materializados sem alterar RunSnapshot v1. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Transport executável, rolling upgrade de formatos, idempotência/invocation durável futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, as authorities upstream, ContractVersion e Operation executáveis estão materializados sem alterar o snapshot. O Transport HTTP possui contract ratificado, ainda sem código. Permanecem abertos os lifecycles ampliados, rolling upgrade, idempotência/invocation durável, retenção, Package Manifest/build/module resolution, primeira referência real, data plane, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -314,7 +314,10 @@ present
 → Operation Read/Write behaviours + in-memory validation (26B)
 
 next
-→ ratificar HTTP reference path (26C)
+→ materializar HTTP Transport boundary (26C1)
+
+then
+→ ratificar Package binding/module resolution (26C2)
 
 future
 → durable Broadway integration data plane

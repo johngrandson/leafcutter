@@ -118,7 +118,7 @@ Estado histórico não é reescrito. A regra protege apenas novas publicações,
 - proteção limitada de regex do JSV;
 - nenhum Task timeout, sandbox ou processo OTP no primeiro slice.
 
-Payload/body/batch limits serão ratificados com o primeiro execution path.
+O ADR-0022 ratifica um cap obrigatório e um hard maximum central para o response body raw do Transport. Request payload, decoded payload e batch limits gerais permanecem para o primeiro execution path que os utilizar.
 
 ## Separação dos próximos slices
 
@@ -129,11 +129,13 @@ Payload/body/batch limits serão ratificados com o primeiro execution path.
 26B Operation executable
 → behaviours, invocation and result contracts
 
-26C HTTP reference path
-→ Transport + first HTTP Operation
+26C1 HTTP Transport boundary
+→ bounded one-attempt Finch adapter
+
+26C2/26C3 executable package binding + first reference Operation
 ~~~
 
-O ADR-0021 posterior ao Slice 26A ratifica os pontos source/destination de validação, paginação opaca e partial success da Operation. HTTP client/pool e lifecycle do data plane permanecem posteriores.
+O ADR-0021 ratifica os pontos source/destination de validação, paginação opaca e partial success. O ADR-0022 ratifica client/pool HTTP em 26C1, ainda sem código; Package Manifest/module resolution, referência real e data plane permanecem posteriores.
 
 ## Especificação próxima do código
 

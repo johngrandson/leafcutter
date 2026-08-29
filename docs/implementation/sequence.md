@@ -61,6 +61,19 @@ O estágio upstream completo foi materializado conforme o ADR-0018 e `docs/speci
 
 O ADR-0021 e `docs/specifications/operation-contract.md` controlam o contract concreto. HTTP não entra no mesmo slice.
 
+## Etapa ratificada do Slice 26C1
+
+~~~text
+32. HTTP Transport contract and Slice 26C sequencing ratification
+→ HTTP-specific facade and Adapter behaviour
+→ bounded Request/Response/Error values
+→ one-attempt Finch HTTP/1 adapter and supervised pool
+→ no Package Manifest, module resolution or reference Operation
+~~~
+
+O ADR-0022 e `docs/specifications/http-transport.md` controlam 26C1. Os incrementos 26C2 e
+26C3 permanecem separados e não podem ser substituídos por registry temporário.
+
 ## Sequência ratificada posterior
 
 ```text
@@ -71,11 +84,13 @@ minimal Catalog authorities (materialized)
 → EnvironmentDeployment resolver (materialized)
 → ContractVersion executable + JSON Schema/JSV through PackageVersion/Deployment/Run (26A, materialized)
 → Operation executable contract (26B, materialized)
-→ HTTP Transport + reference Operation (26C, pending ratification)
+→ HTTP Transport boundary + Finch adapter (26C1, ratified; materialization next)
+→ Package Manifest/build binding + module resolution (26C2, pending ratification)
+→ first production HTTP Operation (26C3, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
 → monitoring/retry/lifecycle
 → governance/notifications/audit
 ```
 
-A ordem dos cinco primeiros sub-slices foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run e o Slice 26B materializou a boundary de Operation. A próxima etapa ratifica 26C antes de implementar HTTP. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, e o Slice 26B materializou a boundary de Operation. O contract 26C1 está ratificado; a próxima etapa materializa somente o Transport HTTP. 26C2/26C3 preservam Package Manifest, module resolution e a referência real para decisões próprias. A sequência posterior não deve criar Broadway com definição implícita.

@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. ContractVersion executável está materializado conforme o ADR-0019, e a boundary executável de Operation está materializada conforme o ADR-0021. A próxima decisão arquitetural é o contract de Transport e da primeira referência HTTP no Slice 26C.
+RunSnapshot v1 e as authorities upstream estão materializados conforme o ADR-0018. ContractVersion e Operation executáveis estão materializados conforme os ADRs 0019 e 0021. O ADR-0022 ratifica o Transport HTTP 26C1 e separa Package Manifest/module resolution (26C2) da primeira referência de produto (26C3).
 
 ## Domínio
 
@@ -28,12 +28,11 @@ RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentD
 
 ## Contracts e packages
 
-- Package Manifest JSON Schema v1;
-- package inclusion no build/release;
-- mapping de `operation_id` para módulo executável via Package Manifest/build;
-- Transport behaviour e primeira Operation HTTP (26C);
-- HTTP client e pool strategy;
-- payload/body/batch limits no primeiro execution path;
+- Package Manifest JSON Schema v1 e executable module binding (26C2);
+- package inclusion no build/release (26C2);
+- mapping de `operation_id` para módulo compilado via binding versionada (26C2);
+- primeiro Connector/Operation HTTP de produto e vendor mapping (26C3);
+- request payload/batch limits além do response body cap de 26C1;
 - cache compartilhado de validators somente se medição justificar;
 - bundling/registry para referências externas futuras.
 

@@ -76,7 +76,9 @@
 
 ### Core de integração
 
-- Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
+- Transport HTTP bounded (26C1 ratificado; não materializado);
+- Package binding/module resolution (26C2 aberto);
+- primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - lifecycle ampliado de Integrations, Triggers, promotion e homologation.

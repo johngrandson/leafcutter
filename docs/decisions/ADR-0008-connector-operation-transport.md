@@ -1,7 +1,7 @@
 # ADR-0008 — Connector → Operation → Transport
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION; TRANSPORT PENDENTE
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION; HTTP RATIFICADO
 
 ## Decisão
 
@@ -27,10 +27,17 @@ Materializado em `leafcutter_connectors`:
 - behaviours, invocation/result structs e error contract de Operation definidos no ADR-0021;
 - paginação opaca, partial-success completo/ordenado, redaction e invariantes puras.
 
+Ratificado no ADR-0022, ainda não materializado:
+
+- facade/Adapter HTTP-specific;
+- Request/Response/Error bounded;
+- Finch HTTP/1 com pool supervisionado e uma tentativa por chamada.
+
 Ainda não ratificado:
 
 - behaviour executável de Connector, caso uma necessidade além de Operation apareça;
-- Transport e implementação HTTP.
+- Package Manifest/build binding e module resolution (26C2);
+- primeira Operation HTTP real e vendor mapping (26C3).
 
 ## Consequências
 
@@ -46,7 +53,9 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 ~~~text
 26A ContractVersion + JSON Schema/JSV
 26B Operation executable contract
-26C Transport + first HTTP reference Operation
+26C1 HTTP Transport boundary + Finch adapter
+26C2 Package Manifest/build binding + module resolution
+26C3 first production reference Operation
 ~~~
 
-O ADR-0019 controla somente 26A. O ADR-0021 controla signatures, structs, paginação, partial success, validação e error contract materializados no Slice 26B. Transport HTTP permanece no Slice 26C.
+O ADR-0019 controla 26A e o ADR-0021 controla 26B, ambos materializados. O ADR-0022 ratifica 26C1 e impede antecipar 26C2 por registry implícito. A referência real permanece em 26C3.

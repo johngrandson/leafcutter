@@ -34,7 +34,8 @@ interceptors
 - semantic version constraints;
 - artifact hashes/signatures;
 - build metadata;
+- binding de ConnectorVersion/Operation refs para módulos compilados;
 - config schema embedding/reference;
 - validation CLI.
 
-Exemplos atuais não devem ser tratados como contract estável.
+Exemplos atuais não devem ser tratados como contract estável. O ADR-0022 exige ratificar essa binding executável em 26C2 antes de publicar a primeira Operation real em 26C3.

@@ -1,8 +1,8 @@
 # Connectors, Operations e Transports
 
-> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation metadata
-> existem no Catalog, e a boundary executável do Slice 26B existe em `leafcutter_connectors`.
-> Transport e a primeira referência HTTP pertencem ao Slice 26C.
+> **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata e a boundary executável
+> de Operation existem. O Transport HTTP 26C1 está ratificado no ADR-0022, ainda sem código;
+> Package Manifest/module resolution (26C2) e a primeira referência real (26C3) estão abertos.
 
 ## Estado materializado
 
@@ -143,18 +143,62 @@ Operation não chama `Contracts.validate/2`.
 `retry_after_ms` limitado e metadata JSON segura. Não contém `retryable`: a policy deriva
 da category. O schema persistido de Attempt/Delivery continua posterior.
 
-## Slice 26C — Transport e referência HTTP
+## Slice 26C — sequência dividida
 
-HTTP permanece o primeiro Transport planejado. O slice deverá ratificar:
+O ADR-0022 corrige a dependência entre Transport, packages e uma referência de produto:
 
-- Transport behaviour;
-- request/response boundary;
-- primeiro Connector/Operation de referência;
-- resolução do módulo executável para a referência publicada;
-- HTTP client e pool strategy;
-- timeout, status, rate-limit e vendor-error translation.
+~~~text
+26C1 HTTP Transport boundary + Finch adapter (ratificado; não materializado)
+→ 26C2 Package Manifest/build binding + module resolution (aberto)
+→ 26C3 first production reference Operation (aberto)
+~~~
 
-Database, SFTP e outros transports só entram com demanda real.
+### 26C1 — Transport HTTP
+
+Owner:
+
+~~~text
+leafcutter_connectors
+└── LeafcutterConnectors.Transport.HTTP
+    ├── Adapter
+    ├── Request
+    ├── Response
+    ├── Error
+    └── Finch
+~~~
+
+A facade síncrona executa exatamente uma tentativa e aceita Request com method, URL, headers,
+raw body, três timeouts finitos e response body limit obrigatório. Response preserva status,
+headers, body e trailers; 3xx, 4xx e 5xx não são errors de Transport.
+
+O adapter Finch usa HTTP/1, pool nomeado supervisionado, uma shard por origin e origins
+iniciados sob demanda. Size, connect timeout, idle timeout e hard response-body maximum são
+finitos e centrais. Não existe pool por Run, tenant, Connection, credential ou Operation.
+
+Redirect, retry, cookie jar, JSON codec, auto decompression, HTTP/2 e streaming público não
+fazem parte do primeiro adapter. Streaming interno existe somente para interromper bodies
+acima do cap sem devolver resposta parcial.
+
+`HTTP.Error` normaliza invalid request, pool timeout, timeout, DNS, connection, TLS, protocol,
+response-too-large e client failures reconhecidos sem carregar raw reason. A Operation
+traduz isso para `Operation.Error`.
+
+Request e Response redigem path, query, headers e body em Inspect. Handlers Leafcutter não
+serializam a metadata bruta dos eventos Finch; qualquer evento próprio usa campos allowlisted.
+
+### 26C2 — executable package binding
+
+A resolução não será antecipada por application config, filesystem discovery, nome de módulo
+livre ou atom criado de valor persistido. Package Manifest/build deverá ligar refs versionadas
+a módulos já compilados de forma explícita e auditável. O runtime comporá a binding com APIs
+públicas do Catalog; `leafcutter_connectors` não consulta Repo.
+
+### 26C3 — referência de produto
+
+A primeira referência exige selecionar um sistema externo e uma Read ou Write Operation real.
+Somente então serão ratificados autenticação, paginação ou batch, status mapping,
+`Retry-After`, vendor error decoding e codes sanitizados. Um servidor local de teste não conta
+como Connector/Operation publicada.
 
 ## Restrições
 
@@ -170,5 +214,7 @@ Database, SFTP e outros transports só entram com demanda real.
 
 - `docs/decisions/ADR-0008-connector-operation-transport.md`
 - `docs/decisions/ADR-0021-operation-executavel.md`
+- `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
 - `docs/specifications/operation-contract.md`
+- `docs/specifications/http-transport.md`
 - `docs/specifications/error-retry-model.md`

@@ -199,7 +199,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Connectors atuais
 
-`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. Ainda não possui Transport nem implementação concreta de connector.
+`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. O contract HTTP 26C1 está ratificado no ADR-0022, mas ainda não há Transport nem implementação concreta de connector no código.
 
 ## Arquitetura ratificada ainda não materializada
 
@@ -225,8 +225,9 @@ Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-Package Manifest e build
-HTTP Transport and reference Operation (26C)
+HTTP Transport boundary (26C1 ratificado; não materializado)
+Package Manifest/build binding + module resolution (26C2)
+first production HTTP Operation (26C3)
 ```
 
 ### Connections futuro
@@ -297,11 +298,13 @@ Sequência ratificada:
 26B Operation executable
 → behaviours and result contracts
 
-26C HTTP reference path
-→ Transport + first HTTP Operation
+26C1 HTTP Transport boundary
+→ bounded one-attempt Finch adapter
+→ 26C2 Package binding/module resolution
+→ 26C3 first production HTTP Operation
 ```
 
-26A e a boundary in-memory de 26B estão materializados. HTTP permanece o primeiro Transport planejado no Slice 26C; outras opções entram somente com demanda real.
+26A e 26B estão materializados. O HTTP Transport 26C1 está ratificado, ainda sem código; 26C2/26C3 preservam package binding e referência real como decisões próprias. Outros transports entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -341,7 +344,7 @@ Entre as principais:
 - histórico concreto de EnvironmentDeployment;
 - Package Manifest JSON Schema v1;
 - inclusão de `packages/*` no build;
-- cliente HTTP e pool strategy;
+- materialização do client/pool HTTP 26C1 e seu tuning por métricas;
 - lifecycle completo de Run, pause/resume/cancel e terminalização;
 - Record/Delivery/Attempt/Checkpoint e data plane Broadway;
 - secret provider/encryption;
@@ -375,7 +378,9 @@ ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (2
 ↓
 Operation executable contract (26B materializado)
 ↓
-HTTP Transport + reference Operation (26C ainda a ratificar)
+HTTP Transport boundary (26C1 ratificado; materialização seguinte)
+↓
+Package binding/module resolution + reference Operation (26C2/26C3 abertos)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone upstream concluído. O ADR-0019 e `contract-version-execution.md` controlam o Slice 26A materializado. O ADR-0021 e `operation-contract.md` controlam o Slice 26B materializado. A próxima fronteira é ratificar 26C antes de implementar Transport HTTP; carregamento no coordinator e execução Broadway permanecem posteriores.
+O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A e o ADR-0021 controla 26B, todos materializados. O ADR-0022 e `http-transport.md` controlam 26C1 ratificado. A próxima fronteira é materializar somente o Transport HTTP; package binding, referência real, coordinator e Broadway permanecem posteriores.
