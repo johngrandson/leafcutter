@@ -5,13 +5,15 @@ defmodule Leafcutter.Catalog.Contracts do
 
   New ContractVersions are published with an immutable JSON Schema document
   that satisfies the Leafcutter policy and completes a JSV build before the
-  row is inserted.
+  row is inserted. Persisted versions can be compiled explicitly into opaque,
+  reusable Leafcutter validators.
   """
 
   alias Ecto.Changeset
 
   alias Leafcutter.Catalog.{Contract, ContractVersion}
   alias Leafcutter.Catalog.Contracts.SchemaBuilder
+  alias Leafcutter.Catalog.Contracts.Validator
   alias Leafcutter.Catalog.Types.SchemaDocument
   alias Leafcutter.Repo
 
@@ -25,6 +27,12 @@ defmodule Leafcutter.Catalog.Contracts do
 
   @typedoc "Error returned when an executable ContractVersion cannot be published."
   @type publish_error :: :contract_not_found | Changeset.t()
+
+  @typedoc "An opaque validator compiled from one immutable ContractVersion."
+  @opaque validator :: Validator.t()
+
+  @typedoc "A named failure returned when a ContractVersion cannot be compiled."
+  @type compile_error :: :not_found | :schema_unavailable | :schema_compilation_failed
 
   @doc """
   Creates a stable Contract identity.
@@ -175,6 +183,63 @@ defmodule Leafcutter.Catalog.Contracts do
 
       nil ->
         {:error, :contract_not_found}
+    end
+  end
+
+  @doc """
+  Compiles one persisted ContractVersion into an opaque validator.
+
+  ## Parameters
+
+  * `contract_version_id` - The immutable ContractVersion identifier to compile
+
+  ## Returns
+
+  * `{:ok, validator}` when the persisted schema passes policy checks and builds
+  * `{:error, :not_found}` when the ContractVersion does not exist
+  * `{:error, :schema_unavailable}` for an identity-only legacy version
+  * `{:error, :schema_compilation_failed}` when persisted schema content is invalid
+
+  ## Examples
+
+      iex> {:ok, contract} =
+      ...>   Leafcutter.Catalog.Contracts.create(%{
+      ...>     name: "Compilation Example"
+      ...>   })
+
+      iex> {:ok, version} =
+      ...>   Leafcutter.Catalog.Contracts.publish_version(
+      ...>     contract.id,
+      ...>     %{version: "1", schema: true}
+      ...>   )
+
+      iex> match?(
+      ...>   {:ok, _validator},
+      ...>   Leafcutter.Catalog.Contracts.compile(version.id)
+      ...> )
+      true
+
+  ## Notes
+
+  * Policy checks are repeated before every build to protect against invalid persisted state.
+  * Each call builds at most one JSV root and does not use a shared cache or process.
+  * The JSV root remains an internal implementation detail of the opaque validator.
+  """
+  @spec compile(ContractVersion.id()) ::
+          {:ok, validator()} | {:error, compile_error()}
+  def compile(contract_version_id) do
+    case Repo.get(ContractVersion, contract_version_id) do
+      nil ->
+        {:error, :not_found}
+
+      %ContractVersion{schema: nil} ->
+        {:error, :schema_unavailable}
+
+      %ContractVersion{id: id, schema: schema} ->
+        case SchemaBuilder.build(schema) do
+          {:ok, root} -> {:ok, Validator.new(id, root)}
+          {:error, _reason} -> {:error, :schema_compilation_failed}
+        end
     end
   end
 
