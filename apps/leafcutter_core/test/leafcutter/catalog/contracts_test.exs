@@ -72,6 +72,7 @@ defmodule Leafcutter.Catalog.ContractsTest do
       assert contract_version.contract == contract
       assert contract_version.version == "release-2026.08"
       assert %DateTime{} = contract_version.published_at
+      assert contract_version.schema == nil
 
       assert contract_version.published_at !=
                ~U[2025-01-01 00:00:00.000000Z]

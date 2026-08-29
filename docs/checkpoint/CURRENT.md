@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura do documento e a boundary interna de build JSV estão materializadas por `Leafcutter.Catalog.Types.SchemaDocument`, `Leafcutter.Catalog.Contracts.SchemaPolicy` e `Leafcutter.Catalog.Contracts.SchemaBuilder`; persistência, publicação, compilação pública, validação de payload e propagação de executabilidade continuam pendentes.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV e a persistência nullable do documento estão materializadas por `Leafcutter.Catalog.Types.SchemaDocument`, `Leafcutter.Catalog.Contracts.SchemaPolicy`, `Leafcutter.Catalog.Contracts.SchemaBuilder` e o campo `ContractVersion.schema`; publicação executável, sealing de novos inserts, compilação pública, validação de payload e propagação de executabilidade continuam pendentes.
 
 ## Estado materializado
 
@@ -86,9 +86,9 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion ainda materializa somente identidade, nasce publicada e é imutável no PostgreSQL. O tipo interno `SchemaDocument` representa raízes object/boolean sem envelope e preserva o load de `nil` legado. `Contracts.SchemaPolicy` valida valores JSON com paths determinísticos, dialeto canônico, refs locais, extensions proibidas e limites de tamanho, profundidade e nós. Ambos permanecem internos e ainda não estão ligados ao schema persistido ou à boundary pública de publicação. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion ainda publica somente identidade, mas o modelo físico agora possui `schema :jsonb` nullable para preservar rows identity-only e receber raízes object/boolean. Um CHECK PostgreSQL rejeita qualquer raiz JSONB diferente de object/boolean/SQL NULL, e a trigger existente de update/delete também protege o novo campo. `SchemaDocument` está ligado ao schema persistido e preserva o load de `nil`; `Contracts.SchemaPolicy` e `Contracts.SchemaBuilder` permanecem internos e ainda não são chamados pela boundary pública de publicação. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-O slice 26A ratificado acrescentará schema JSONB object/boolean imutável, publicação com validação/build JSV, `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
+O restante do slice 26A ratificado acrescentará publicação com validação/build JSV e sealing de novos inserts, `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
 
 ### Connections
 
@@ -197,7 +197,7 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-ContractVersion executável completo (slice 26A em materialização; persistência e APIs públicas pendentes)
+ContractVersion executável completo (slice 26A em materialização; publicação e APIs públicas pendentes)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -240,6 +240,7 @@ EnvironmentDeployment transactional resolver
 Executable ContractVersion/JSV contract ratification
 ContractVersion schema document representation and policy
 ContractVersion internal JSV build boundary
+ContractVersion nullable schema persistence
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -247,7 +248,9 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto, a política pura de documentos object/boolean e a boundary interna de build JSV estão materializadas. A próxima fronteira é a persistência nullable compatível com ContractVersions identity-only legadas, ainda sem mudar a API pública.
+A representação Ecto, a política pura, a boundary interna de build JSV e a persistência nullable compatível com ContractVersions identity-only estão materializadas. A próxima fronteira é a publicação executável com sealing de novos inserts, ainda sem adicionar compile/validate públicos.
+
+A trigger que rejeita novos inserts com `schema IS NULL` será instalada junto da publicação schema-aware. Assim, não existe um estado intermediário em que `Contracts.publish_version/2` permaneça identity-only, mas seja inutilizável pelo banco.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -255,16 +258,16 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar a persistência compatível com legado conforme ADR-0019:
+Materializar publicação executável e sealing de novos inserts conforme ADR-0019:
 
 ~~~text
-existing identity-only ContractVersions
-→ add nullable schema :jsonb with no default
-→ CHECK NULL | object | boolean
-→ reject schema IS NULL on new inserts
-→ preserve the existing update/delete immutability trigger
-→ wire SchemaDocument into ContractVersion
-→ no public publish/compile/validate change yet
+Contracts.publish_version/2 accepts schema
+→ cast and require SchemaDocument
+→ SchemaPolicy.validate then SchemaBuilder.build
+→ deterministic changeset error on schema
+→ install BEFORE INSERT trigger rejecting schema IS NULL
+→ preserve existing identity-only rows with schema NULL
+→ no public compile/validate functions yet
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:

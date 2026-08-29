@@ -1,9 +1,10 @@
 defmodule Leafcutter.Catalog.ContractVersion do
   @moduledoc """
-  Represents one immutable published identity for a Contract version.
+  Represents one immutable published version of a Contract.
 
-  The initial Catalog slice persists identity only. JSON Schema content and
-  executable validation remain outside this model.
+  The persistence model stores object and boolean JSON Schema roots and still
+  loads `nil` for identity-only rows. The public publication boundary remains
+  identity-only during this compatibility step.
   """
 
   use Ecto.Schema
@@ -11,6 +12,7 @@ defmodule Leafcutter.Catalog.ContractVersion do
   import Ecto.Changeset
 
   alias Leafcutter.Catalog.Contract
+  alias Leafcutter.Catalog.Types.SchemaDocument
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -25,12 +27,13 @@ defmodule Leafcutter.Catalog.ContractVersion do
           required(:version) => String.t()
         }
 
-  @typedoc "An immutable published ContractVersion without executable schema content."
+  @typedoc "An immutable published ContractVersion with optional persisted schema content."
   @type t :: %__MODULE__{
           id: id() | nil,
           contract_id: Contract.id() | nil,
           contract: Contract.t() | Ecto.Association.NotLoaded.t(),
           version: String.t() | nil,
+          schema: SchemaDocument.t() | nil,
           published_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil
         }
@@ -39,6 +42,7 @@ defmodule Leafcutter.Catalog.ContractVersion do
     belongs_to(:contract, Contract)
 
     field(:version, :string)
+    field(:schema, SchemaDocument)
     field(:published_at, :utc_datetime_usec)
 
     timestamps(updated_at: false)
@@ -92,7 +96,7 @@ defmodule Leafcutter.Catalog.ContractVersion do
   * Version values are unique within one Contract.
   * Semantic Versioning is not interpreted.
   * `published_at` is assigned internally and cannot be supplied by callers.
-  * Schema content is deliberately absent from this identity-only slice.
+  * Schema content is persisted by the model but deliberately excluded from this transitional changeset.
   * Published rows are protected against update and delete by PostgreSQL.
   """
   @spec publish_changeset(t(), publish_attrs()) :: Ecto.Changeset.t()
