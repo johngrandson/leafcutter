@@ -99,7 +99,7 @@ Package
     └── PackageVersionEndpoint
 ```
 
-`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. Não existe campo `schema`, dependência JSV, compile ou validate na `main` atual. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
 ### Connections mínimo
 
@@ -205,15 +205,30 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Catalog futuro
 
-O modelo mínimo ratificado no ADR-0018 está materializado. Permanecem posteriores:
+O modelo mínimo ratificado no ADR-0018 está materializado. O próximo incremento, ratificado no ADR-0019 mas ainda não materializado, é o Slice 26A:
+
+```text
+ContractVersion.schema JSONB object | boolean
+→ legacy schema: nil remains historical and non-executable
+→ fixed Draft 2020-12
+→ local-only refs
+→ validation + complete JSV build before publication
+→ Contracts.compile/1
+→ Contracts.validate/2
+→ no global cache
+→ RunSnapshot v1 unchanged
+```
+
+O schema permanece owned pelo Catalog. Novas PackageVersions não referenciam versões legadas; deployment create/replace e o resolver repetem a proteção nas boundaries correspondentes. Nenhum estado histórico é reescrito.
+
+Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
 Package Manifest e build
-ContractVersion JSON Schema/JSV
+Operation executable contract (26B)
+HTTP Transport and reference Operation (26C)
 ```
-
-O slice materializado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. Todo o conteúdo versionado do Catalog mínimo é imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
 ### Connections futuro
 
@@ -274,18 +289,20 @@ Source persiste Records, Deliveries e Checkpoint atomicamente. Destination conso
 
 ### Connectors e contracts
 
-Planejado:
+Sequência ratificada:
 
 ```text
-Connector
-→ Operation
-→ Transport
+26A ContractVersion executable
+→ Draft 2020-12 + JSV
 
-JSON Schema Draft 2020-12
-→ JSV validation
+26B Operation executable
+→ behaviours and result contracts
+
+26C HTTP reference path
+→ Transport + first HTTP Operation
 ```
 
-HTTP é o primeiro Transport. Outras opções entram somente com demanda real.
+Somente 26A possui contract concreto ratificado. HTTP permanece o primeiro Transport planejado; outras opções entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -355,7 +372,11 @@ EnvironmentDeployment + bindings (materialized)
 ↓
 resolver em leafcutter_runtime (materialized)
 ↓
-Contracts/JSV + Connector/Operation/Transport
+ContractVersion executable + JSON Schema/JSV (26A ratificado)
+↓
+Operation executable (26B ainda a ratificar)
+↓
+HTTP Transport + reference Operation (26C ainda a ratificar)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone concluído. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O próximo recorte executável precisa ser ratificado antes de materialização. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 e a specification correspondente controlam o milestone concluído. O ADR-0019 e `contract-version-execution.md` controlam o próximo slice, ainda sem código. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O carregamento no coordinator e a execução Broadway permanecem posteriores.

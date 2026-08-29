@@ -468,3 +468,7 @@ Continuam fora deste slice:
 - `apps/leafcutter_runtime/lib/leafcutter_runtime/runs.ex`;
 - `apps/leafcutter_runtime/test/leafcutter_runtime/runs_resolution_test.exs`;
 - `docs/checkpoint/CURRENT.md`.
+
+## Evolução posterior
+
+O ADR-0019 dividiu a fronteira executável citada neste ADR. ContractVersion + JSON Schema/JSV forma o Slice 26A já ratificado; Operation executável e HTTP foram preservados separadamente como 26B/26C. Essa evolução não altera o modelo upstream, o lock order nem RunSnapshot v1 materializados aqui.

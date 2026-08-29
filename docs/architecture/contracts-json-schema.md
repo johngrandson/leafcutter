@@ -1,61 +1,141 @@
 # Contracts e JSON Schema
 
-> **Status: PARCIALMENTE MATERIALIZADO.** Contract e ContractVersion existem somente como identidades; conteúdo JSON Schema e validação JSV permanecem ratificados para um estágio posterior.
+> **Status: IDENTIDADE MATERIALIZADA; SLICE EXECUTÁVEL RATIFICADO E NÃO MATERIALIZADO.**
+>
+> ADRs canônicos: ADR-0006 e ADR-0019.
 
-## Estado materializado
+## Estado atual na main
 
-O Catalog já possui a autoridade de identidade necessária para resolução:
+O Catalog materializa:
 
-```text
+~~~text
 Contract
-└── immutable ContractVersion
-    ├── version
-    └── published_at
-```
+└── ContractVersion identity-only
+~~~
 
-`Leafcutter.Catalog.Contracts` cria e lê identidades Contract e publica identidades ContractVersion. O conteúdo executável do contract não é aceito nem persistido neste slice.
+`Leafcutter.Catalog.Contracts` expõe `create/1`, `get/1` e `publish_version/2`. Uma versão atual contém identidade, version opaca e publication timestamp; nasce publicada e PostgreSQL rejeita update/delete.
 
-## Decisão
+O código atual ainda:
 
-Contracts externos usarão JSON Schema Draft 2020-12 e validação via JSV.
+- não persiste schema;
+- não depende de JSV;
+- não compila validator;
+- não valida payload;
+- permite que PackageVersion referencie uma ContractVersion identity-only.
 
-```text
-external payload
-→ source ContractVersion
-→ trusted map
-→ Transformation
-→ destination ContractVersion
-→ valid external payload
-```
+RunSnapshot v1 congela somente `contract_version_id`. Isso é intencional e não muda no próximo slice.
 
-## Versionamento
+## Slice 26A ratificado
 
-```text
-Contract
-└── immutable ContractVersion
-```
+O ADR-0019 torna cada nova `ContractVersion` um documento JSON Schema Draft 2020-12 executável:
 
-Nova versão não altera Runs históricos nem PackageVersions publicadas.
+~~~text
+ContractVersion
+├── immutable identity/version
+└── immutable schema JSONB
+    → validated and built on publication
+    → compiled explicitly
+    → reused for payload validation
+~~~
 
-A identidade versionada já está materializada. O conteúdo JSON Schema associado a cada ContractVersion permanece futuro.
+Representação:
 
-## Source e destination
+- uma coluna `schema jsonb`, sem envelope;
+- raiz object ou boolean;
+- object exige `$schema: https://json-schema.org/draft/2020-12/schema`;
+- boolean usa o dialeto fixo do Leafcutter;
+- versões existentes permanecem `schema: nil`, históricas e não executáveis;
+- novas versões exigem schema no insert;
+- object, `true` e `false` preservam round-trip físico.
 
-Source validation protege o runtime contra dados externos inesperados. Destination validation protege o sistema externo contra erros do Package.
+Política de resolução:
 
-## Compilação futura
+- somente `$ref` e `$dynamicRef` fragment-only no mesmo documento;
+- nenhuma rede ou filesystem;
+- referências relativas, remotas e `jsv:module:` proibidas;
+- `jsv-cast` e `x-jsv-cast` proibidas;
+- custom formats/vocabularies, atoms, casting e defaults não entram.
 
-Validators serão compilados e reutilizados. Referências remotas precisarão ser resolvidas e congeladas antes da execução; uma Run não dependerá da internet para interpretar schema.
+Publicação:
 
-## Limites
+~~~text
+validate JSON shape and limits
+→ validate fixed dialect and reference policy
+→ validate schema
+→ complete JSV build
+→ immutable insert
+~~~
 
-JSON Schema valida estrutura e constraints declarativas. Não será transformado em framework de regras internas de domínio.
+Falhas aparecem como changeset error no campo `schema` e não persistem linha parcial.
 
-## Ainda aberto
+APIs ratificadas:
 
-- persistência e versionamento do conteúdo JSON Schema de ContractVersion;
-- cache/compilation strategy;
-- resolução de `$ref`;
-- error representation pública;
-- limites de schema e segurança;
-- integração exata com RunSnapshot.
+~~~elixir
+Leafcutter.Catalog.Contracts.compile(contract_version_id)
+Leafcutter.Catalog.Contracts.validate(validator, payload)
+~~~
+
+`compile/1` devolve um validator Leafcutter opaco. `validate/2` reutiliza a root, não acessa Repo ou rede e retorna o payload original em sucesso.
+
+Não haverá cache global inicial. O futuro processo de Run manterá os validators compilados em seu próprio estado.
+
+## Executabilidade nas boundaries
+
+O schema permanece owned pelo Catalog e não é copiado para PackageVersion, EnvironmentDeployment ou RunSnapshot.
+
+Novos writes aplicam:
+
+~~~text
+PackageVersion publication
+→ rejects legacy ContractVersion
+
+EnvironmentDeployment create/replace
+→ rejects PackageVersion with legacy ContractVersion
+
+EnvironmentDeployment → Run resolver
+→ rechecks all final ContractVersion IDs
+~~~
+
+O resolver usa:
+
+~~~elixir
+{:error,
+ {:environment_deployment_not_executable,
+  {:contract_versions_not_executable, sorted_contract_version_ids}}}
+~~~
+
+Estado histórico não é reescrito. A regra protege apenas novas publicações, novos deployments/replacements e novas resoluções.
+
+## Limites ratificados
+
+- schema serializado: 1 MiB;
+- profundidade estrutural: 64;
+- nós JSON: 10.000;
+- JSV `~> 0.22.0`;
+- formats padrão habilitados;
+- atoms desabilitados;
+- proteção limitada de regex do JSV;
+- nenhum Task timeout, sandbox ou processo OTP no primeiro slice.
+
+Payload/body/batch limits serão ratificados com o primeiro execution path.
+
+## Separação dos próximos slices
+
+~~~text
+26A ContractVersion executable
+→ JSON Schema/JSV boundary
+
+26B Operation executable
+→ behaviours, invocation and result contracts
+
+26C HTTP reference path
+→ Transport + first HTTP Operation
+~~~
+
+O slice 26A não decide onde source/destination invocam validação, semântica de partial success, pagination, HTTP client/pool ou lifecycle do data plane.
+
+## Especificação próxima do código
+
+Detalhes de tipos, pipeline, retornos, compatibilidade legada e matriz de testes:
+
+`docs/specifications/contract-version-execution.md`.

@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**EnvironmentDeployment → RunSnapshot v1 materialization**
+**Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC e do runtime control plane estão materializadas. RunSnapshot v1 foi integrado à `main` pela PR #16. O ADR-0018 agora está materializado de ponta a ponta nesta branch: Catalog, Connections, Integration, EnvironmentDeployment, bindings e o resolver transacional `EnvironmentDeployment → definition v1`.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A implementação do ADR-0019 ainda não começou.
 
 ## Estado materializado
 
@@ -86,7 +86,9 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. ContractVersion ainda materializa somente identidade, nasce publicada e é imutável no PostgreSQL. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+
+O slice 26A ratificado acrescentará schema JSONB object/boolean imutável, publicação com validação/build JSV, `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
 
 ### Connections
 
@@ -194,8 +196,8 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Connector/Operation/Transport
-JSON Schema + JSV
+Connector/Operation/Transport executáveis
+JSON Schema + JSV (slice 26A ratificado; implementação pendente)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -235,17 +237,28 @@ EnvironmentDeployment + binding materialization
 Resolver-facing authority read APIs
 Resolver scope discovery without binding reads
 EnvironmentDeployment transactional resolver
+Executable ContractVersion/JSV contract ratification
 ```
 
 ## Em andamento
 
-Consolidar e integrar o milestone materializado de EnvironmentDeployment → RunSnapshot v1.
+Preparar a materialização estritamente limitada do Slice 26A conforme ADR-0019 e `contract-version-execution.md`.
 
 ## Próxima tarefa concreta
 
-Após concluir os gates e integrar esta branch, revisar e ratificar o menor slice de Contracts/JSV + Connector/Operation/Transport executáveis. A sequência arquitetural aponta para essa fronteira, mas seu recorte concreto deve ser documentado antes de código novo.
+Materializar somente ContractVersion executável com JSON Schema/JSV:
 
-O comportamento concluído neste milestone é:
+~~~text
+nullable schema JSONB preserving legacy rows
+→ required schema for every new publication
+→ fixed Draft 2020-12 and local-only refs
+→ complete JSV build before insert
+→ Contracts.compile/1 + validate/2
+→ executability checks in PackageVersion, deployment and resolver
+→ RunSnapshot v1 unchanged
+~~~
+
+O workflow upstream já materializado e que deve ser preservado é:
 
 ```text
 LeafcutterRuntime.Runs.create_from_deployment/1
@@ -260,12 +273,12 @@ LeafcutterRuntime.Runs.create_from_deployment/1
 
 O resolver ordena destinations pela posição do PackageVersionEndpoint, faz rollback integral em qualquer falha e cria Runs distintas em chamadas bem-sucedidas repetidas.
 
-Não implementar ainda revision/history, promotion/rollback, triggers, raw secrets, provider locators, OAuth, rotation/revocation, actor, invocation, idempotency, carregamento no coordinator ou data plane.
+Não implementar no Slice 26A behaviours/result structs de Operation, Transport, HTTP client/pool, pagination, partial success, carregamento no coordinator, payload limits, cache global, refs externas ou data plane.
 
 ## Principais decisões abertas
 
 - Package Manifest e build de packages;
-- Connector/Operation/Transport contracts;
+- Connector/Operation/Transport executáveis (Slices 26B/26C);
 - data plane e durable fan-out;
 - lifecycle completo de Run;
 - autenticação e secrets;
@@ -276,6 +289,10 @@ Não implementar ainda revision/history, promotion/rollback, triggers, raw secre
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0019-contract-version-executavel-json-schema-jsv.md`
+- `docs/specifications/contract-version-execution.md`
+- `docs/decisions/ADR-0006-json-schema-jsv.md`
+- `docs/architecture/contracts-json-schema.md`
 - `docs/decisions/ADR-0018-upstream-authorities-environment-deployment-resolution.md`
 - `docs/specifications/environment-deployment-run-resolution.md`
 - `docs/decisions/ADR-0017-run-snapshot-v1.md`

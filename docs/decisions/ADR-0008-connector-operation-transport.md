@@ -5,11 +5,11 @@
 
 ## Decisão
 
-```text
+~~~text
 Connector  → semântica do sistema externo
 Operation  → ação específica
 Transport  → protocolo
-```
+~~~
 
 HTTP será o primeiro Transport.
 
@@ -34,3 +34,15 @@ Ainda não materializado:
 - Read Operations normalizam paginação;
 - Write Operations preservam partial success;
 - outros transports entram somente com necessidade real.
+
+## Evolução
+
+A fronteira seguinte ao ADR-0018 foi dividida:
+
+~~~text
+26A ContractVersion + JSON Schema/JSV
+26B Operation executable contract
+26C Transport + first HTTP reference Operation
+~~~
+
+O ADR-0019 controla somente 26A e não materializa esta decisão além da metadata já existente. Signatures, structs e behaviours de Operation continuam pendentes de ratificação no Slice 26B; Transport HTTP permanece no Slice 26C.

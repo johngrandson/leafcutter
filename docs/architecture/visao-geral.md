@@ -45,6 +45,8 @@ Package
 
 ConnectorVersion e suas Operations são publicadas atomicamente. ContractVersion materializa somente identidade publicada e imutável. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis.
 
+O próximo slice foi ratificado no ADR-0019, mas ainda não está materializado: novas ContractVersions receberão schema JSONB object/boolean, build JSV na publicação e APIs de compile/validate. Operation executável e HTTP permanecem nos Slices 26B/26C.
+
 ### Connections mínimo
 
 ```text

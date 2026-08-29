@@ -4,7 +4,7 @@ A documentação do Leafcutter separa explicitamente **estado materializado**, *
 
 ## Ordem de autoridade
 
-```text
+~~~text
 Código + testes
     ↓
 ADRs aceitos
@@ -16,7 +16,7 @@ Specifications e OpenAPI versionados
 CURRENT.md para o ponto de continuidade
     ↓
 Research e conversas como apoio
-```
+~~~
 
 Quando um documento divergir do código, o código e os testes prevalecem. Quando a divergência representar mudança intencional de arquitetura, o ADR e a documentação devem ser atualizados antes de tratar a mudança como consolidada.
 
@@ -65,7 +65,7 @@ A convenção completa está em `architecture/estado-atual-e-visao-futura.md` e 
 
 ### Specifications
 
-`specifications/README.md` diferencia contracts já materializados de specifications ratificadas para o data plane futuro.
+`specifications/README.md` diferencia contracts já materializados de specifications ratificadas ainda não materializadas, incluindo o Slice 26A de ContractVersion executável.
 
 ### Produto
 

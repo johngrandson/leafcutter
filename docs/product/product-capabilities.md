@@ -57,15 +57,16 @@
 - um EnvironmentDeployment completo por Integration/Environment;
 - PackageVersion, promotable/local config e bindings completos por endpoint;
 - create/get/replace atômicos;
-- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos.
+- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos;
 - descoberta de scope imutável e locks de resolução por APIs públicas.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Contracts JSON Schema;
-- Connector/Operation/Transport;
+- ContractVersion + JSON Schema/JSV (Slice 26A ratificado, não materializado);
+- Operation executável (Slice 26B ainda a ratificar);
+- Transport + primeira referência HTTP (Slice 26C ainda a ratificar);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - lifecycle ampliado de Integrations, Triggers, promotion e homologation.

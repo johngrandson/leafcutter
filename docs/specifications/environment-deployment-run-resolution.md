@@ -462,3 +462,7 @@ Falha confirmada causa rollback integral.
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway;
 - HTTP/API translation.
+
+## Evolução posterior
+
+O ADR-0019 e `contract-version-execution.md` ratificam o Slice 26A posterior a esta specification: novas ContractVersions terão schema/JSV e as novas boundaries de PackageVersion, deployment e resolver rejeitarão versões identity-only legadas. Esta specification continua sendo a prova do resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudam.

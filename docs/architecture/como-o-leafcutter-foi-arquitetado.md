@@ -214,6 +214,8 @@ Promotion levará estado promovível aprovado sem copiar credenciais ou config l
 
 Source e destination payloads serão validados com JSON Schema Draft 2020-12 via JSV.
 
+O ADR-0019 já ratifica a boundary de ContractVersion executável, publicação, compilação e validação do Slice 26A. A `main` ainda contém ContractVersion identity-only; os pontos source/destination que chamarão essa validação pertencem ao Slice 26B.
+
 ```text
 external source
 → source ContractVersion
@@ -299,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. O contract de ContractVersion executável com JSON Schema/JSV foi ratificado no ADR-0019 e ainda não está materializado. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, Operation/Transport executáveis, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -310,7 +312,10 @@ present
 → RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
 
 next
-→ ratificar Contracts/JSV + Connector/Operation/Transport executáveis
+→ materializar somente ContractVersion + JSON Schema/JSV (Slice 26A)
+
+then
+→ ratificar Operation executável (26B) e HTTP reference path (26C)
 
 future
 → durable Broadway integration data plane

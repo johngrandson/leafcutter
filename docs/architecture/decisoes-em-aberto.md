@@ -2,7 +2,7 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. A próxima fronteira requer confirmar o menor recorte executável de Contracts/JSV + Connector/Operation/Transport.
+RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. Persistência, dialeto, compilação, validação, legado, limites e propagação de ContractVersion executável foram ratificados no ADR-0019. A próxima decisão arquitetural após materializar 26A será o contract concreto de Operation executável (26B).
 
 ## Domínio
 
@@ -30,9 +30,14 @@ RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentD
 
 - Package Manifest JSON Schema v1;
 - package inclusion no build/release;
-- Connector/Operation/Transport behaviours;
-- JSON Schema compilation/cache;
-- HTTP client e pool strategy.
+- assinatura exata dos behaviours e result structs de Operation (26B);
+- pagination e partial-success semantics (26B);
+- pontos source/destination de validação de payload (26B);
+- Transport behaviour e primeira Operation HTTP (26C);
+- HTTP client e pool strategy;
+- payload/body/batch limits no primeiro execution path;
+- cache compartilhado de validators somente se medição justificar;
+- bundling/registry para referências externas futuras.
 
 ## Segurança
 

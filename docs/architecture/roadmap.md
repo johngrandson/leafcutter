@@ -76,13 +76,42 @@
 
 ## Próximo estágio: reliable integration core
 
-O contract do estágio upstream foi materializado integralmente conforme o ADR-0018. A próxima fronteira precisa começar pela revisão e ratificação do menor recorte vertical de contracts e execução:
+O contract upstream foi materializado integralmente conforme o ADR-0018. A fronteira executável foi dividida para não acoplar schema, behaviours e HTTP em uma única mudança.
 
-- Contracts + JSON Schema/JSV;
-- Connector/Operation/Transport contracts;
-- Generic HTTP Connector;
-- PackageVersion 1 Source → N Destinations;
-- manual and automatic Run startup from snapshot.
+### Slice 26A — ContractVersion executável
+
+**Contrato ratificado no ADR-0019; implementação pendente.**
+
+- schema JSONB object/boolean imutável em novas ContractVersions;
+- versões identity-only legadas preservadas e não executáveis;
+- JSON Schema Draft 2020-12 fixo;
+- JSV build obrigatório na publicação;
+- refs somente locais e nenhuma resolução externa;
+- `Contracts.compile/1` e `validate/2`;
+- validator reutilizado pelo futuro processo de Run, sem cache global inicial;
+- PackageVersion, deployment e resolver rejeitando versões legadas;
+- RunSnapshot v1 inalterado.
+
+### Slice 26B — Operation executável
+
+**Posterior; contract concreto ainda deve ser ratificado.**
+
+- source/destination behaviours;
+- invocation input;
+- result e partial-success semantics;
+- pagination boundary;
+- pontos exatos de validação dos Contracts.
+
+### Slice 26C — referência HTTP
+
+**Posterior; contract concreto ainda deve ser ratificado.**
+
+- Transport behaviour;
+- HTTP request/response boundary;
+- primeiro Connector/Operation de referência;
+- client e pool strategy.
+
+PackageVersion 1 Source → N Destinations e criação automática de Run a partir do snapshot já possuem foundations materializadas. O carregamento de validators/operations no runtime permanece posterior ao Slice 26A.
 
 ## Data plane durável
 

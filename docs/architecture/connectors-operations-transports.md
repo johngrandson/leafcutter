@@ -1,20 +1,20 @@
 # Connectors, Operations e Transports
 
-> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation existem como metadata no Catalog; os contracts executáveis em `leafcutter_connectors` e Transport permanecem futuros.
+> **Status: PARCIALMENTE MATERIALIZADO.** Connector, ConnectorVersion e Operation existem como metadata no Catalog. O contract concreto de Operation executável pertence ao Slice 26B; Transport e a primeira referência HTTP pertencem ao Slice 26C.
 
 ## Estado materializado
 
-```text
+~~~text
 Connector
 └── immutable ConnectorVersion
     └── Operation metadata
-```
+~~~
 
-`Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion com suas Operations atomicamente. Operation materializa `ref` e `role: source | destination`; behaviour executável, paginação, requests, responses e Transport não fazem parte desse slice.
+`Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion com suas Operations atomicamente. Operation materializa `ref` e `role: source | destination`; behaviour executável, paginação, requests, responses e Transport não existem no código atual.
 
 ## Separação
 
-```text
+~~~text
 Connector
 → conhece o sistema externo
 
@@ -23,55 +23,51 @@ Operation
 
 Transport
 → conhece o protocolo
-```
+~~~
 
 Catalog possui metadata e versões. `leafcutter_connectors` possuirá behaviours e implementações executáveis.
 
-## Connector
+ContractVersion + JSON Schema/JSV é uma boundary anterior e separada, owned pelo Catalog. O Slice 26A ratificado no ADR-0019 não adiciona behaviour ou Transport a `leafcutter_connectors`.
 
-Responsabilidades planejadas:
+## Slice 26B — Operation executável
 
-- conventions do sistema externo;
-- autenticação suportada;
-- headers e erros comuns;
-- rate-limit metadata;
-- Operations disponíveis.
+Ainda exige ratificação concreta.
 
-Não conhece Organization, Integration específica ou Transformation de Package.
+Direções conceituais preservadas:
 
-## Read Operation
+- Read Operation normaliza paginação independentemente de `page`, `offset`, cursor ou `next_url`;
+- Write Operation recebe batch já transformado e validado;
+- resultado por item preserva sucesso parcial;
+- auth/config chegam resolvidos;
+- Operation não conhece internals de Organization, Integration, Run ou Transformation;
+- pontos source/destination de `Contracts.validate/2` serão explícitos.
 
-Normalizará paginação para um contract independente de `page`, `offset`, cursor ou `next_url`.
+Ainda estão abertos signatures, structs, cursor semantics, ordering/completeness de partial results e integração com retry taxonomy.
 
-Resultado conceitual:
+## Slice 26C — Transport e referência HTTP
 
-```text
-records
-next_cursor
-done?
-metadata
-```
+HTTP permanece o primeiro Transport planejado. O slice deverá ratificar:
 
-## Write Operation
+- Transport behaviour;
+- request/response boundary;
+- primeiro Connector/Operation de referência;
+- HTTP client e pool strategy;
+- timeout e rate-limit translation.
 
-Receberá batch já transformado e validado e preservará resultado por item, inclusive sucesso parcial.
+Database, SFTP e outros transports só entram com demanda real.
 
-## Transport
+## Error taxonomy conceitual
 
-HTTP será o primeiro Transport. Database, SFTP e outros só entram com demanda real.
-
-## Error taxonomy ratificada
-
-```text
+~~~text
 validation
 authentication
 rate_limited
 timeout
 temporary
 permanent
-```
+~~~
 
-A forma exata dos tipos e structs ainda será fechada na implementação.
+A taxonomy final e sua representação concreta precisam ser confrontadas com `error-retry-model.md` durante 26B.
 
 ## Restrições
 
@@ -79,4 +75,5 @@ A forma exata dos tipos e structs ainda será fechada na implementação.
 - não esconder Transformation dentro da Operation;
 - não persistir secrets em Connector metadata;
 - não acoplar runtime genérico a detalhes de HTTP;
-- não implementar múltiplos transports por antecipação.
+- não implementar múltiplos transports por antecipação;
+- não introduzir Operation/Transport durante a materialização do Slice 26A.

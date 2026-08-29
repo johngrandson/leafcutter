@@ -78,6 +78,8 @@ PackageVersion
 
 O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion materializam identities publicadas e imutáveis. Package, PackageVersion e seus endpoints relacionais completam o Catalog mínimo com cardinalidade, referências, ordem e imutabilidade protegidas no banco.
 
+O ADR-0019 ratifica o próximo incremento ainda não materializado: schema Draft 2020-12 object/boolean em ContractVersion, publicação com JSV build e validator reutilizável. Schema continua owned pelo Catalog e RunSnapshot v1 continua referenciando somente `contract_version_id`.
+
 ## Connections
 
 O modelo mínimo ratificado está materializado:
