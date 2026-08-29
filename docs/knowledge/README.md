@@ -122,3 +122,6 @@ Mantenha cada arquivo ativo focado em um tipo de entrada e com até 200 linhas.
 Divida por context ou capacidade ratificada quando a rota deixar de ser clara;
 atualize `INDEX.md` e preserve links de provenance. Não crie topologia de
 múltiplos projetos, camadas globais ou abstrações antes de existir necessidade.
+
+Os workflows de extração e consolidação podem voltar quando houver uma extração
+explicitamente solicitada ou arquivos ativos acima de 200 linhas.
