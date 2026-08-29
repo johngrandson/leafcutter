@@ -492,7 +492,9 @@ defmodule Leafcutter.Catalog.PackagesTest do
     operations_by_ref = Map.new(connector_version.operations, &{&1.ref, &1})
 
     {:ok, contract} = Contracts.create(%{name: "Customer"})
-    {:ok, contract_version} = Contracts.publish_version(contract.id, %{version: "1"})
+
+    {:ok, contract_version} =
+      Contracts.publish_version(contract.id, %{version: "1", schema: true})
 
     %{
       source_operation: Map.fetch!(operations_by_ref, "read"),

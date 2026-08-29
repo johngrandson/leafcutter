@@ -1,22 +1,29 @@
 defmodule Leafcutter.Catalog.Contracts do
   @moduledoc """
-  Public capability module for Contract identities and immutable versions.
+  Public capability module for Contract identities and immutable executable
+  versions.
 
-  ContractVersion persists only the version identity required by Catalog
-  resolution. Executable schemas remain outside the initial slice.
+  New ContractVersions are published with an immutable JSON Schema document
+  that satisfies the Leafcutter policy and completes a JSV build before the
+  row is inserted.
   """
 
   alias Ecto.Changeset
 
   alias Leafcutter.Catalog.{Contract, ContractVersion}
+  alias Leafcutter.Catalog.Contracts.SchemaBuilder
+  alias Leafcutter.Catalog.Types.SchemaDocument
   alias Leafcutter.Repo
 
-  @typedoc "Attributes accepted when publishing an immutable ContractVersion identity."
+  @typedoc "Attributes accepted when publishing an immutable executable ContractVersion."
   @type publish_version_attrs ::
-          %{required(:version) => String.t()}
-          | %{required(String.t()) => String.t()}
+          %{
+            required(:version) => String.t(),
+            required(:schema) => SchemaDocument.t()
+          }
+          | %{required(String.t()) => term()}
 
-  @typedoc "Error returned when a ContractVersion identity cannot be published."
+  @typedoc "Error returned when an executable ContractVersion cannot be published."
   @type publish_error :: :contract_not_found | Changeset.t()
 
   @doc """
@@ -45,7 +52,7 @@ defmodule Leafcutter.Catalog.Contracts do
 
   * Contract identities are global and not scoped to an Organization.
   * Creating an identity does not publish a ContractVersion.
-  * Executable schema content is outside the initial Catalog slice.
+  * Executable schema content belongs to each immutable ContractVersion.
   """
   @spec create(Contract.create_attrs()) ::
           {:ok, Contract.t()} | {:error, Changeset.t()}
@@ -103,18 +110,18 @@ defmodule Leafcutter.Catalog.Contracts do
   end
 
   @doc """
-  Publishes an immutable ContractVersion identity.
+  Publishes an immutable executable ContractVersion.
 
   ## Parameters
 
   * `contract_id` - The stable Contract identity receiving the version
-  * `attrs` - The opaque version string
+  * `attrs` - The opaque version string and JSON Schema document
 
   ## Returns
 
   * `{:ok, contract_version}` with its Contract loaded
   * `{:error, :contract_not_found}` when the parent Contract does not exist
-  * `{:error, changeset}` when the version is invalid
+  * `{:error, changeset}` when the version or schema is invalid
 
   ## Examples
 
@@ -126,7 +133,7 @@ defmodule Leafcutter.Catalog.Contracts do
       iex> {:ok, version} =
       ...>   Leafcutter.Catalog.Contracts.publish_version(
       ...>     contract.id,
-      ...>     %{version: "2026.08"}
+      ...>     %{version: "2026.08", schema: true}
       ...>   )
 
       iex> version.version
@@ -135,7 +142,9 @@ defmodule Leafcutter.Catalog.Contracts do
   ## Notes
 
   * The version string is opaque and unique within one Contract.
-  * Publication persists identity only; schema content is not accepted.
+  * Schema object and boolean roots are accepted without normalization.
+  * Publication validates the Leafcutter schema policy and completes a JSV build before
+    insert.
   * `published_at` is selected internally.
   * Published rows cannot be updated or deleted.
   """
@@ -151,8 +160,10 @@ defmodule Leafcutter.Catalog.Contracts do
         %ContractVersion{}
         |> ContractVersion.publish_changeset(%{
           contract_id: contract.id,
-          version: attribute(attrs, :version)
+          version: attribute(attrs, :version),
+          schema: attribute(attrs, :schema)
         })
+        |> validate_publication_schema()
         |> Repo.insert()
         |> case do
           {:ok, contract_version} ->
@@ -164,6 +175,36 @@ defmodule Leafcutter.Catalog.Contracts do
 
       nil ->
         {:error, :contract_not_found}
+    end
+  end
+
+  @spec validate_publication_schema(Changeset.t()) :: Changeset.t()
+  defp validate_publication_schema(changeset) do
+    case Changeset.fetch_change(changeset, :schema) do
+      {:ok, schema} ->
+        case SchemaBuilder.build(schema) do
+          {:ok, _root} ->
+            changeset
+
+          {:error, {:policy_failed, _policy_error}} ->
+            Changeset.add_error(
+              changeset,
+              :schema,
+              "does not satisfy the executable schema policy",
+              validation: :schema_policy
+            )
+
+          {:error, :schema_build_failed} ->
+            Changeset.add_error(
+              changeset,
+              :schema,
+              "cannot be compiled as Draft 2020-12 JSON Schema",
+              validation: :schema_build
+            )
+        end
+
+      :error ->
+        changeset
     end
   end
 

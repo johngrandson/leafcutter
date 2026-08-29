@@ -6,7 +6,7 @@
 
 **Slice 26A — ContractVersion executável com JSON Schema/JSV**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV e a persistência nullable do documento estão materializadas por `Leafcutter.Catalog.Types.SchemaDocument`, `Leafcutter.Catalog.Contracts.SchemaPolicy`, `Leafcutter.Catalog.Contracts.SchemaBuilder` e o campo `ContractVersion.schema`; publicação executável, sealing de novos inserts, compilação pública, validação de payload e propagação de executabilidade continuam pendentes.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. O contrato do próximo slice foi ratificado no ADR-0019: tornar novas ContractVersions executáveis com JSON Schema Draft 2020-12 + JSV, preservando versões identity-only legadas e sem alterar RunSnapshot v1. A representação interna, a política pura, a boundary interna de build JSV, a persistência nullable do documento, a publicação schema-aware e o sealing de novos inserts estão materializados; compilação pública, validação de payload e propagação de executabilidade continuam pendentes.
 
 ## Estado materializado
 
@@ -86,9 +86,9 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion ainda publica somente identidade, mas o modelo físico agora possui `schema :jsonb` nullable para preservar rows identity-only e receber raízes object/boolean. Um CHECK PostgreSQL rejeita qualquer raiz JSONB diferente de object/boolean/SQL NULL, e a trigger existente de update/delete também protege o novo campo. `SchemaDocument` está ligado ao schema persistido e preserva o load de `nil`; `Contracts.SchemaPolicy` e `Contracts.SchemaBuilder` permanecem internos e ainda não são chamados pela boundary pública de publicação. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. PackageVersion publica uma source e uma ou mais destinations ordenadas; constraints e triggers protegem cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-O restante do slice 26A ratificado acrescentará publicação com validação/build JSV e sealing de novos inserts, `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
+O restante do slice 26A ratificado acrescentará `Contracts.compile/1` e `validate/2`, além de rejeitar versões legadas em novas boundaries executáveis. Isso é estado futuro aprovado, não comportamento atual.
 
 ### Connections
 
@@ -197,7 +197,7 @@ Attempt
 Checkpoint
 ExecutionEvent
 Connector/Operation/Transport executáveis
-ContractVersion executável completo (slice 26A em materialização; publicação e APIs públicas pendentes)
+ContractVersion executável completo (slice 26A em materialização; compile/validate e propagação pendentes)
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -241,6 +241,7 @@ Executable ContractVersion/JSV contract ratification
 ContractVersion schema document representation and policy
 ContractVersion internal JSV build boundary
 ContractVersion nullable schema persistence
+ContractVersion schema-aware publication and insert sealing
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -248,9 +249,7 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-A representação Ecto, a política pura, a boundary interna de build JSV e a persistência nullable compatível com ContractVersions identity-only estão materializadas. A próxima fronteira é a publicação executável com sealing de novos inserts, ainda sem adicionar compile/validate públicos.
-
-A trigger que rejeita novos inserts com `schema IS NULL` será instalada junto da publicação schema-aware. Assim, não existe um estado intermediário em que `Contracts.publish_version/2` permaneça identity-only, mas seja inutilizável pelo banco.
+A representação Ecto, a política pura, a boundary interna de build JSV, a persistência nullable compatível com ContractVersions identity-only, a publicação executável e o sealing de novos inserts estão materializados. A próxima fronteira é a compilação pública com um validator opaco, ainda sem adicionar validação de payload ou propagação para Package/Deployment/Run.
 
 O fechamento da base de conhecimento local é uma capacidade de harness e
 documentação; não altera o estado atual de produto/runtime nem a próxima
@@ -258,16 +257,16 @@ fronteira concreta `Contracts/JSV + Connector/Operation/Transport`.
 
 ## Próxima tarefa concreta
 
-Materializar publicação executável e sealing de novos inserts conforme ADR-0019:
+Materializar compilação pública e o validator opaco conforme ADR-0019:
 
 ~~~text
-Contracts.publish_version/2 accepts schema
-→ cast and require SchemaDocument
-→ SchemaPolicy.validate then SchemaBuilder.build
-→ deterministic changeset error on schema
-→ install BEFORE INSERT trigger rejecting schema IS NULL
-→ preserve existing identity-only rows with schema NULL
-→ no public compile/validate functions yet
+Contracts.compile/1 fetches one ContractVersion
+→ :not_found for an absent identity
+→ :schema_unavailable for a legacy schema NULL
+→ reapply SchemaPolicy and complete one JSV build
+→ :schema_compilation_failed for any persisted invalid state
+→ return an opaque Leafcutter validator containing the ID and JSV root
+→ no public validate/2 or shared cache yet
 ~~~
 
 O workflow upstream já materializado e que deve ser preservado é:

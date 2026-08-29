@@ -704,7 +704,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       Contracts.create(%{name: "#{prefix} Contract #{suffix}"})
 
     {:ok, contract_version} =
-      Contracts.publish_version(contract.id, %{version: "1"})
+      Contracts.publish_version(contract.id, %{version: "1", schema: true})
 
     {:ok, package} = Packages.create(%{name: "#{prefix} Package #{suffix}"})
 

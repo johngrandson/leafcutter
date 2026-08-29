@@ -14,14 +14,13 @@ defmodule Leafcutter.Catalog.ContractVersionPersistenceTest do
 
   @dialect "https://json-schema.org/draft/2020-12/schema"
 
-  test "round-trips object, boolean, and legacy nil schema roots" do
+  test "round-trips object and boolean schema roots" do
     contract = contract_fixture()
 
     documents = [
       {"object", %{"$schema" => @dialect, "type" => "object"}},
       {"true", true},
-      {"false", false},
-      {"legacy", nil}
+      {"false", false}
     ]
 
     for {version, document} <- documents do
@@ -29,6 +28,23 @@ defmodule Leafcutter.Catalog.ContractVersionPersistenceTest do
 
       assert Repo.get!(ContractVersion, contract_version.id).schema === document
     end
+  end
+
+  test "rejects a new row without schema content" do
+    contract = contract_fixture()
+
+    error =
+      assert_raise Postgrex.Error, fn ->
+        Repo.transaction(
+          fn ->
+            insert_raw_schema!(contract.id, "missing-schema", nil)
+          end,
+          mode: :savepoint
+        )
+      end
+
+    assert error.postgres.message ==
+             "contract_versions schema is required"
   end
 
   test "rejects JSONB roots other than object or boolean" do
@@ -93,7 +109,7 @@ defmodule Leafcutter.Catalog.ContractVersionPersistenceTest do
   @spec persist_version!(
           Contract.t(),
           String.t(),
-          SchemaDocument.t() | nil
+          SchemaDocument.t()
         ) :: ContractVersion.t()
   defp persist_version!(contract, version, schema) do
     Repo.insert!(%ContractVersion{
@@ -104,7 +120,7 @@ defmodule Leafcutter.Catalog.ContractVersionPersistenceTest do
     })
   end
 
-  @spec insert_raw_schema!(Contract.id(), String.t(), String.t()) ::
+  @spec insert_raw_schema!(Contract.id(), String.t(), String.t() | nil) ::
           Postgrex.Result.t()
   defp insert_raw_schema!(contract_id, version, encoded_schema) do
     {:ok, dumped_contract_id} = Ecto.UUID.dump(contract_id)

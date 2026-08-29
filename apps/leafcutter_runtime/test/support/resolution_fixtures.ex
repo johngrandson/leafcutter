@@ -50,13 +50,13 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
       Contracts.create(%{name: "#{prefix} Contract #{suffix}"})
 
     {:ok, source_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "source"})
+      Contracts.publish_version(contract.id, %{version: "source", schema: true})
 
     {:ok, warehouse_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "warehouse"})
+      Contracts.publish_version(contract.id, %{version: "warehouse", schema: true})
 
     {:ok, crm_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "crm"})
+      Contracts.publish_version(contract.id, %{version: "crm", schema: true})
 
     {:ok, package} =
       Packages.create(%{name: "#{prefix} Package #{suffix}"})

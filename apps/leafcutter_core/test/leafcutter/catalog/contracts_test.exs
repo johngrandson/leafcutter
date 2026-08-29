@@ -9,6 +9,8 @@ defmodule Leafcutter.Catalog.ContractsTest do
     ContractVersion
   }
 
+  @dialect "https://json-schema.org/draft/2020-12/schema"
+
   describe "create/1" do
     test "persists a global Contract identity" do
       assert {:ok, %Contract{} = contract} =
@@ -56,26 +58,30 @@ defmodule Leafcutter.Catalog.ContractsTest do
   end
 
   describe "publish_version/2" do
-    test "publishes an opaque identity-only ContractVersion" do
+    test "publishes object and boolean executable ContractVersions" do
       contract = contract_fixture()
 
-      assert {:ok, %ContractVersion{} = contract_version} =
-               Contracts.publish_version(
-                 contract.id,
-                 %{
-                   version: "release-2026.08",
-                   published_at: ~U[2025-01-01 00:00:00.000000Z],
-                   schema: %{"type" => "object"}
-                 }
-               )
+      documents = [schema(%{"type" => "object"}), true, false]
 
-      assert contract_version.contract == contract
-      assert contract_version.version == "release-2026.08"
-      assert %DateTime{} = contract_version.published_at
-      assert contract_version.schema == nil
+      for {document, index} <- Enum.with_index(documents) do
+        assert {:ok, %ContractVersion{} = contract_version} =
+                 Contracts.publish_version(
+                   contract.id,
+                   %{
+                     version: "release-#{index}",
+                     published_at: ~U[2025-01-01 00:00:00.000000Z],
+                     schema: document
+                   }
+                 )
 
-      assert contract_version.published_at !=
-               ~U[2025-01-01 00:00:00.000000Z]
+        assert contract_version.contract == contract
+        assert contract_version.version == "release-#{index}"
+        assert contract_version.schema === document
+        assert %DateTime{} = contract_version.published_at
+
+        assert contract_version.published_at !=
+                 ~U[2025-01-01 00:00:00.000000Z]
+      end
     end
 
     test "accepts string-keyed attributes" do
@@ -84,17 +90,18 @@ defmodule Leafcutter.Catalog.ContractsTest do
       assert {:ok, contract_version} =
                Contracts.publish_version(
                  contract.id,
-                 %{"version" => "opaque"}
+                 %{"version" => "opaque", "schema" => true}
                )
 
       assert contract_version.version == "opaque"
+      assert contract_version.schema === true
     end
 
     test "returns contract_not_found without persisting a version" do
       assert {:error, :contract_not_found} =
                Contracts.publish_version(
                  "00000000-0000-0000-0000-000000000000",
-                 %{version: "1"}
+                 %{version: "1", schema: true}
                )
 
       assert Repo.aggregate(ContractVersion, :count) == 0
@@ -104,11 +111,11 @@ defmodule Leafcutter.Catalog.ContractsTest do
       contract = contract_fixture()
 
       invalid_attrs = [
-        %{},
-        %{version: ""},
-        %{version: "   "},
-        %{version: String.duplicate("a", 256)},
-        %{version: <<255>>}
+        %{schema: true},
+        %{version: "", schema: true},
+        %{version: "   ", schema: true},
+        %{version: String.duplicate("a", 256), schema: true},
+        %{version: <<255>>, schema: true}
       ]
 
       for attrs <- invalid_attrs do
@@ -121,20 +128,51 @@ defmodule Leafcutter.Catalog.ContractsTest do
       assert Repo.aggregate(ContractVersion, :count) == 0
     end
 
+    test "returns deterministic schema errors without persisting a version" do
+      contract = contract_fixture()
+
+      invalid_publications = [
+        {%{version: "missing"}, "can't be blank"},
+        {%{version: "invalid-root", schema: []}, "is invalid"},
+        {%{version: "invalid-policy", schema: %{"type" => "object"}},
+         "does not satisfy the executable schema policy"},
+        {%{version: "invalid-build", schema: schema(%{"type" => "bad type"})},
+         "cannot be compiled as Draft 2020-12 JSON Schema"}
+      ]
+
+      for {attrs, expected_message} <- invalid_publications do
+        assert {:error, %Changeset{} = changeset} =
+                 Contracts.publish_version(contract.id, attrs)
+
+        assert %{schema: [^expected_message]} = errors_on(changeset)
+      end
+
+      assert Repo.aggregate(ContractVersion, :count) == 0
+    end
+
     test "enforces version uniqueness within one Contract" do
       first_contract = contract_fixture("First")
       second_contract = contract_fixture("Second")
 
       assert {:ok, _version} =
-               Contracts.publish_version(first_contract.id, %{version: "1"})
+               Contracts.publish_version(
+                 first_contract.id,
+                 %{version: "1", schema: true}
+               )
 
       assert {:error, %Changeset{} = changeset} =
-               Contracts.publish_version(first_contract.id, %{version: "1"})
+               Contracts.publish_version(
+                 first_contract.id,
+                 %{version: "1", schema: true}
+               )
 
       assert %{contract_id: [_ | _]} = errors_on(changeset)
 
       assert {:ok, _version} =
-               Contracts.publish_version(second_contract.id, %{version: "1"})
+               Contracts.publish_version(
+                 second_contract.id,
+                 %{version: "1", schema: true}
+               )
     end
   end
 
@@ -143,7 +181,7 @@ defmodule Leafcutter.Catalog.ContractsTest do
       contract = contract_fixture()
 
       assert {:ok, contract_version} =
-               Contracts.publish_version(contract.id, %{version: "1"})
+               Contracts.publish_version(contract.id, %{version: "1", schema: true})
 
       update_error =
         assert_raise Postgrex.Error, fn ->
@@ -174,6 +212,9 @@ defmodule Leafcutter.Catalog.ContractsTest do
       assert Repo.get!(ContractVersion, contract_version.id).version == "1"
     end
   end
+
+  @spec schema(map()) :: map()
+  defp schema(fields), do: Map.put(fields, "$schema", @dialect)
 
   @spec contract_fixture(String.t()) :: Contract.t()
   defp contract_fixture(name \\ "Contract") do
