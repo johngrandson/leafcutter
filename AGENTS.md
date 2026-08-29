@@ -52,6 +52,8 @@ OpenAPI e JSON Schemas versionados
     ↓
 CURRENT.md para o estado atual do trabalho
     ↓
+Base de conhecimento local derivada (`docs/knowledge/`)
+    ↓
 Conversas e memória de agentes como apoio, nunca como autoridade final
 ```
 
