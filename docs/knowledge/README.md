@@ -39,7 +39,7 @@ mutação em `log.md` quando aplicável.
 
 - `syntheses.md`, `gotchas.md` e `pins.md`: entradas ativas derivadas.
 - `raw/`: fontes humanas imutáveis, usadas como evidência.
-- `proposals/`: candidatos ainda não aprovados.
+- `proposals/`: candidatos persistidos ainda não aprovados.
 - `log.md`: registro de mutações aprovadas; não é fonte para consultas.
 
 ## Tipos de entrada
@@ -81,6 +81,39 @@ evidência. Os formatos abaixo são exemplos do schema, não entradas ativas.
 - Estado: ativo
 ```
 
+## Propostas persistidas
+
+Cada candidato ocupa um único arquivo cujo nome repete seu `entry_id`, como
+`docs/knowledge/proposals/G-capture-format.md`. O frontmatter deve conter
+exatamente estes campos:
+
+```yaml
+type: proposal
+entry_id: G-capture-format
+target: docs/knowledge/gotchas.md
+updated: 2026-08-29
+```
+
+`target` deve ser exatamente um destes paths: `docs/knowledge/gotchas.md`,
+`docs/knowledge/pins.md` ou `docs/knowledge/syntheses.md`. O `entry_id` usa o
+prefixo semântico correspondente: `G-`, `PIN-` ou `SYN-`. O corpo da proposta
+contém um bloco cercado `markdown` com a entrada candidata completa, no schema
+Markdown exato do tipo de destino, incluindo todos os campos exigidos. Este
+README é schema e referência; nunca é um target de entrada ativa.
+
+Pedido explícito para capturar autoriza criar ou atualizar somente esse arquivo
+de proposta. O fluxo normal é: ler schema e fonte canônica, preparar o
+candidato exato, persistir a proposta, mostrar a proposta persistida e pedir
+aprovação. Se o desenvolvedor pedir apenas exibição ou não escrita, o agente
+mostra o candidato e não o persiste.
+
+Após aprovação exata, o agente promove o mesmo corpo para uma única coleção
+ativa, remove a proposta, atualiza `INDEX.md` somente se o roteamento mudar e
+registra a captura ou promoção aprovada em `log.md`. Não há outras escritas.
+Rejeição ou remoção exige direção explícita do desenvolvedor; não há archive ou
+contador. Propostas não participam da consulta normal e não estabelecem
+authority.
+
 ## Provenance
 
 Cada claim deve apontar para paths versionados, fonte humana versionada em
@@ -95,8 +128,9 @@ entrada ativa.
   carregue somente os arquivos ativos marcados como relevantes para o contexto.
 - Ingestão: humanos adicionam uma nova fonte em `raw/`; fontes existentes não
   são alteradas.
-- Captura: agentes podem redigir candidatos em `proposals/` somente após pedido
-  explícito; uma aprovação humana é necessária antes da promoção.
+- Captura: agentes persistem candidatos em `proposals/` somente após pedido
+  explícito, conforme o formato e ciclo desta seção; uma aprovação humana
+  exata é necessária antes da promoção.
 - Lint: `python3 docs/scripts/kb_lint.py --kb docs/knowledge --strict` apenas
   relata achados e não modifica arquivos.
 
