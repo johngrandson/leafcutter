@@ -83,10 +83,11 @@ evidência. Os formatos abaixo são exemplos do schema, não entradas ativas.
 
 ## Provenance
 
-Cada claim deve apontar para paths versionados, fonte humana em `raw/` ou
-evidência reproduzível. A entrada descreve a derivação e nunca amplia a
-semântica da fonte. Ausência de evidência suficiente exige proposta ou pedido
-de esclarecimento, não uma entrada ativa.
+Cada claim deve apontar para paths versionados, fonte humana versionada em
+`raw/` ou evidência reproduzível. Fontes não versionáveis não são aceitas. A
+entrada descreve a derivação e nunca amplia a semântica da fonte. Ausência de
+evidência suficiente exige proposta ou pedido de esclarecimento, não uma
+entrada ativa.
 
 ## Operações de consulta, ingestão, captura e lint
 
@@ -101,17 +102,19 @@ de esclarecimento, não uma entrada ativa.
 
 ## Política de escrita e revisão
 
-Agentes não criam facts ativos por inferência. Alterações em sínteses, gotchas
-e pins exigem evidência rastreável e revisão humana quando representarem uma
-nova claim. Pins provocam reconciliação; não prevalecem sobre código, testes,
-ADRs, specifications ou `CURRENT.md`.
+Agentes não criam facts ativos por inferência. Toda escrita por agente exige
+pedido explícito do usuário ou aprovação humana explícita antes da ação,
+inclusive criar, editar, remover ou promover entradas ativas. Alterações em
+sínteses, gotchas e pins exigem evidência rastreável. Pins provocam
+reconciliação; não prevalecem sobre código, testes, ADRs, specifications ou
+`CURRENT.md`.
 
 ## Segurança e privacidade
 
 Não registrar segredos, credenciais, tokens, ciphertext, dados pessoais ou
-payloads sensíveis. Referencie paths e identificadores mínimos necessários.
-Redações e correções são adicionadas como novos arquivos em `raw/`, preservando
-a fonte original.
+payloads de clientes, ainda que não sensíveis. Referencie paths e
+identificadores mínimos necessários. Redações e correções são adicionadas como
+novos arquivos em `raw/`, preservando a fonte original.
 
 ## Critérios para dividir arquivos
 
