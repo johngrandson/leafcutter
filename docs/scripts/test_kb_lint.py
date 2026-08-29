@@ -1,4 +1,5 @@
 import io
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -145,11 +146,17 @@ class KnowledgeLintTest(unittest.TestCase):
 
         self.assertIn("placeholder left in active content", self.messages())
 
-    def test_large_active_file_is_a_warning(self):
-        body = "\n".join(["# Syntheses"] + ["line"] * 197)
+    def test_200_newline_terminated_lines_are_not_a_warning(self):
+        body = "line\n" * 196
         self.write("syntheses.md", self.document("syntheses", body))
 
-        self.assertIn("202 lines exceeds 200", self.messages())
+        self.assertEqual([], self.findings())
+
+    def test_201_newline_terminated_lines_are_a_warning(self):
+        body = "line\n" * 197
+        self.write("syntheses.md", self.document("syntheses", body))
+
+        self.assertIn("201 lines exceeds 200", self.messages())
 
     def test_lint_is_deterministic_and_does_not_retain_findings(self):
         self.write("syntheses.md", "# Syntheses\n")
@@ -172,9 +179,18 @@ class KnowledgeLintTest(unittest.TestCase):
         self.assertEqual(1, kb_lint.strict_exit_code(warning))
         self.assertEqual(1, kb_lint.strict_exit_code(error))
 
-    def test_main_uses_default_path_and_strict_exit_code(self):
+    def test_main_uses_default_knowledge_path(self):
         self.assertEqual(Path("docs/knowledge"), kb_lint.DEFAULT_KB)
 
+        original_cwd = Path.cwd()
+        with redirect_stdout(io.StringIO()):
+            try:
+                os.chdir(self.tempdir.name)
+                self.assertEqual(0, kb_lint.main([]))
+            finally:
+                os.chdir(original_cwd)
+
+    def test_main_returns_strict_exit_code_for_explicit_knowledge_path(self):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(0, kb_lint.main(["--kb", str(self.kb), "--strict"]))
         self.write("syntheses.md", "# Syntheses\n")

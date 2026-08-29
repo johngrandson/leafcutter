@@ -123,7 +123,9 @@ def lint(kb: Path) -> list[Finding]:
                 Finding("ERROR", relative_path, "placeholder left in active content")
             )
 
-        line_count = text.count("\n") + 1
+        line_count = text.count("\n")
+        if text and not text.endswith("\n"):
+            line_count += 1
         if line_count > MAX_LINES:
             findings.append(
                 Finding(
