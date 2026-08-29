@@ -11,6 +11,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     PackageVersion,
     PackageVersionEndpoint
   }
+
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Secrets
   alias Leafcutter.Executions.{Run, RunSnapshot}

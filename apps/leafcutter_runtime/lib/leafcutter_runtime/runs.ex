@@ -17,6 +17,7 @@ defmodule LeafcutterRuntime.Runs do
     PackageVersion,
     PackageVersionEndpoint
   }
+
   alias Leafcutter.Connections
   alias Leafcutter.Connections.{Connection, Secrets, SecretVersion}
   alias Leafcutter.Executions.Run
@@ -319,7 +320,9 @@ defmodule LeafcutterRuntime.Runs do
       |> Enum.sort()
 
     case contract_version_ids do
-      [] -> :ok
+      [] ->
+        :ok
+
       contract_version_ids ->
         not_executable({:contract_versions_not_executable, contract_version_ids})
     end
