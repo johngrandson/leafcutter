@@ -40,6 +40,7 @@ defmodule Leafcutter.MixProject do
       tidewave:
         "run --no-halt -e '{:ok, _} = Application.ensure_all_started(:tidewave); {:ok, _} = Application.ensure_all_started(:bandit); Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: String.to_integer(System.get_env(\"TIDEWAVE_PORT\", \"4001\"))) end)'",
       quality: [
+        &run_knowledge_quality/1,
         "compile --warnings-as-errors",
         "format --check-formatted",
         "credo --strict",
@@ -47,6 +48,29 @@ defmodule Leafcutter.MixProject do
         &run_dialyzer/1
       ]
     ]
+  end
+
+  defp run_knowledge_quality(_) do
+    run_python!(
+      "knowledge lint tests",
+      ["-m", "unittest", "discover", "-s", "docs/scripts", "-p", "test_*.py"]
+    )
+
+    run_python!(
+      "knowledge lint",
+      ["docs/scripts/kb_lint.py", "--kb", "docs/knowledge", "--strict"]
+    )
+  end
+
+  defp run_python!(label, args) do
+    {output, status} =
+      System.cmd("python3", args, stderr_to_stdout: true)
+
+    IO.write(output)
+
+    if status != 0 do
+      Mix.raise("#{label} failed with exit status #{status}")
+    end
   end
 
   defp run_dialyzer(_) do
