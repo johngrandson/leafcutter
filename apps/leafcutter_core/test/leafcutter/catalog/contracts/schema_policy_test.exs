@@ -40,9 +40,7 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicyTest do
 
     test "rejects invalid strings and unsupported values at deterministic paths" do
       assert {:error, {:invalid_json, ["properties", "name"], :invalid_utf8_string}} =
-               SchemaPolicy.validate(
-                 schema(%{"properties" => %{"name" => <<255>>}})
-               )
+               SchemaPolicy.validate(schema(%{"properties" => %{"name" => <<255>>}}))
 
       assert {:error, {:invalid_json, ["a"], :unsupported_value}} =
                SchemaPolicy.validate(schema(%{"z" => self(), "a" => {:invalid}}))
@@ -96,18 +94,14 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicyTest do
 
       for reference <- invalid_references do
         assert {:error, {:invalid_reference, ["allOf", 0, "$ref"]}} =
-                 SchemaPolicy.validate(
-                   schema(%{"allOf" => [%{"$ref" => reference}]})
-                 )
+                 SchemaPolicy.validate(schema(%{"allOf" => [%{"$ref" => reference}]}))
       end
     end
 
     test "rejects both JSV casting extensions at any depth" do
       for keyword <- ["jsv-cast", "x-jsv-cast"] do
-        assert {:error, {:forbidden_keyword, ["allOf", 0, keyword]}} =
-                 SchemaPolicy.validate(
-                   schema(%{"allOf" => [%{keyword => "string"}]})
-                 )
+        assert {:error, {:forbidden_keyword, ["allOf", 0, ^keyword]}} =
+                 SchemaPolicy.validate(schema(%{"allOf" => [%{keyword => "string"}]}))
       end
     end
   end

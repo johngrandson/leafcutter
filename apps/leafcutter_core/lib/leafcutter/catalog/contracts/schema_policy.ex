@@ -113,15 +113,8 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicy do
          :ok <- validate_object_keys(value, path) do
       value
       |> Enum.sort_by(fn {key, _nested_value} -> key end)
-      |> Enum.reduce_while({:ok, node_count}, fn {key, nested_value},
-                                                {:ok, current_count} ->
-        nested_path = path ++ [key]
-        nested_depth = nested_depth(nested_value, depth)
-
-        case validate_json(nested_value, nested_path, nested_depth, current_count) do
-          {:ok, next_count} -> {:cont, {:ok, next_count}}
-          {:error, _error} = failure -> {:halt, failure}
-        end
+      |> Enum.reduce_while({:ok, node_count}, fn {key, nested_value}, {:ok, current_count} ->
+        continue_json_validation(nested_value, path ++ [key], depth, current_count)
       end)
     end
   end
@@ -130,15 +123,8 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicy do
     with :ok <- validate_container_depth(depth, path) do
       value
       |> Enum.with_index()
-      |> Enum.reduce_while({:ok, node_count}, fn {nested_value, index},
-                                                {:ok, current_count} ->
-        nested_path = path ++ [index]
-        nested_depth = nested_depth(nested_value, depth)
-
-        case validate_json(nested_value, nested_path, nested_depth, current_count) do
-          {:ok, next_count} -> {:cont, {:ok, next_count}}
-          {:error, _error} = failure -> {:halt, failure}
-        end
+      |> Enum.reduce_while({:ok, node_count}, fn {nested_value, index}, {:ok, current_count} ->
+        continue_json_validation(nested_value, path ++ [index], depth, current_count)
       end)
     end
   end
@@ -165,6 +151,15 @@ defmodule Leafcutter.Catalog.Contracts.SchemaPolicy do
 
   defp validate_json_value(_value, path, _depth, _node_count) do
     {:error, {:invalid_json, path, :unsupported_value}}
+  end
+
+  @spec continue_json_validation(term(), path(), pos_integer(), non_neg_integer()) ::
+          {:cont, {:ok, non_neg_integer()}} | {:halt, {:error, error()}}
+  defp continue_json_validation(value, path, parent_depth, node_count) do
+    case validate_json(value, path, nested_depth(value, parent_depth), node_count) do
+      {:ok, next_count} -> {:cont, {:ok, next_count}}
+      {:error, _error} = failure -> {:halt, failure}
+    end
   end
 
   @spec validate_container_depth(pos_integer(), path()) :: :ok | {:error, error()}
