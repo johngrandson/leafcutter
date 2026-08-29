@@ -946,3 +946,20 @@ git commit -m "docs: complete local knowledge base milestone"
 ## Sequência futura, não autorizada por este plano
 
 Quando houver pelo menos uma extração solicitada, planejar um skill explícito que escreva propostas. Quando um arquivo ativo ultrapassar 200 linhas ou surgirem duplicatas reais, planejar consolidação e divisão por context. Infraestrutura de busca só entra após medir falhas de recuperação com o `INDEX.md` atual.
+
+## Correções após revisão ampla
+
+Esta seção registra correções incrementais encontradas na revisão final, sem
+reescrever os passos originais do plano. Elas preservam o objetivo da base de
+conhecimento local derivada e não alteram o roadmap de produto.
+
+- O diagrama de autoridade em `AGENTS.md` passou a incluir explicitamente a
+  base de conhecimento derivada entre `CURRENT.md` e conversas/memória.
+- A captura por agentes passou a persistir candidatos em `proposals/` antes da
+  aprovação humana, mantendo a promoção para coleções ativas como ação
+  posterior e explicitamente aprovada.
+- O linter passou a rejeitar campos obrigatórios vazios, além de rótulos
+  obrigatórios ausentes, para que provenance e demais claims possuam valor.
+- O linter passou a vincular tipo e prefixo à coleção correta e a isolar
+  propostas da resolução de referências ativas, preservando sua ausência de
+  authority antes da promoção.
