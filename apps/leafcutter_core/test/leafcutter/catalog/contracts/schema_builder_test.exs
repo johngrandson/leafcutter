@@ -33,6 +33,7 @@ defmodule Leafcutter.Catalog.Contracts.SchemaBuilderTest do
       document = schema(%{"type" => "string", "format" => "email"})
 
       assert {:ok, root} = SchemaBuilder.build(document)
+
       assert {:ok, "joe.bloggs@example.com"} =
                JSV.validate("joe.bloggs@example.com", root, @validation_options)
 
