@@ -201,6 +201,21 @@ defmodule Leafcutter.Connections do
 
   ## Examples
 
+  Given persisted active Connections in the expected scope:
+
+      iex> {:ok, {:ok, locked_connections}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Connections.lock_active(
+      ...>       [second_connection.id, first_connection.id],
+      ...>       organization.id,
+      ...>       environment.id
+      ...>     )
+      ...>   end)
+
+      iex> Enum.map(locked_connections, & &1.id) ==
+      ...>   Enum.sort([first_connection.id, second_connection.id])
+      true
+
       iex> Leafcutter.Connections.lock_active(
       ...>   [],
       ...>   "00000000-0000-0000-0000-000000000000",

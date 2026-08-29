@@ -50,6 +50,18 @@ defmodule Leafcutter.Integrations do
 
   ## Examples
 
+  Given a persisted active Organization and Package:
+
+      iex> {:ok, integration} =
+      ...>   Leafcutter.Integrations.create(%{
+      ...>     organization_id: organization.id,
+      ...>     package_id: package.id,
+      ...>     name: "Customer synchronization"
+      ...>   })
+
+      iex> {integration.organization_id, integration.package_id}
+      {organization.id, package.id}
+
       iex> match?(
       ...>   {:error, %{valid?: false}},
       ...>   Leafcutter.Integrations.create(%{})
@@ -99,6 +111,14 @@ defmodule Leafcutter.Integrations do
 
   ## Examples
 
+  Given a persisted Integration:
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Integrations.get(integration.id)
+
+      iex> fetched.id == integration.id
+      true
+
       iex> Leafcutter.Integrations.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -136,6 +156,19 @@ defmodule Leafcutter.Integrations do
   * `{:error, :integration_disabled}` when the Integration is disabled
 
   ## Examples
+
+  Given a persisted active Integration in the expected Organization:
+
+      iex> {:ok, {:ok, locked_integration}} =
+      ...>   Leafcutter.Repo.transaction(fn ->
+      ...>     Leafcutter.Integrations.lock_active(
+      ...>       integration.id,
+      ...>       organization.id
+      ...>     )
+      ...>   end)
+
+      iex> locked_integration.id == integration.id
+      true
 
       iex> Leafcutter.Integrations.lock_active(
       ...>   "00000000-0000-0000-0000-000000000000",
@@ -180,6 +213,14 @@ defmodule Leafcutter.Integrations do
   * `{:error, changeset}` when the lifecycle transition cannot be persisted
 
   ## Examples
+
+  Given a persisted active Integration:
+
+      iex> {:ok, disabled_integration} =
+      ...>   Leafcutter.Integrations.disable(integration.id)
+
+      iex> is_struct(disabled_integration.disabled_at, DateTime)
+      true
 
       iex> Leafcutter.Integrations.disable(
       ...>   "00000000-0000-0000-0000-000000000000"

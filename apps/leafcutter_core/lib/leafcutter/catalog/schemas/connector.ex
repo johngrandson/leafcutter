@@ -16,12 +16,15 @@ defmodule Leafcutter.Catalog.Connector do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @typedoc "The stable identifier of a Connector identity."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when creating a Connector identity."
   @type create_attrs ::
           %{required(:name) => String.t()}
           | %{required(String.t()) => String.t()}
 
+  @typedoc "A global Connector identity with separately published versions."
   @type t :: %__MODULE__{
           id: id() | nil,
           name: String.t() | nil,

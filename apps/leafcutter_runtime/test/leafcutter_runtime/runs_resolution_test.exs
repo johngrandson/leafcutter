@@ -4,18 +4,17 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{Connectors, Contracts, Packages}
+  alias Leafcutter.Catalog.Packages
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Secrets
   alias Leafcutter.Executions.{Run, RunSnapshot}
   alias Leafcutter.Executions.Runs, as: DurableRuns
   alias Leafcutter.Integrations
 
-  alias Leafcutter.Integrations.Deployments
-
   alias Leafcutter.Organizations
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
+  alias LeafcutterRuntime.ResolutionFixtures
   alias LeafcutterRuntime.Runs
 
   setup do
@@ -32,7 +31,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "freezes a complete definition v1 in the ratified authority order" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
       handler_id = attach_query_handler()
 
       assert {:ok, run} =
@@ -60,7 +59,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "creates distinct Runs and preserves earlier Connection state" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
 
       assert {:ok, first_run} =
                Runs.create_from_deployment(fixture.deployment.id)
@@ -99,9 +98,14 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "classifies disabled parent authorities" do
-      organization_fixture = deployment_fixture("Disabled Organization")
-      environment_fixture = deployment_fixture("Disabled Environment")
-      integration_fixture = deployment_fixture("Disabled Integration")
+      organization_fixture =
+        ResolutionFixtures.deployment_fixture("Disabled Organization")
+
+      environment_fixture =
+        ResolutionFixtures.deployment_fixture("Disabled Environment")
+
+      integration_fixture =
+        ResolutionFixtures.deployment_fixture("Disabled Integration")
 
       assert {:ok, _organization} =
                Organizations.disable(organization_fixture.organization.id)
@@ -112,30 +116,18 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       assert {:ok, _integration} =
                Integrations.disable(integration_fixture.integration.id)
 
-      assert {:error,
-              {:environment_deployment_not_executable,
-               :organization_disabled}} =
-               Runs.create_from_deployment(
-                 organization_fixture.deployment.id
-               )
+      assert {:error, {:environment_deployment_not_executable, :organization_disabled}} =
+               Runs.create_from_deployment(organization_fixture.deployment.id)
 
-      assert {:error,
-              {:environment_deployment_not_executable,
-               :environment_disabled}} =
-               Runs.create_from_deployment(
-                 environment_fixture.deployment.id
-               )
+      assert {:error, {:environment_deployment_not_executable, :environment_disabled}} =
+               Runs.create_from_deployment(environment_fixture.deployment.id)
 
-      assert {:error,
-              {:environment_deployment_not_executable,
-               :integration_disabled}} =
-               Runs.create_from_deployment(
-                 integration_fixture.deployment.id
-               )
+      assert {:error, {:environment_deployment_not_executable, :integration_disabled}} =
+               Runs.create_from_deployment(integration_fixture.deployment.id)
     end
 
     test "rolls back Run creation when a Connection is disabled" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
       run_count = Repo.aggregate(Run, :count)
       snapshot_count = Repo.aggregate(RunSnapshot, :count)
 
@@ -143,8 +135,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
                Connections.disable(fixture.crm_connection.id)
 
       assert {:error,
-              {:environment_deployment_not_executable,
-               {:connection_disabled, connection_id}}} =
+              {:environment_deployment_not_executable, {:connection_disabled, connection_id}}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert connection_id == fixture.crm_connection.id
@@ -153,7 +144,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "revalidates PackageVersion ownership without persisting a Run" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
       run_count = Repo.aggregate(Run, :count)
       snapshot_count = Repo.aggregate(RunSnapshot, :count)
 
@@ -186,9 +177,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       |> Changeset.change(package_version_id: other_package_version.id)
       |> Repo.update!()
 
-      assert {:error,
-              {:environment_deployment_not_executable,
-               :package_version_mismatch}} =
+      assert {:error, {:environment_deployment_not_executable, :package_version_mismatch}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert Repo.aggregate(Run, :count) == run_count
@@ -196,7 +185,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "returns deterministic binding mismatch refs" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
 
       fixture.deployment.bindings
       |> Enum.find(&(&1.ref == "crm"))
@@ -204,8 +193,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
 
       assert {:error,
               {:environment_deployment_not_executable,
-               {:binding_mismatch,
-                %{missing_refs: ["crm"], unexpected_refs: []}}}} =
+               {:binding_mismatch, %{missing_refs: ["crm"], unexpected_refs: []}}}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert Repo.aggregate(Run, :count) == 0
@@ -213,204 +201,19 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
     end
 
     test "returns the first Connector mismatch by ordered ref" do
-      fixture = deployment_fixture()
+      fixture = ResolutionFixtures.deployment_fixture()
 
       fixture.deployment.bindings
       |> Enum.find(&(&1.ref == "source"))
       |> Changeset.change(connection_id: fixture.crm_connection.id)
       |> Repo.update!()
 
-      assert {:error,
-              {:environment_deployment_not_executable,
-               {:connector_mismatch, "source"}}} =
+      assert {:error, {:environment_deployment_not_executable, {:connector_mismatch, "source"}}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert Repo.aggregate(Run, :count) == 0
       assert Repo.aggregate(RunSnapshot, :count) == 0
     end
-  end
-
-  defp deployment_fixture(prefix \\ "Resolution") do
-    suffix = System.unique_integer([:positive])
-
-    {:ok, organization} =
-      Organizations.create(%{name: "#{prefix} Organization #{suffix}"})
-
-    {:ok, environment} =
-      Environments.create(%{
-        organization_id: organization.id,
-        name: "Production"
-      })
-
-    {:ok, source_connector} =
-      Connectors.create(%{name: "#{prefix} Source #{suffix}"})
-
-    {:ok, source_connector_version} =
-      Connectors.publish_version(source_connector.id, %{
-        version: "1",
-        operations: [%{ref: "read", role: :source}]
-      })
-
-    [source_operation] = source_connector_version.operations
-
-    {:ok, destination_connector} =
-      Connectors.create(%{name: "#{prefix} Destination #{suffix}"})
-
-    {:ok, destination_connector_version} =
-      Connectors.publish_version(destination_connector.id, %{
-        version: "1",
-        operations: [%{ref: "write", role: :destination}]
-      })
-
-    [destination_operation] = destination_connector_version.operations
-
-    {:ok, contract} =
-      Contracts.create(%{name: "#{prefix} Contract #{suffix}"})
-
-    {:ok, source_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "source"})
-
-    {:ok, warehouse_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "warehouse"})
-
-    {:ok, crm_contract_version} =
-      Contracts.publish_version(contract.id, %{version: "crm"})
-
-    {:ok, package} =
-      Packages.create(%{name: "#{prefix} Package #{suffix}"})
-
-    {:ok, package_version} =
-      Packages.publish_version(package.id, %{
-        version: "1",
-        source: %{
-          ref: "source",
-          operation_id: source_operation.id,
-          contract_version_id: source_contract_version.id
-        },
-        destinations: [
-          %{
-            ref: "warehouse",
-            operation_id: destination_operation.id,
-            contract_version_id: warehouse_contract_version.id
-          },
-          %{
-            ref: "crm",
-            operation_id: destination_operation.id,
-            contract_version_id: crm_contract_version.id
-          }
-        ]
-      })
-
-    {:ok, source_secret} =
-      Secrets.create(%{
-        organization_id: organization.id,
-        environment_id: environment.id,
-        name: "Source credentials"
-      })
-
-    {:ok, source_secret_version} =
-      Secrets.create_version(%{
-        secret_id: source_secret.id,
-        version: "1"
-      })
-
-    scope = %{
-      organization: organization,
-      environment: environment
-    }
-
-    {:ok, source_connection} =
-      connection_fixture(
-        scope,
-        source_connector.id,
-        "Source",
-        %{"endpoint" => "source-v1"},
-        source_secret_version.id
-      )
-
-    {:ok, warehouse_connection} =
-      connection_fixture(
-        scope,
-        destination_connector.id,
-        "Warehouse",
-        %{"endpoint" => "warehouse"},
-        nil
-      )
-
-    {:ok, crm_connection} =
-      connection_fixture(
-        scope,
-        destination_connector.id,
-        "CRM",
-        %{"endpoint" => "crm"},
-        nil
-      )
-
-    {:ok, integration} =
-      Integrations.create(%{
-        organization_id: organization.id,
-        package_id: package.id,
-        name: "#{prefix} Integration #{suffix}"
-      })
-
-    {:ok, deployment} =
-      Deployments.create(%{
-        organization_id: organization.id,
-        environment_id: environment.id,
-        integration_id: integration.id,
-        package_version_id: package_version.id,
-        promotable_config: %{
-          batch: %{size: 100, mode: "bulk"},
-          regions: ["global"],
-          nullable: "promotable",
-          promotable_only: true
-        },
-        local_config: %{
-          batch: %{size: 25},
-          regions: ["eu-west-1"],
-          nullable: nil,
-          local_only: true
-        },
-        bindings: [
-          %{ref: "crm", connection_id: crm_connection.id},
-          %{ref: "source", connection_id: source_connection.id},
-          %{ref: "warehouse", connection_id: warehouse_connection.id}
-        ]
-      })
-
-    %{
-      organization: organization,
-      environment: environment,
-      integration: integration,
-      deployment: deployment,
-      source_operation: source_operation,
-      destination_operation: destination_operation,
-      source_contract_version: source_contract_version,
-      warehouse_contract_version: warehouse_contract_version,
-      crm_contract_version: crm_contract_version,
-      source_secret: source_secret,
-      source_secret_version: source_secret_version,
-      source_connection: source_connection,
-      warehouse_connection: warehouse_connection,
-      crm_connection: crm_connection
-    }
-  end
-
-  defp connection_fixture(
-         scope,
-         connector_id,
-         name,
-         config,
-         secret_version_id
-       ) do
-    Connections.create(%{
-      organization_id: scope.organization.id,
-      environment_id: scope.environment.id,
-      connector_id: connector_id,
-      name: name,
-      config: config,
-      secret_version_id: secret_version_id
-    })
   end
 
   defp expected_definition(fixture) do

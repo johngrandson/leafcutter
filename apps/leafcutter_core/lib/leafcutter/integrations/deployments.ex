@@ -110,6 +110,22 @@ defmodule Leafcutter.Integrations.Deployments do
 
   ## Examples
 
+  Given active authorities and bindings matching the PackageVersion endpoints:
+
+      iex> {:ok, deployment} =
+      ...>   Leafcutter.Integrations.Deployments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     integration_id: integration.id,
+      ...>     package_version_id: package_version.id,
+      ...>     promotable_config: %{"batch_size" => 100},
+      ...>     local_config: %{"region" => "eu-west-1"},
+      ...>     bindings: bindings
+      ...>   })
+
+      iex> deployment.package_version_id == package_version.id
+      true
+
       iex> match?(
       ...>   {:error, %{valid?: false}},
       ...>   Leafcutter.Integrations.Deployments.create(%{})
@@ -151,6 +167,14 @@ defmodule Leafcutter.Integrations.Deployments do
 
   ## Examples
 
+  Given a persisted EnvironmentDeployment:
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Integrations.Deployments.get(deployment.id)
+
+      iex> fetched.id == deployment.id
+      true
+
       iex> Leafcutter.Integrations.Deployments.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -187,6 +211,20 @@ defmodule Leafcutter.Integrations.Deployments do
   * `{:error, :not_found}` when no EnvironmentDeployment has the identifier
 
   ## Examples
+
+  Given a persisted EnvironmentDeployment:
+
+      iex> {:ok, scope} =
+      ...>   Leafcutter.Integrations.Deployments.fetch_resolution_scope(
+      ...>     deployment.id
+      ...>   )
+
+      iex> scope
+      %{
+        organization_id: deployment.organization_id,
+        environment_id: deployment.environment_id,
+        integration_id: deployment.integration_id
+      }
 
       iex> Leafcutter.Integrations.Deployments.fetch_resolution_scope(
       ...>   "00000000-0000-0000-0000-000000000000"
@@ -289,6 +327,22 @@ defmodule Leafcutter.Integrations.Deployments do
   * `{:error, changeset}` when replacement state or a database constraint is invalid
 
   ## Examples
+
+  Given a persisted EnvironmentDeployment and complete replacement bindings:
+
+      iex> {:ok, replaced} =
+      ...>   Leafcutter.Integrations.Deployments.replace(
+      ...>     deployment.id,
+      ...>     %{
+      ...>       package_version_id: package_version.id,
+      ...>       promotable_config: %{"batch_size" => 250},
+      ...>       local_config: %{"region" => "us-east-1"},
+      ...>       bindings: bindings
+      ...>     }
+      ...>   )
+
+      iex> replaced.id == deployment.id
+      true
 
       iex> Leafcutter.Integrations.Deployments.replace(
       ...>   "00000000-0000-0000-0000-000000000000",
