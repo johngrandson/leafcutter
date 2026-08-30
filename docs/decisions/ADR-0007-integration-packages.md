@@ -32,7 +32,7 @@ O validator de Manifest v1 e o contract compilado de binding estão materializad
 `leafcutter_connectors`; `PackageVersion.manifest_sha256` e sua compatibilidade com rows
 históricas estão materializados em `leafcutter_core`; inventory, dependency/release closure e
 resolução em runtime estão materializadas em `leafcutter_runtime`. A inventory pode permanecer
-vazia até a primeira referência de produto em 26C3.
+vazia até o primeiro package de produto completo em 26C3.
 
 ## Consequências
 

@@ -1,21 +1,10 @@
 # LeafcutterCore
 
-**TODO: Add description**
+É a application proprietária do estado durável e das boundaries de domínio atuais.
 
-## Installation
+Materializa o Repo compartilhado, migrations, PubSub, Oban e os contexts de Organizations,
+Catalog, Connections, Integrations e Executions. PostgreSQL permanece a authority para
+identidade, lifecycle, integridade, locks e snapshots persistidos.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `leafcutter_core` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:leafcutter_core, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/leafcutter_core>.
-
+A application não depende das demais applications da umbrella. Consumidores usam apenas suas
+APIs públicas; acesso cross-context a Repo, queries, changesets ou internals é proibido.

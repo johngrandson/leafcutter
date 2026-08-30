@@ -1,6 +1,6 @@
 # H1A: enforcement de specs e riscos objetivos no Credo
 
-> **Status: MATERIALIZADO NO TRILHO ALTERNATIVO.** Esta specification detalha
+> **Status: MATERIALIZADO NA TRILHA ALTERNATIVA.** Esta specification detalha
 > o subincremento H1A do harness. Ela não altera a sequência de produto nem
 > `docs/checkpoint/CURRENT.md`.
 

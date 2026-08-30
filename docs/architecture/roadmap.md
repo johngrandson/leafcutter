@@ -126,18 +126,18 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - resolução via digest + projeção do Catalog, sem module string/UUID registry/atom dinâmico, materializada;
 - enforcement de digest em Deployment e resolução compilada antes de Run/RunSnapshot, materializada.
 
-### Slice 26C3 — primeira referência HTTP
+### Slice 26C3 — primeiro fluxo HTTP de produto
 
-**Aberto; depende da escolha de um sistema externo real.**
+**Aberto; depende da escolha de um fluxo completo entre um ou mais sistemas externos reais.**
 
-- primeira Connector/Operation publicada;
-- autenticação e codec vendor-specific;
-- status, rate-limit e vendor-error mapping;
-- conformance tests sem credentials reais.
+- um package de produto com exatamente uma Read source e uma ou mais Write destinations;
+- autenticação, codec, paginação ou batch ratificados para cada endpoint;
+- status, rate-limit e vendor-error mapping por endpoint;
+- conformance tests determinísticos sem credentials reais.
 
 PackageVersion 1 Source → N Destinations, criação automática de Run, a boundary in-memory de
-Operation, o Transport HTTP bounded e o contract 26C2 estão materializados. A primeira
-referência permanece em 26C3 e exige ratificação própria.
+Operation, o Transport HTTP bounded e o contract 26C2 estão materializados. O primeiro fluxo
+real completo permanece em 26C3 e exige ratificação própria.
 
 ## Data plane durável
 

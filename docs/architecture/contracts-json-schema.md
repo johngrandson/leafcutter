@@ -134,7 +134,7 @@ O ADR-0022 ratifica um cap obrigatório e um hard maximum central para o respons
 
 26C2 executable package binding + module resolution (materializado)
 
-26C3 first reference Operation (aberto)
+26C3 first production integration flow, 1 Read → 1..N Write (aberto)
 ~~~
 
 O ADR-0021 ratifica os pontos source/destination de validação, paginação opaca e partial

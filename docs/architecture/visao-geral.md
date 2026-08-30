@@ -47,7 +47,7 @@ ConnectorVersion e suas Operations são publicadas atomicamente. Novas ContractV
 
 O Slice 26A está materializado conforme o ADR-0019, a boundary executável de Operation do
 Slice 26B conforme o ADR-0021, o Transport HTTP bounded de 26C1 conforme o ADR-0022 e a
-resolução compilada de 26C2 conforme o ADR-0023. A primeira referência continua em 26C3.
+resolução compilada de 26C2 conforme o ADR-0023. O primeiro fluxo real completo continua em 26C3.
 
 ### Connections mínimo
 

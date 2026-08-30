@@ -1,21 +1,16 @@
 # LeafcutterRuntime
 
-**TODO: Add description**
+É a application layer operacional e o composition root dos packages executáveis.
 
-## Installation
+Materializa RuntimeNode liveness, ownership/fencing, coordenação e recovery de Runs, além da
+inventory compilada, resolução por digest e criação transacional de Run a partir de
+EnvironmentDeployment. O runtime combina módulos compilados com IDs autoritativos obtidos
+pelas APIs públicas de `leafcutter_core`.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `leafcutter_runtime` to your list of dependencies in `mix.exs`:
+Dependências:
 
-```elixir
-def deps do
-  [
-    {:leafcutter_runtime, "~> 0.1.0"}
-  ]
-end
-```
+~~~text
+leafcutter_runtime → leafcutter_core + leafcutter_connectors + packages instalados
+~~~
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/leafcutter_runtime>.
-
+O runtime não persiste nomes de módulo nem descobre packages por filesystem em execução.

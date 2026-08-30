@@ -9,8 +9,8 @@ Definir uma boundary HTTP síncrona, bounded e segura para Operations executáve
 conhece protocolo, conexão e buffering; a Operation conhece autenticação, formato, paginação,
 status e semântica do vendor.
 
-Este contract cobre somente o incremento 26C1. Package Manifest/module resolution e a primeira
-Operation de produto pertencem a 26C2/26C3.
+Este contract cobre somente o incremento 26C1. Package Manifest/module resolution e o primeiro
+fluxo completo de produto pertencem a 26C2/26C3.
 
 ## Ownership
 
@@ -208,8 +208,8 @@ Regras obrigatórias para a futura referência:
 - raw header/body/message nunca entra no error normalizado;
 - timeout de Write preserva resultado externo desconhecido e at-least-once.
 
-A matriz exata de status/vendor error será ratificada junto da Operation 26C3, não antes da
-escolha do sistema externo.
+A matriz exata de status/vendor error será ratificada para cada Operation do fluxo 26C3, não
+antes da escolha dos sistemas e endpoints.
 
 ## Finch adapter
 
@@ -321,7 +321,7 @@ credenciais reais.
 
 - Package Manifest e build;
 - operation registry/resolver;
-- primeira Connector/Operation real;
+- primeiro package de produto com Read/Write Operations reais;
 - status/vendor mapping concreto;
 - query-string auth;
 - request payload/batch limits gerais;

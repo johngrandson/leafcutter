@@ -448,8 +448,10 @@ Continuam fora deste slice:
 
 ## Evolução posterior
 
-Os ADRs 0019, 0021 e 0022 materializaram ContractVersion, Operation e Transport HTTP sem
-alterar a projeção deste ADR. O ADR-0023 ratificou posteriormente os field names mínimos do
+O ADR-0019 dividiu a fronteira executável citada neste ADR: ContractVersion + JSON Schema/JSV
+forma o Slice 26A; Operation executável e HTTP foram preservados como 26B/26C. Os ADRs 0021
+e 0022 materializaram essas boundaries sem alterar o modelo upstream, o lock order nem
+RunSnapshot v1. O ADR-0023 ratificou posteriormente os field names mínimos do
 Manifest v1, seu digest em PackageVersion, a inventory explícita de build e a resolução
 compilada. Os passos 35–38 materializam esse contract completo. Auto-publication do Catalog a
 partir de package code continua proibida.
@@ -461,7 +463,7 @@ partir de package code continua proibida.
 - referências relacionais e cardinalidade são revalidadas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
 - após este ADR, Contracts/JSV e os contracts executáveis de Operation/Transport/package
-  resolution foram materializados; a próxima fronteira atual é a referência real de 26C3.
+  resolution foram materializados; a próxima fronteira é o fluxo real completo de 26C3.
 
 ## Evidência
 
@@ -478,6 +480,3 @@ partir de package code continua proibida.
 - `apps/leafcutter_runtime/test/leafcutter_runtime/runs_resolution_test.exs`;
 - `docs/checkpoint/CURRENT.md`.
 
-## Evolução posterior
-
-O ADR-0019 dividiu a fronteira executável citada neste ADR. ContractVersion + JSON Schema/JSV forma o Slice 26A já ratificado; Operation executável e HTTP foram preservados separadamente como 26B/26C. Essa evolução não altera o modelo upstream, o lock order nem RunSnapshot v1 materializados aqui.

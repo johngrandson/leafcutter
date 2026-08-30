@@ -57,7 +57,7 @@ decide status, `Retry-After` e vendor body, produzindo somente code/metadata all
 
 Timeout de Transport normalmente vira `Operation.Error{category: :timeout}`; pool/connection
 unavailable normalmente vira `:temporary`. A matriz concreta permanece em 26C3 porque depende
-do primeiro sistema externo.
+dos sistemas e endpoints escolhidos para o fluxo completo.
 
 ## Delivery futura
 
@@ -70,4 +70,4 @@ Ainda precisam ser ratificados:
 - Delivery statuses para authentication e terminal errors;
 - backoff, jitter e max attempts;
 - reset/recovery explícito após mudança de configuração;
-- matriz concreta de HTTP status, headers e vendor errors na Operation 26C3.
+- matriz concreta de HTTP status, headers e vendor errors para cada Operation do fluxo 26C3.

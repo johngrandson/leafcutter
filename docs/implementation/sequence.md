@@ -114,11 +114,11 @@ minimal Catalog authorities (materialized)
 → Operation executable contract (26B, materialized)
 → HTTP Transport boundary + Finch adapter (26C1, materialized)
 → Package Manifest/build binding + module resolution (26C2, materialized)
-→ first production HTTP Operation (26C3, pending ratification)
+→ first production HTTP flow, 1 Read → 1..N Write (26C3, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
 → monitoring/retry/lifecycle
 → governance/notifications/audit
 ```
 
-A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation, 26C1 materializou o Transport HTTP e 26C2 fechou a resolução compilada. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation, 26C1 materializou o Transport HTTP e 26C2 fechou a resolução compilada. 26C3 preserva o fluxo real completo para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.

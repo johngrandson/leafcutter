@@ -25,6 +25,11 @@ Os testes atuais cobrem:
 - claim concorrente;
 - validação, normalização e imutabilidade de RunSnapshot v1;
 - criação atômica de Run + RunSnapshot;
+- resolução transacional de EnvironmentDeployment e rejeição de legado;
+- ContractVersion schema policy, compilação JSV e validação segura;
+- contracts executáveis Read/Write e Transport HTTP bounded;
+- Manifest v1, binding compilada, inventory/release e resolução por digest;
+- enforcement de package executável em Deployment e Run;
 - eligibility de Runs `pending` por formato suportado;
 - per-Run supervision;
 - RunRecovery, lotes concorrentes e shutdown.

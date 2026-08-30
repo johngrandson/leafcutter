@@ -1,8 +1,8 @@
 # Trilha alternativa de fortalecimento dos quality gates
 
-> **Status: PLANEJAMENTO ALTERNATIVO.** Este documento organiza trabalho do
-> harness. Ele não altera o checkpoint, a sequência dos slices de produto nem o
-> estado de implementação dos ADRs.
+> **Status: TRILHA ALTERNATIVA — H0 E H1A MATERIALIZADOS.** Este documento organiza
+> trabalho do harness. Ele não altera o checkpoint, a sequência dos slices de produto
+> nem o estado de implementação dos ADRs.
 
 ## Objetivo
 
@@ -10,14 +10,14 @@ Tornar as regras obrigatórias do repositório verificáveis antes de cada commi
 O resultado esperado é um gate único, reproduzível por pessoas, agentes e CI,
 que falhe quando o código não cumprir os contratos de qualidade materializados.
 
-Esta trilha permanece separada da documentação do produto. Ela pode evoluir em
-paralelo, mas só entra na fila de implementação quando o desenvolvedor escolher
-um de seus incrementos. `docs/checkpoint/CURRENT.md` continua apontando apenas a
-próxima fronteira do produto.
+Esta trilha permanece separada da documentação do produto. H0 e H1A foram escolhidos e
+materializados; os incrementos pendentes só entram na fila quando o desenvolvedor os
+promover explicitamente. `docs/checkpoint/CURRENT.md` continua apontando apenas a próxima
+fronteira do produto.
 
-## Baseline em 2026-08-30
+## Baseline anterior a H0/H1A, levantada em 2026-08-30
 
-O alias raiz `mix quality` executa:
+No início da trilha, o alias raiz `mix quality` executava:
 
 ```text
 knowledge linter unit tests
@@ -55,6 +55,9 @@ A auditoria desta trilha encontrou:
 - a base de conhecimento possui governança e lint determinístico, mas ainda
   não possui entradas ativas. O linter não verifica todos os invariantes de
   provenance e histórico.
+
+Esse bloco preserva o ponto de partida e não descreve o gate atual. A composição
+materializada está somente em `docs/implementation/quality-gates.md`.
 
 ## Decisões já alinhadas
 
@@ -185,7 +188,7 @@ H5 adoção
 → contínuo, orientado por ocorrências reais
 ```
 
-H0 e H1 vêm primeiro porque hooks e CI devem consumir um gate já definido.
+H0 e H1A vieram primeiro porque hooks e CI devem consumir um gate já definido.
 H4 pode evoluir em paralelo ao gate geral, mas seus checks de histórico só
 entram depois do mecanismo de pre-commit.
 
@@ -195,7 +198,7 @@ entram depois do mecanismo de pre-commit.
 - definir o conjunto exato de referências cross-context permitidas antes do
   checker de boundaries de H1;
 - definir quando os incrementos ainda pendentes desta trilha, a partir de H1B,
-  entram na fila em relação ao Slice 26C2.
+  entram na fila em relação à fronteira de produto 26C3.
 
 ## Protocolo de execução
 

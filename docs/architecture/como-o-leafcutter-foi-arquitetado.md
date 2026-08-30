@@ -238,7 +238,7 @@ Transport
 → protocol
 ```
 
-O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 controla o primeiro Transport HTTP bounded. O ADR-0023 ratifica Manifest/build/module resolution em 26C2; a primeira referência real permanece separada em 26C3.
+O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 controla o primeiro Transport HTTP bounded. O ADR-0023 ratifica Manifest/build/module resolution em 26C2; o primeiro fluxo real completo permanece separado em 26C3.
 
 # Transformation, Enrichment e Interceptor
 
@@ -304,7 +304,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável, o Transport
 HTTP bounded e a resolução compilada de 26C2 estão materializados sem alterar o snapshot.
 Permanecem abertos os lifecycles ampliados, rolling upgrade,
-idempotência/invocation durável, retenção, primeira referência real, data plane, secrets
+idempotência/invocation durável, retenção, primeiro fluxo externo real, data plane, secrets
 concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
@@ -320,7 +320,7 @@ present
 → Manifest v1 + build inventory + compiled module resolution (26C2)
 
 next
-→ ratificar a primeira referência real (26C3)
+→ ratificar o primeiro fluxo real 1 Read → 1..N Write (26C3)
 
 future
 → durable Broadway integration data plane

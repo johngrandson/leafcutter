@@ -344,7 +344,7 @@ environment branching ou valores vindos de runtime config.
 Keys desconhecidas e entries incompletas falham. Entries são processadas em ordem determinística
 por `app`; a ordem não tem semântica de execução.
 
-A inventory vazia é válida antes de 26C3.
+A inventory vazia é válida antes de 26C3 materializar um package de produto completo.
 
 O passo 37 materializa `packages/build.exs` com a lista de produção vazia e um parser que
 aceita somente o shape literal acima. A boundary valida keys e tipos exatos, unicidade,
@@ -551,7 +551,7 @@ A materialização precisa provar:
 
 ## Fora de escopo
 
-- primeira Operation/Connector real;
+- package de produto com uma Read source e uma ou mais Write destinations reais;
 - vendor auth, pagination, codec, status e error mapping;
 - SourceIdentity, Transformations, Enrichments e Interceptors no manifest;
 - package dependency domain model;

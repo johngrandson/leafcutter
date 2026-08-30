@@ -40,8 +40,8 @@ Package Manifest JSON Schema v1
 → compiled endpoint bindings + runtime resolution
 ~~~
 
-O slice não cria um package de produto. Fixtures de conformance não contam como a referência
-de 26C3.
+O slice não cria um package de produto. Fixtures de conformance não contam como o fluxo real
+completo de 26C3.
 
 ### Separação de authorities
 
@@ -220,8 +220,8 @@ para:
 - cobertura/role/order divergente;
 - módulo de Operation sem o behaviour esperado.
 
-A lista vazia é válida até 26C3. Um diretório sob `packages/` que não esteja no inventory não
-entra no build, na release nem na resolução.
+A lista vazia é válida até 26C3 materializar um package de produto completo. Um diretório sob
+`packages/` que não esteja no inventory não entra no build, na release nem na resolução.
 
 O passo 37 materializa o parser de literals e a validação em
 `LeafcutterRuntime.PackageBuild`, carregada pela boundary Mix antes de derivar dependencies. A
@@ -351,8 +351,9 @@ um execution path completo. Congelá-los agora criaria contract especulativo.
 38. runtime resolution + Deployment/Run enforcement + quality gates (materializado)
 ~~~
 
-Somente depois de 26C2 passar os gates o Slice 26C3 pode selecionar um sistema externo e
-publicar a primeira Operation real.
+Somente depois de 26C2 passar os gates o Slice 26C3 pode selecionar um fluxo entre um ou mais
+sistemas externos e publicar um package com uma Read source e uma ou mais Write destinations
+reais.
 
 ## Consequências
 

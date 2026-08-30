@@ -1,8 +1,8 @@
 # Connectors, Operations e Transports
 
 > **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata, a boundary executável
-> de Operation, o Transport HTTP 26C1 e o Slice 26C2 existem. A referência real 26C3 continua
-> aberta.
+> de Operation, o Transport HTTP 26C1 e o Slice 26C2 existem. O fluxo real completo de 26C3
+> continua aberto.
 
 ## Estado materializado
 
@@ -157,7 +157,7 @@ O ADR-0022 corrige a dependência entre Transport, packages e uma referência de
 ~~~text
 26C1 HTTP Transport boundary + Finch adapter (materializado)
 → 26C2 Package Manifest/build binding + module resolution (materializado)
-→ 26C3 first production reference Operation (aberto)
+→ 26C3 first production integration flow, 1 Read → 1..N Write (aberto)
 ~~~
 
 ### 26C1 — Transport HTTP
@@ -213,12 +213,14 @@ ao dependency graph e à release; o passo 38 faz `leafcutter_runtime` combinar a
 Deployment/Run. Não existe module name no JSON/DB, UUID registry, application config,
 filesystem discovery ou atom derivado de dado.
 
-### 26C3 — referência de produto
+### 26C3 — fluxo de produto
 
-A primeira referência exige selecionar um sistema externo e uma Read ou Write Operation real.
-Somente então serão ratificados autenticação, paginação ou batch, status mapping,
-`Retry-After`, vendor error decoding e codes sanitizados. Um servidor local de teste não conta
-como Connector/Operation publicada.
+O primeiro fluxo de produto exige selecionar um caminho externo completo, possivelmente
+envolvendo mais de um sistema: exatamente uma Operation Read de origem e uma ou mais Operations
+Write de destino.
+Somente então serão ratificados, para cada endpoint, autenticação, codec, paginação ou batch,
+status mapping, `Retry-After`, vendor error decoding e codes sanitizados. Um servidor local de
+teste não conta como fluxo de produto publicado.
 
 ## Restrições
 

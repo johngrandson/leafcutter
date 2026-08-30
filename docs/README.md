@@ -65,7 +65,7 @@ A convenção completa está em `architecture/estado-atual-e-visao-futura.md` e 
 
 ### Specifications
 
-`specifications/README.md` diferencia contracts materializados, parcialmente materializados e ratificados ainda sem implementação; o Slice 26A de ContractVersion executável aparece como materializado.
+`specifications/README.md` diferencia contracts materializados, parcialmente materializados e ratificados ainda sem implementação; os Slices 26A, 26B, 26C1 e 26C2 aparecem como materializados.
 
 ### Produto
 

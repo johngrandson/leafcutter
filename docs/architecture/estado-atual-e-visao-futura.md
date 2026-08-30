@@ -236,7 +236,7 @@ Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-first production HTTP Operation (26C3)
+first production HTTP flow, 1 Read → 1..N Write (26C3)
 ```
 
 ### Connections futuro
@@ -310,11 +310,11 @@ Sequência ratificada:
 26C1 HTTP Transport boundary
 → bounded one-attempt Finch adapter
 → 26C2 Package binding/module resolution (materializado)
-→ 26C3 first production HTTP Operation
+→ 26C3 first production HTTP flow, 1 Read → 1..N Write
 ```
 
 26A, 26B, o HTTP Transport 26C1 e a resolução compilada de 26C2 estão materializados. 26C3
-preserva a referência real como decisão própria. Outros transports entram somente com demanda
+preserva o fluxo real completo como decisão própria. Outros transports entram somente com demanda
 real.
 
 ### Notifications e Audit
@@ -395,10 +395,10 @@ HTTP Transport boundary (26C1 materializado)
 ↓
 Package binding/module resolution (26C2 materializado)
 ↓
-reference Operation (26C3 aberto)
+production flow, 1 Read → 1..N Write (26C3 aberto)
 ```
 
 O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e
 o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. O ADR-0023 e
 `package-manifest-v1.md` controlam 26C2, materializado nos passos 35–38. A próxima fronteira é
-ratificar a referência real de 26C3; coordinator e Broadway permanecem posteriores.
+ratificar o fluxo real completo de 26C3; coordinator e Broadway permanecem posteriores.

@@ -1,7 +1,7 @@
 # Integration Packages
 
 > **Status: PARCIALMENTE MATERIALIZADO.** Manifest, binding e build inventory existem;
-> packages de produto e resolução pela projeção do Catalog permanecem pendentes.
+> a resolução pela projeção do Catalog existe; packages de produto permanecem pendentes.
 
 Este diretório é a fronteira física reservada para o código executável de Integration
 Packages. O layout ratificado é:
@@ -18,9 +18,9 @@ packages/
 
 Somente entries literais de `build.exs` entram no dependency graph do Mix e na release;
 descoberta por varredura de diretórios é proibida. A inventory de produção está vazia e
-permanecerá assim até o Slice 26C3 selecionar o primeiro sistema externo e a primeira
-Operation reais. A fixture usada para validar o contract fica sob testes do runtime, é
-`only: :test` e não representa um package de produto.
+permanecerá assim até o Slice 26C3 selecionar um fluxo externo completo: uma Read source e
+uma ou mais Write destinations reais. A fixture usada para validar o contract fica sob testes
+do runtime, é `only: :test` e não representa um package de produto.
 
 Cada entry precisa declarar exatamente `app`, `path`, `binding` e `manifest_sha256`. O build
 valida path/realpath, Mix project, dependency direction, manifest raiz, digest, ownership do

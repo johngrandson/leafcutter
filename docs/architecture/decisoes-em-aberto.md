@@ -5,7 +5,7 @@
 RunSnapshot v1 e as authorities upstream estão materializados conforme o ADR-0018.
 ContractVersion, Operation executável, Transport HTTP 26C1 e Package
 Manifest/build/module resolution 26C2 estão materializados conforme os ADRs 0019, 0021, 0022
-e 0023. A primeira referência de produto permanece separada em 26C3.
+e 0023. O primeiro fluxo completo de produto permanece separado em 26C3.
 
 ## Domínio
 
@@ -31,7 +31,8 @@ e 0023. A primeira referência de produto permanece separada em 26C3.
 
 ## Contracts e packages
 
-- primeiro Connector/Operation HTTP de produto e vendor mapping (26C3);
+- primeiro fluxo HTTP de produto, com uma Read source, uma ou mais Write destinations e vendor
+  mapping por endpoint (26C3);
 - artifact hashing/signing, remote distribution e package retention/rolling upgrade;
 - request payload/batch limits além do response body cap de 26C1;
 - cache compartilhado de validators somente se medição justificar;

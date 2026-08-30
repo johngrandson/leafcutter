@@ -97,14 +97,14 @@
 - inventory literal ligada às Mix dependencies e à closure da release;
 - resolução pública por digest exato e projeção imutável do Catalog;
 - composição in-memory de módulos compilados com IDs autoritativos;
-- rejeição de PackageVersion sem digest em Deployment e de binding indisponível/divergente em Run;
+- rejeição de PackageVersion sem digest em Deployment e resolução completa da binding antes de persistir Run;
 - nenhuma alteração em RunSnapshot v1.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- primeira Operation HTTP real (26C3 aberta);
+- primeiro fluxo HTTP real, com uma Read source e uma ou mais Write destinations (26C3 aberto);
 - Integration Packages de produto;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - lifecycle ampliado de Integrations, Triggers, promotion e homologation.

@@ -44,7 +44,8 @@ Materializado conforme o ADR-0023:
 Ainda não ratificado:
 
 - behaviour executável de Connector, caso uma necessidade além de Operation apareça;
-- primeira Operation HTTP real e vendor mapping (26C3).
+- fluxo HTTP real completo, com uma Read source, uma ou mais Write destinations e vendor
+  mapping por endpoint (26C3).
 
 ## Consequências
 
@@ -62,9 +63,9 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 26B Operation executable contract
 26C1 HTTP Transport boundary + Finch adapter
 26C2 Package Manifest/build binding + module resolution
-26C3 first production reference Operation
+26C3 first production integration flow, 1 Read → 1..N Write
 ~~~
 
 O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos
 materializados. O ADR-0023 controla 26C2 sem registry implícito; os passos 35–38 estão
-materializados e a referência real permanece em 26C3.
+materializados e o fluxo real completo permanece em 26C3.

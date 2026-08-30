@@ -1,8 +1,8 @@
 # Integration Packages
 
 > **Status: MATERIALIZADO EM 26C2.** Authority relacional, Manifest/binding, digest,
-> inventory/release e module resolution existem. O primeiro package de produto permanece em
-> 26C3.
+> inventory/release e module resolution existem. O primeiro package de produto completo,
+> com uma Read source e uma ou mais Write destinations reais, permanece em 26C3.
 
 ## Estado materializado
 
@@ -98,7 +98,7 @@ próprias. Não depende de Core, Runtime ou API.
 
 ## Fora do primeiro caminho
 
-- package de produto, autenticação e vendor semantics (26C3);
+- package de produto completo, autenticação e vendor semantics por endpoint (26C3);
 - SourceIdentity/Transformation/Enrichment/Interceptor no Manifest;
 - remote registry/distribution;
 - artifact signing/provenance;

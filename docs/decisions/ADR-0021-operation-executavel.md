@@ -198,7 +198,7 @@ o supervisor Finch introduzido posteriormente pertence exclusivamente ao ADR-002
 - o erro de Operation é in-memory e não antecipa o schema persistido de Attempt/Delivery;
 - credentials permanecem fora de RunSnapshot, structs inspecionáveis e errors;
 - nenhum GenServer ou dependency nova é necessário para materializar o contrato;
-- HTTP foi separado em 26C1; tradução de status/vendor errors permanece em 26C3.
+- HTTP foi separado em 26C1; tradução de status/vendor errors dos endpoints reais permanece em 26C3.
 
 ## Fora de escopo
 
@@ -227,6 +227,7 @@ o supervisor Finch introduzido posteriormente pertence exclusivamente ao ADR-002
 ## Evolução posterior
 
 O ADR-0022 divide o antigo Slice 26C: Transport HTTP pertence a 26C1; o ADR-0023 ratifica
-Package Manifest/build binding e module resolution em 26C2; a primeira Operation real e sua
-tradução vendor-specific pertencem a 26C3. Essa evolução não altera a boundary materializada
+Package Manifest/build binding e module resolution em 26C2; o fluxo real completo, com uma
+Read source, uma ou mais Write destinations e tradução vendor-specific por endpoint, pertence
+a 26C3. Essa evolução não altera a boundary materializada
 por este ADR.
