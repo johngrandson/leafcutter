@@ -114,7 +114,9 @@ Adicionar enforcement em subincrementos independentes:
 1. H1A cria `.credo.exs`, corrige as ausências reais de specs e habilita
    somente `Credo.Check.Readability.Specs`,
    `Credo.Check.Warning.UnsafeToAtom` e
-   `Credo.Check.Design.SkipTestWithoutComment`;
+   `Credo.Check.Design.SkipTestWithoutComment`. Specification:
+   `docs/harness/specifications/H1A-credo-enforcement.md`. Plan:
+   `docs/harness/plans/2026-08-30-h1a-credo-enforcement.md`;
 2. H1B inclui `mix hex.audit`, `mix deps.unlock --check-unused` e
    `mix xref graph --format cycles --label compile-connected --fail-above 0`;
 3. H1C adiciona checker nativo para o `@doc` canônico das funções públicas
