@@ -5,6 +5,8 @@ defmodule LeafcutterRuntime.PackageBuild do
   @digest_regex ~r/\A[0-9a-f]{64}\z/
   @app_regex ~r/\A[a-z][a-z0-9_]*\z/
   @max_symlink_hops 40
+  @forbidden_package_dependencies [:leafcutter_api, :leafcutter_core, :leafcutter_runtime]
+  @resolver_probe_ref "source"
 
   @type entry :: %{
           app: atom(),
@@ -85,6 +87,7 @@ defmodule LeafcutterRuntime.PackageBuild do
   @spec validate_compiled!([entry()], Path.t()) :: [entry()]
   def validate_compiled!(entries, repository_root) do
     entries = validate_entries!(entries, repository_root)
+    validate_package_dependencies!(entries)
 
     Enum.each(entries, fn entry ->
       validate_compiled_entry!(entry, repository_root)
@@ -361,19 +364,75 @@ defmodule LeafcutterRuntime.PackageBuild do
       invalid!("compiled binding source resolution is invalid")
     end
 
+    unless safe_apply!(binding, :resolve, [source_ref, :destination]) == {:error, :not_found} do
+      invalid!("compiled binding resolves an endpoint under the wrong role")
+    end
+
     Enum.each(destinations, fn {ref, module} ->
       unless safe_apply!(binding, :resolve, [ref, :destination]) == {:ok, module} do
         invalid!("compiled binding destination resolution is invalid")
       end
+
+      unless safe_apply!(binding, :resolve, [ref, :source]) == {:error, :not_found} do
+        invalid!("compiled binding resolves an endpoint under the wrong role")
+      end
     end)
 
-    sentinel_ref = "__leafcutter_unlisted_inventory_ref__"
+    declared_refs = [source_ref | Enum.map(destinations, &elem(&1, 0))]
+    probe_ref = undeclared_resolver_ref(declared_refs)
 
-    unless safe_apply!(binding, :resolve, [sentinel_ref, :source]) == {:error, :not_found} and
-             safe_apply!(binding, :resolve, [sentinel_ref, :destination]) ==
+    unless safe_apply!(binding, :resolve, [probe_ref, :source]) == {:error, :not_found} and
+             safe_apply!(binding, :resolve, [probe_ref, :destination]) ==
                {:error, :not_found} do
       invalid!("compiled binding resolves an undeclared ref")
     end
+
+    :ok
+  end
+
+  @spec undeclared_resolver_ref([String.t()], String.t()) :: String.t()
+  defp undeclared_resolver_ref(declared_refs, candidate \\ @resolver_probe_ref) do
+    if candidate in declared_refs do
+      undeclared_resolver_ref(declared_refs, candidate <> "_")
+    else
+      candidate
+    end
+  end
+
+  @spec validate_package_dependencies!([entry()]) :: :ok
+  defp validate_package_dependencies!([]), do: :ok
+
+  defp validate_package_dependencies!(entries) do
+    current_project = Mix.Project.config()
+
+    dependencies_by_app =
+      Mix.Dep.load_and_cache()
+      |> Map.new(fn dependency ->
+        {dependency.app, Enum.map(dependency.deps, & &1.app)}
+      end)
+      |> Map.put(
+        current_project[:app],
+        current_project
+        |> Keyword.get(:deps, [])
+        |> Enum.map(&elem(&1, 0))
+      )
+
+    Enum.each(entries, fn entry ->
+      dependency_apps =
+        Map.get(dependencies_by_app, entry.app) ||
+          invalid!("inventory app is not a resolved Mix dependency")
+
+      forbidden_dependencies =
+        Enum.filter(dependency_apps, &(&1 in @forbidden_package_dependencies))
+
+      if forbidden_dependencies != [] do
+        invalid!("package depends on forbidden platform applications")
+      end
+
+      unless :leafcutter_connectors in dependency_apps do
+        invalid!("package must depend directly on leafcutter_connectors")
+      end
+    end)
 
     :ok
   end

@@ -15,6 +15,7 @@ defmodule LeafcutterRuntime.ExecutablePackages do
     PackageVersion,
     PackageVersionEndpoint
   }
+
   alias LeafcutterConnectors.Package, as: PackageBehaviour
   alias LeafcutterConnectors.Package.Manifest
   alias LeafcutterRuntime.ExecutablePackages.{Binding, Inventory}
@@ -335,15 +336,13 @@ defmodule LeafcutterRuntime.ExecutablePackages do
   end
 
   @spec valid_manifest?(term()) :: boolean()
-  defp valid_manifest?(
-         %Manifest{
-           manifest_version: 1,
-           package_name: package_name,
-           package_version: package_version,
-           source_ref: source_ref,
-           destination_refs: destination_refs
-         }
-       ) do
+  defp valid_manifest?(%Manifest{
+         manifest_version: 1,
+         package_name: package_name,
+         package_version: package_version,
+         source_ref: source_ref,
+         destination_refs: destination_refs
+       }) do
     valid_ref?(package_name) and valid_ref?(package_version) and valid_ref?(source_ref) and
       is_list(destination_refs) and destination_refs != [] and
       Enum.all?(destination_refs, &valid_ref?/1) and

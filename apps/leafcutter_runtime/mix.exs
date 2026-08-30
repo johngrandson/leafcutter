@@ -21,6 +21,7 @@ defmodule LeafcutterRuntime.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
+      test_ignore_filters: [~r{^test/fixtures/package_inventory/}],
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]

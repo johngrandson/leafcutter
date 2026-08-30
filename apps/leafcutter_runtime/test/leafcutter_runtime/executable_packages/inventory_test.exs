@@ -230,10 +230,50 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
            ]
   end
 
-  test "validates the compiled fixture against its app and root manifest" do
+  test "accepts a valid source ref that matches the resolver probe prefix" do
     entries = PackageBuild.load!(@fixture_build_file, @fixture_root)
 
     assert PackageBuild.validate_compiled!(entries, @fixture_root) == [@fixture_entry]
+  end
+
+  test "rejects a compiled resolver that accepts refs under the wrong role" do
+    [entry] = PackageBuild.load!(@fixture_build_file, @fixture_root)
+
+    invalid_entry = %{
+      entry
+      | binding: LeafcutterPackageInventoryFixture.InvalidRoleResolverPackage
+    }
+
+    assert_raise ArgumentError, ~r/resolves an endpoint under the wrong role/, fn ->
+      PackageBuild.validate_compiled!([invalid_entry], @fixture_root)
+    end
+  end
+
+  test "rejects packages that depend on platform applications" do
+    [entry] = PackageBuild.load!(@fixture_build_file, @fixture_root)
+    invalid_entry = %{entry | app: :leafcutter_runtime}
+
+    assert_raise ArgumentError, ~r/depends on forbidden platform applications/, fn ->
+      PackageBuild.validate_compiled!([invalid_entry], @fixture_root)
+    end
+  end
+
+  test "requires packages to depend directly on Connectors" do
+    [entry] = PackageBuild.load!(@fixture_build_file, @fixture_root)
+    invalid_entry = %{entry | app: :jason}
+
+    assert_raise ArgumentError, ~r/must depend directly on leafcutter_connectors/, fn ->
+      PackageBuild.validate_compiled!([invalid_entry], @fixture_root)
+    end
+  end
+
+  test "rejects an inventory app absent from the resolved dependency graph" do
+    [entry] = PackageBuild.load!(@fixture_build_file, @fixture_root)
+    invalid_entry = %{entry | app: :missing_inventory_app}
+
+    assert_raise ArgumentError, ~r/is not a resolved Mix dependency/, fn ->
+      PackageBuild.validate_compiled!([invalid_entry], @fixture_root)
+    end
   end
 
   test "rejects digest, app ownership, binding resource, and binding contract mismatches" do
@@ -241,7 +281,6 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
 
     invalid_entries = [
       %{entry | manifest_sha256: String.duplicate("0", 64)},
-      %{entry | app: :leafcutter_runtime},
       %{entry | binding: LeafcutterPackageInventoryFixture.OtherManifestPackage},
       %{entry | binding: LeafcutterPackageInventoryFixture.MissingPackage},
       %{entry | binding: LeafcutterPackageInventoryFixture.InvalidOperationPackage},

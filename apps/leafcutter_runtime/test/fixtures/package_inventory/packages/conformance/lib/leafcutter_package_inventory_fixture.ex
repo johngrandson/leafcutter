@@ -143,3 +143,40 @@ defmodule LeafcutterPackageInventoryFixture.InvalidTopologyPackage do
 
   def resolve(_ref, _role), do: {:error, :not_found}
 end
+
+defmodule LeafcutterPackageInventoryFixture.InvalidRoleResolverPackage do
+  @moduledoc false
+
+  @behaviour LeafcutterConnectors.Package
+  @external_resource Path.expand("../manifest.json", __DIR__)
+
+  alias LeafcutterPackageInventoryFixture.Package
+
+  @impl true
+  def manifest, do: Package.manifest()
+
+  @impl true
+  def manifest_sha256, do: Package.manifest_sha256()
+
+  @impl true
+  def source, do: Package.source()
+
+  @impl true
+  def destinations, do: Package.destinations()
+
+  @impl true
+  def resolve("source", role)
+      when role in [:source, :destination] do
+    {:ok, LeafcutterPackageInventoryFixture.Source}
+  end
+
+  def resolve("warehouse", role) when role in [:source, :destination] do
+    {:ok, LeafcutterPackageInventoryFixture.FirstDestination}
+  end
+
+  def resolve("crm", role) when role in [:source, :destination] do
+    {:ok, LeafcutterPackageInventoryFixture.SecondDestination}
+  end
+
+  def resolve(_ref, _role), do: {:error, :not_found}
+end

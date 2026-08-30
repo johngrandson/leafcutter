@@ -110,12 +110,13 @@ defmodule Leafcutter.MixProject do
 
     release_applications = Map.keys(release.applications)
 
-    required_applications = [
-      :leafcutter_api,
-      :leafcutter_connectors,
-      :leafcutter_core,
-      :leafcutter_runtime
-    ] ++ Enum.map(entries, & &1.app)
+    required_applications =
+      [
+        :leafcutter_api,
+        :leafcutter_connectors,
+        :leafcutter_core,
+        :leafcutter_runtime
+      ] ++ Enum.map(entries, & &1.app)
 
     missing_applications = required_applications -- release_applications
 

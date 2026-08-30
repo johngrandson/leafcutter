@@ -10,6 +10,10 @@ defmodule LeafcutterPackageInventoryFixture.MixProject do
       lockfile: "../../../../../../../mix.lock",
       elixir: "~> 1.19",
       start_permanent: false,
+      dialyzer: [
+        no_umbrella: true,
+        plt_local_path: "../../../../../../../_build/package_inventory_fixture_plts"
+      ],
       deps: deps()
     ]
   end
@@ -20,9 +24,8 @@ defmodule LeafcutterPackageInventoryFixture.MixProject do
 
   defp deps do
     [
-      {:leafcutter_connectors,
-       path: "../../../../../../leafcutter_connectors",
-       env: :test}
+      {:leafcutter_connectors, path: "../../../../../../leafcutter_connectors", env: :test},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 end

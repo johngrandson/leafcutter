@@ -442,8 +442,7 @@ defmodule LeafcutterRuntime.Runs do
 
   @spec resolve_executable_package(PackageVersion.t()) ::
           :ok
-          | {:error,
-             {:environment_deployment_not_executable, package_execution_error()}}
+          | {:error, {:environment_deployment_not_executable, package_execution_error()}}
   defp resolve_executable_package(package_version) do
     case ExecutablePackages.resolve_projection(package_version) do
       {:ok, _binding} ->
