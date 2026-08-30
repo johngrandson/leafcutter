@@ -1,7 +1,7 @@
 # H0: contrato documental dos quality gates
 
-> **Status: PLANEJADO NA TRILHA ALTERNATIVA.** Este contrato não está
-> materializado e não altera a próxima tarefa de produto em `CURRENT.md`.
+> **Status: MATERIALIZADO NA TRILHA ALTERNATIVA.** Este contrato não altera a
+> próxima tarefa de produto em `CURRENT.md`.
 
 Roadmap:
 `docs/harness/QUALITY_ENFORCEMENT_ROADMAP.md`.
@@ -92,6 +92,16 @@ registra:
 
 O estado geral do ADR continua materializado para o contrato atual. O texto
 não afirma que H2 ou H3 existem.
+
+## Evidência materializada
+
+- `docs/implementation/quality-gates.md`;
+- `docs/decisions/ADR-0015-harness-multi-agente.md`;
+- `docs/architecture/testes-e-qualidade.md`;
+- `docs/harness/CODEX_OPERATING_MODEL.md`;
+- `docs/harness/CHANGE_PROTOCOL.md`;
+- `docs/harness/REVIEW_CHECKLIST.md`;
+- `docs/harness/TASK_BRIEF_TEMPLATE.md`.
 
 ## Fora de escopo
 

@@ -88,7 +88,7 @@ A auditoria desta trilha encontrou:
 
 ## Roadmap
 
-### H0. Consolidar o contrato de qualidade
+### H0. Consolidar o contrato de qualidade, materializado
 
 Tornar `docs/implementation/quality-gates.md` a descrição detalhada do gate e
 fazer os documentos do harness apontarem para ela. Fazer o operating model
@@ -104,6 +104,8 @@ Saída:
   materializado.
 
 Specification: `docs/harness/specifications/H0-quality-contract.md`.
+
+Plan: `docs/harness/plans/2026-08-30-h0-quality-contract.md`.
 
 ### H1. Materializar `mix quality` v2
 
