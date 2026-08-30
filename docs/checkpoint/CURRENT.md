@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26C1 materializado — boundary de Transport HTTP**
+**Slice 26C2 ratificado — Package Manifest, build binding e module resolution**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. A boundary HTTP inclui Finch HTTP/1 supervisionado, limites finitos e testes locais determinísticos. Package Manifest/module resolution (26C2) e a primeira Operation real (26C3) permanecem separados; RunSnapshot v1 continua inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. O ADR-0023 ratifica Manifest v1 por digest, build inventory explícita e resolução compilada em 26C2. Nenhum código de 26C2 ou Operation real de 26C3 foi materializado; RunSnapshot v1 continua inalterado.
 
 ## Estado materializado
 
@@ -198,7 +198,8 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Module resolution e referência HTTP real
+Package Manifest/build/module resolution ratificado — não materializado
+Referência HTTP real
 Integration Packages
 Broadway data plane
 OpenAPI completo
@@ -252,6 +253,7 @@ Executable Operation contract ratification
 Executable Operation boundary materialization
 HTTP Transport contract and Slice 26C sequencing ratification
 HTTP Transport boundary materialization
+Package Manifest/build binding/module resolution ratification
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -263,34 +265,34 @@ Os Slices 26A, 26B e 26C1 estão integralmente materializados. O Transport HTTP 
 `leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
 A facade valida os dois lados do adapter contract e faz exatamente uma tentativa bounded.
 
-Package Manifest/build e module resolution permanecem explicitamente em 26C2. A primeira
-Operation de produto e sua matriz vendor-specific pertencem a 26C3. Não existe registry
-temporário de UUID, filesystem discovery ou módulo derivado de string persistida.
+Manifest/build/module resolution possui contract fechado no ADR-0023, ainda sem código. O
+Manifest v1 não contém UUIDs nem modules; PackageVersion pinna seu digest, e
+`packages/build.exs` lista path/app/binding literals. A primeira Operation de produto e sua
+matriz vendor-specific pertencem a 26C3.
 
 ## Próxima tarefa concreta
 
-Ratificar o incremento 26C2 antes de qualquer implementação:
+Materializar somente o incremento 26C2 na ordem ratificada:
 
 ~~~text
-Package Manifest JSON Schema v1
-→ inclusão explícita e auditável de packages no build/release
-→ binding versionada de ConnectorVersion/Operation refs para módulos compilados
-→ resolução pública sem UUID registry temporário, filesystem discovery ou atom dinâmico
+35. Manifest v1 validation + LeafcutterConnectors.Package binding contract
+36. PackageVersion.manifest_sha256 + legacy executability enforcement
+37. packages/build.exs + explicit Mix/release dependency closure
+38. runtime resolution + Deployment/Run enforcement + quality gates
 ~~~
 
-A decisão precisa fixar ownership, formato persistido/publicado, compatibilidade e composição
-com APIs públicas do Catalog. Nenhum módulo pode ser derivado de string externa ou nome livre
-persistido. 26C2 não publica a primeira Operation real nem antecipa status/vendor mapping de
-26C3.
+A resolução usa digest e refs locais para selecionar somente modules literais já compilados,
+compondo-os com `operation_id`/`contract_version_id` vindos da API pública do Catalog. Não
+persistir module name, não criar UUID registry, não varrer filesystem/BEAM e não alterar
+RunSnapshot v1.
 
-Persisted Attempt/Delivery errors, backoff, idempotency, request payload/batch limits gerais,
-durable fan-out e Broadway continuam fora desse incremento.
+A inventory de produção permanece vazia até 26C3. Fixture de conformance é test-only. Persisted
+Attempt/Delivery errors, backoff, idempotency, durable fan-out e Broadway continuam fora.
 
 ## Principais decisões abertas
 
-- Package Manifest e inclusão auditável de packages no build (26C2);
-- binding versionado e resolução de `operation_id` para módulo compilado (26C2);
 - primeiro sistema externo/Operation e status/rate-limit/vendor mapping (26C3);
+- artifact signing/distribution, package retention e rolling upgrade;
 - request payload/batch limits além do response body cap do Transport;
 - data plane e durable fan-out;
 - lifecycle completo de Run;
@@ -302,6 +304,9 @@ durable fan-out e Broadway continuam fora desse incremento.
 
 ## Leitura relevante
 
+- `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
+- `docs/specifications/package-manifest-v1.md`
+- `docs/decisions/ADR-0007-integration-packages.md`
 - `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
 - `docs/specifications/http-transport.md`
 - `docs/decisions/ADR-0021-operation-executavel.md`
@@ -309,7 +314,6 @@ durable fan-out e Broadway continuam fora desse incremento.
 - `docs/decisions/ADR-0008-connector-operation-transport.md`
 - `docs/architecture/connectors-operations-transports.md`
 - `docs/specifications/error-retry-model.md`
-- `docs/specifications/package-manifest-v1.md`
 - `docs/architecture/integration-packages.md`
 - `docs/decisions/ADR-0009-at-least-once.md`
 - `docs/decisions/ADR-0005-broadway-como-data-plane.md`

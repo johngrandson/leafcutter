@@ -452,9 +452,9 @@ Falha confirmada causa rollback integral.
 
 ## Fora do escopo
 
-- Package Manifest JSON Schema;
+- Package Manifest JSON Schema (ratificado posteriormente no ADR-0023; fora deste contract);
 - conteúdo JSON Schema de ContractVersion e validação JSV;
-- package build/release;
+- package build/release (ratificado posteriormente no ADR-0023; fora deste contract);
 - Connector/Operation/Transport executáveis;
 - raw secret storage ou retrieval;
 - OAuth, rotation, revocation e retention;

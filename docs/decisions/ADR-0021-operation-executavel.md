@@ -226,7 +226,7 @@ o supervisor Finch introduzido posteriormente pertence exclusivamente ao ADR-002
 
 ## Evolução posterior
 
-O ADR-0022 divide o antigo Slice 26C: Transport HTTP pertence a 26C1; Package Manifest/build
-binding e module resolution pertencem a 26C2; a primeira Operation real e sua tradução
-vendor-specific pertencem a 26C3. Essa evolução não altera a boundary materializada por este
-ADR.
+O ADR-0022 divide o antigo Slice 26C: Transport HTTP pertence a 26C1; o ADR-0023 ratifica
+Package Manifest/build binding e module resolution em 26C2; a primeira Operation real e sua
+tradução vendor-specific pertencem a 26C3. Essa evolução não altera a boundary materializada
+por este ADR.

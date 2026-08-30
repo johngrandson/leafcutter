@@ -33,10 +33,13 @@ Materializado conforme o ADR-0022:
 - Request/Response/Error bounded;
 - Finch HTTP/1 com pool supervisionado e uma tentativa por chamada.
 
+Ratificado no ADR-0023, ainda não materializado:
+
+- Package Manifest/build binding e module resolution (26C2).
+
 Ainda não ratificado:
 
 - behaviour executável de Connector, caso uma necessidade além de Operation apareça;
-- Package Manifest/build binding e module resolution (26C2);
 - primeira Operation HTTP real e vendor mapping (26C3).
 
 ## Consequências
@@ -58,4 +61,4 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 26C3 first production reference Operation
 ~~~
 
-O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos materializados. O ADR-0022 impede antecipar 26C2 por registry implícito; a referência real permanece em 26C3.
+O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos materializados. O ADR-0023 ratifica 26C2 sem registry implícito; a referência real permanece em 26C3.

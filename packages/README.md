@@ -1,12 +1,28 @@
 # Integration Packages
 
-Este diretório será a fronteira física para código específico de Integration Packages.
+This directory is the physical boundary for executable Integration Package code.
 
-Não adicione packages antes da ratificação de:
+The ratified layout is:
 
-- estratégia de compilação no build inicial;
-- Package Manifest JSON Schema v1;
-- dependencies permitidas;
-- Mix-based package tooling.
+~~~text
+packages/
+├── build.exs
+└── <package>/
+    ├── mix.exs
+    ├── manifest.json
+    ├── lib
+    └── test
+~~~
 
-Código dentro de packages será escrito em inglês e não poderá depender de internals do runtime ou da API.
+Only literal entries in `build.exs` enter the Mix dependency graph and release. Directory
+scanning is forbidden. The production inventory remains empty until Slice 26C3 selects the
+first real external system and Operation.
+
+Package source, Mix metadata, in-code documentation, and tests are written in English. A
+package may depend on public `leafcutter_connectors` contracts, never Core, Runtime, or API
+internals.
+
+See:
+
+- `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
+- `docs/specifications/package-manifest-v1.md`

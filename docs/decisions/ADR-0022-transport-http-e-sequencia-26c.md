@@ -13,9 +13,9 @@ detalhes de protocolo para o runtime e sem expor credentials em logs, errors ou 
 duráveis.
 
 O escopo originalmente agrupado como Slice 26C também incluía a primeira Operation de
-referência e a resolução de `operation_id` para módulo executável. Esses dois itens ainda
-dependem de decisões abertas: Package Manifest, inclusão de packages no build e seleção de um
-sistema externo real. O `operation_id` persistido é um UUID do Catalog, não uma identidade de
+referência e a resolução de `operation_id` para módulo executável. Naquele momento, esses dois
+itens ainda dependiam de decisões abertas: Package Manifest, inclusão de packages no build e
+seleção de um sistema externo real. O `operation_id` persistido é um UUID do Catalog, não uma identidade de
 módulo estável. Implementar toda a sequência agora exigiria um registry implícito por config,
 filesystem discovery ou nomes de módulo persistidos, canonizando por acidente uma decisão
 ainda aberta.
@@ -36,8 +36,8 @@ O Slice 26C passa a ser executado em três incrementos ordenados:
 → 26C3 first production reference Operation
 ~~~
 
-Este ADR ratifica somente 26C1, agora materializado. 26C2 precisa ser ratificado antes de
-qualquer mapeamento de `operation_id` para módulo. 26C3 exige uma escolha explícita de sistema
+Este ADR ratificou somente 26C1, agora materializado. Naquele momento, 26C2 ainda precisava
+ser ratificado antes de qualquer mapeamento de `operation_id` para módulo. 26C3 exige uma escolha explícita de sistema
 externo,
 Operation, autenticação, paginação ou escrita e semântica de erros do vendor.
 
@@ -186,9 +186,9 @@ Este ADR proíbe como solução intermediária:
 - nome de módulo livre no Catalog;
 - fallback por `Operation.ref` sem binding versionado de package.
 
-26C2 deverá definir uma binding explícita, versionada e auditável entre PackageVersion,
-ConnectorVersion/Operation refs e módulos já compilados no build. O runtime futuro comporá
-essa binding com APIs públicas do Catalog. `leafcutter_connectors` não consultará o banco.
+O ADR-0023 ratifica 26C2 como uma binding explícita e auditável entre
+`PackageVersion.manifest_sha256`, refs locais e módulos já compilados no build. O runtime
+compõe essa binding com APIs públicas do Catalog; `leafcutter_connectors` não consulta o banco.
 
 Somente depois dessa decisão uma Operation real será publicada como referência em 26C3.
 
@@ -225,8 +225,7 @@ overflow, headers/trailers, compartilhamento por origem e ausência de segredos 
 
 ## Futuro preservado
 
-- Package Manifest JSON Schema v1 e inclusão no build;
-- binding executável e resolução de `operation_id`;
+- materialização do Package Manifest/build/module resolution ratificado no ADR-0023;
 - primeira Operation real e tradução de status/vendor errors;
 - request payload/batch limits além do response body cap do Transport;
 - proxy, HTTP/2, streaming público, upload streaming e query-string authentication;
@@ -241,8 +240,13 @@ overflow, headers/trailers, compartilhamento por origem e ausência de segredos 
 - uma chamada HTTP fica bounded por timeouts e body limit explícitos;
 - redirect e retry não podem ocorrer sem decisão visível da Operation/runtime;
 - Transport errors e HTTP responses possuem responsabilidades separadas;
-- a primeira execução de produto permanece bloqueada até 26C2 e 26C3;
+- a primeira execução de produto permanece bloqueada até materializar 26C2 e ratificar/materializar 26C3;
 - o checkpoint não finge que module resolution foi resolvida antes do Package Manifest.
+
+## Evolução posterior
+
+O ADR-0023 fecha o contract de 26C2 sem alterar a boundary HTTP: Manifest v1 por digest,
+`packages/build.exs`, bindings literais e resolução no runtime. 26C3 permanece separado.
 
 ## Evidência
 

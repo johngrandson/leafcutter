@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO, COM EVOLUÇÕES FUTURAS PRESERVADAS.**
+> **Status: MATERIALIZADO ATÉ 26C1; EVOLUÇÃO 26C2 RATIFICADA.**
 
 ## Estrutura real
 
@@ -12,7 +12,7 @@ apps/
 └── leafcutter_api
 ```
 
-Grafo materializado:
+Grafo materializado entre applications Leafcutter:
 
 ```text
 leafcutter_core       → none
@@ -23,6 +23,12 @@ leafcutter_api        → leafcutter_core + leafcutter_runtime
 
 Não existe ciclo e nenhum context recebe OTP application própria.
 
+Evolução ratificada para 26C2, ainda não materializada:
+
+```text
+leafcutter_runtime → installed packages → leafcutter_connectors
+```
+
 ## `leafcutter_core`
 
 Hospeda hoje:
@@ -31,6 +37,7 @@ Hospeda hoje:
 Organizations
 Catalog
 Connections
+Integrations
 Leafcutter.Repo
 Leafcutter.PubSub
 Oban
@@ -39,7 +46,6 @@ Oban
 Hospedará futuramente:
 
 ```text
-Integrations
 Notifications
 Audit
 ```
@@ -56,18 +62,17 @@ Isso inclui `runtime_nodes` e `runs`, embora seu ownership pertença a Execution
 
 ## `leafcutter_connectors`
 
-Boundary materializada, ainda sem implementação funcional.
+Boundary executável materializada para Operation e Transport HTTP.
 
-Hospedará:
+Hospeda hoje:
 
 ```text
-Connector behaviours
-Operation behaviours
-Transport behaviours
-HTTP Transport
-Generic HTTP Connector
-connector implementations
+Operation Read/Write behaviours and values
+bounded HTTP Transport facade
+Finch HTTP/1 adapter and supervised pool
 ```
+
+Hospedará futuramente outros transports e connector implementations conforme demanda real.
 
 Metadata e versionamento pertencem a Catalog; execução pertence a esta app.
 
@@ -144,23 +149,28 @@ Todos os nodes executarão core, connectors, runtime e api. Especialização de 
 Localização ratificada:
 
 ```text
-packages/<package>/
-├── mix.exs
-├── manifest.json
-├── lib
-└── test
+packages/
+├── build.exs
+└── <package>/
+    ├── mix.exs
+    ├── manifest.json
+    ├── lib
+    └── test
 ```
 
-Packages não são uma quinta platform application. A estratégia física de inclusão no build/release ainda está aberta.
+Packages não são uma quinta platform application. O ADR-0023 ratifica inventory literal em
+`packages/build.exs`, path dependencies explícitas de `leafcutter_runtime` e prova da
+application closure da release. A estratégia ainda não está materializada.
 
 ## Dependências permitidas
 
-Package pode depender de contracts públicos de `leafcutter_connectors`. Não depende de internals de runtime ou API. Dependência de core somente entra com contract público concreto.
+Package pode depender de contracts públicos de `leafcutter_connectors` e de dependencies Mix
+próprias. No contract v1, não depende de Core, Runtime ou API.
 
 ## Pontos futuros preservados
 
-- build explícito dos packages instalados;
+- materialização do build explícito ratificado para packages instalados;
 - uma única release inicialmente;
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;
-- configuração concreta de Oban e HTTP pools ainda aberta.
+- configuração concreta de Oban e tuning futuro dos HTTP pools ainda abertos.

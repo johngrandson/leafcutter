@@ -225,7 +225,7 @@ Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-Package Manifest/build binding + module resolution (26C2)
+Package Manifest/build binding + module resolution (26C2 ratificado; não materializado)
 first production HTTP Operation (26C3)
 ```
 
@@ -299,11 +299,11 @@ Sequência ratificada:
 
 26C1 HTTP Transport boundary
 → bounded one-attempt Finch adapter
-→ 26C2 Package binding/module resolution
+→ 26C2 Package binding/module resolution (ratificado)
 → 26C3 first production HTTP Operation
 ```
 
-26A, 26B e o HTTP Transport 26C1 estão materializados. 26C2/26C3 preservam package binding e referência real como decisões próprias. Outros transports entram somente com demanda real.
+26A, 26B e o HTTP Transport 26C1 estão materializados. O contract de 26C2 está ratificado no ADR-0023, ainda sem código; 26C3 preserva a referência real como decisão própria. Outros transports entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -330,7 +330,8 @@ packages/<package>/
 └── test
 ```
 
-A estratégia física para incluí-los na release continua aberta.
+O ADR-0023 ratifica `packages/build.exs`, Mix path dependencies explícitas em runtime,
+Manifest v1 por digest e resolução compilada. A estratégia ainda não está materializada.
 
 ## Decisões abertas
 
@@ -341,8 +342,7 @@ Entre as principais:
 - política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
-- Package Manifest JSON Schema v1;
-- inclusão de `packages/*` no build;
+- artifact signing/distribution e retenção de packages por rolling upgrade;
 - tuning futuro do client/pool HTTP por métricas;
 - lifecycle completo de Run, pause/resume/cancel e terminalização;
 - Record/Delivery/Attempt/Checkpoint e data plane Broadway;
@@ -379,9 +379,9 @@ Operation executable contract (26B materializado)
 ↓
 HTTP Transport boundary (26C1 materializado)
 ↓
-Package binding/module resolution (26C2 aberto)
+Package binding/module resolution (26C2 ratificado; materialização seguinte)
 ↓
 reference Operation (26C3 aberto)
 ```
 
-O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. A próxima fronteira é ratificar 26C2; package binding, referência real, coordinator e Broadway permanecem posteriores até decisão própria.
+O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. O ADR-0023 e `package-manifest-v1.md` controlam 26C2 ratificado. A próxima fronteira é materializar somente 26C2; referência real, coordinator e Broadway permanecem posteriores.

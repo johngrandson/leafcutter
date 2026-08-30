@@ -49,7 +49,7 @@ Não existe API pública de `DELETE`. A regra de lifecycle é remover o snapshot
 
 `PackageVersion` permanece authority para ConnectorVersion, Operation, Transformation, Enrichment, Interceptor e SourceIdentity. O snapshot não duplica essa topologia. As referências copiadas são uma resolução congelada que o resolver materializado posteriormente pelo ADR-0018 valida contra as authorities upstream.
 
-`source.ref` e `destinations[].ref` são identifiers locais do formato do snapshot. Esta decisão não ratifica nomes de campos do Package Manifest, que continua DRAFT. A ordem do array de destinations não define prioridade de execução.
+`source.ref` e `destinations[].ref` são identifiers locais do formato do snapshot. Esta decisão não ratificou nomes de campos do Package Manifest; o ADR-0023 fez isso posteriormente sem alterar o snapshot. A ordem do array de destinations não define prioridade de execução.
 
 Raw secrets nunca devem entrar no snapshot. No primeiro slice, essa era uma responsabilidade do caller confiável; validação estrutural de JSON não consegue provar que um valor arbitrário de config não contém material sensível. O resolver de EnvironmentDeployment materializado pelo ADR-0018 compõe somente config declarada não sensível e a referência exata à `SecretVersion`, sem copiar payload de secret para Executions.
 
@@ -139,7 +139,7 @@ O workflow de resolução foi materializado posteriormente em `LeafcutterRuntime
 
 ## Evolução posterior
 
-Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections, Integration e EnvironmentDeployment com seus bindings. O formato RunSnapshot v1 permaneceu inalterado. `LeafcutterRuntime.Runs.create_from_deployment/1` passou a comprovar a composição cross-context antes de delegar a persistência atômica a `Executions.Runs.create/1`, cuja responsabilidade permanece estrutural.
+Após a materialização deste ADR, o ADR-0018 materializou o Catalog mínimo com PackageVersion, ContractVersion e a topologia relacional de endpoints, seguido por Connections, Integration e EnvironmentDeployment com seus bindings. O ADR-0023 ratificou posteriormente os mesmos nomes `source.ref` e `destinations[].ref` no Manifest v1 e manteve `manifest_sha256` somente em PackageVersion. O formato RunSnapshot v1 permaneceu inalterado. `LeafcutterRuntime.Runs.create_from_deployment/1` passou a comprovar a composição cross-context antes de delegar a persistência atômica a `Executions.Runs.create/1`, cuja responsabilidade permanece estrutural.
 
 ## Consequências
 

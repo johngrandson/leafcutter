@@ -76,6 +76,20 @@ O ADR-0021 e `docs/specifications/operation-contract.md` controlam o contract co
 O ADR-0022 e `docs/specifications/http-transport.md` controlam 26C1 materializado. Os
 incrementos 26C2 e 26C3 permanecem separados e não podem ser substituídos por registry temporário.
 
+## Etapa ratificada do Slice 26C2
+
+~~~text
+34. Package Manifest/build binding/module resolution ratification
+→ minimal Manifest v1 + exact-byte SHA-256
+→ PackageVersion manifest digest without RunSnapshot v1 change
+→ literal packages/build.exs inventory + explicit Mix path dependencies
+→ compiled Read/Write bindings resolved with Catalog projection
+→ no production package or vendor semantics
+~~~
+
+O ADR-0023 e `docs/specifications/package-manifest-v1.md` controlam 26C2. A próxima etapa
+materializa os passos 35–38; a inventory de produção permanece vazia até 26C3.
+
 ## Sequência ratificada posterior
 
 ```text
@@ -87,7 +101,7 @@ minimal Catalog authorities (materialized)
 → ContractVersion executable + JSON Schema/JSV through PackageVersion/Deployment/Run (26A, materialized)
 → Operation executable contract (26B, materialized)
 → HTTP Transport boundary + Finch adapter (26C1, materialized)
-→ Package Manifest/build binding + module resolution (26C2, pending ratification)
+→ Package Manifest/build binding + module resolution (26C2, ratified; materialization next)
 → first production HTTP Operation (26C3, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -95,4 +109,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation e 26C1 materializou o Transport HTTP. A próxima etapa ratifica 26C2. 26C2/26C3 preservam Package Manifest, module resolution e a referência real para decisões próprias. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation e 26C1 materializou o Transport HTTP. O contract 26C2 está ratificado; a próxima etapa materializa somente Manifest/build/module resolution. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.

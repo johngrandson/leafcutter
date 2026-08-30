@@ -1,8 +1,8 @@
 # Connectors, Operations e Transports
 
 > **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata, a boundary executável
-> de Operation e o Transport HTTP 26C1 existem. Package Manifest/module resolution (26C2) e
-> a primeira referência real (26C3) estão abertos.
+> de Operation e o Transport HTTP 26C1 existem. Package Manifest/module resolution (26C2)
+> está ratificado; a primeira referência real (26C3) permanece aberta.
 
 ## Estado materializado
 
@@ -154,7 +154,7 @@ O ADR-0022 corrige a dependência entre Transport, packages e uma referência de
 
 ~~~text
 26C1 HTTP Transport boundary + Finch adapter (materializado)
-→ 26C2 Package Manifest/build binding + module resolution (aberto)
+→ 26C2 Package Manifest/build binding + module resolution (ratificado; não materializado)
 → 26C3 first production reference Operation (aberto)
 ~~~
 
@@ -195,10 +195,14 @@ A implementação e os testes locais determinísticos estão materializados em
 
 ### 26C2 — executable package binding
 
-A resolução não será antecipada por application config, filesystem discovery, nome de módulo
-livre ou atom criado de valor persistido. Package Manifest/build deverá ligar refs versionadas
-a módulos já compilados de forma explícita e auditável. O runtime comporá a binding com APIs
-públicas do Catalog; `leafcutter_connectors` não consulta Repo.
+O ADR-0023 ratifica um Manifest v1 mínimo com package name/version e refs ordenados de source e
+destinations. Seus bytes exatos produzem `manifest_sha256`, persistido de forma imutável em
+PackageVersion e repetido na build inventory explícita `packages/build.exs`.
+
+Package code usa `LeafcutterConnectors.Package` para ligar cada ref local a um módulo Read/Write
+literal. `leafcutter_runtime` resolve o digest entre módulos já compilados e combina a binding
+com `operation_id`/`contract_version_id` da projeção pública do Catalog. Não existe module name
+no JSON/DB, UUID registry, application config, filesystem discovery ou atom derivado de dado.
 
 ### 26C3 — referência de produto
 
@@ -222,6 +226,8 @@ como Connector/Operation publicada.
 - `docs/decisions/ADR-0008-connector-operation-transport.md`
 - `docs/decisions/ADR-0021-operation-executavel.md`
 - `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
+- `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
 - `docs/specifications/operation-contract.md`
 - `docs/specifications/http-transport.md`
+- `docs/specifications/package-manifest-v1.md`
 - `docs/specifications/error-retry-model.md`

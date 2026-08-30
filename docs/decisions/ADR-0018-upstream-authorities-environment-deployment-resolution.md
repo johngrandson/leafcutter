@@ -383,7 +383,7 @@ Rejeitada para este slice porque criaria um segundo document contract antes da r
 
 ### Usar diretamente o Package Manifest como persistência
 
-Rejeitada porque `package-manifest-v1.md` continua DRAFT e seus field names não são canônicos.
+Rejeitada neste slice porque os field names de `package-manifest-v1.md` ainda não estavam ratificados. O ADR-0023 os ratificou posteriormente sem substituir a projeção relacional.
 
 ### Duplicar ConnectorVersion no endpoint
 
@@ -445,6 +445,14 @@ Continuam fora deste slice:
 - actor, invocation e idempotency key;
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway.
+
+## Evolução posterior
+
+Os ADRs 0019, 0021 e 0022 materializaram ContractVersion, Operation e Transport HTTP sem
+alterar a projeção deste ADR. O ADR-0023 ratificou posteriormente os field names mínimos do
+Manifest v1, seu digest em PackageVersion, a inventory explícita de build e a resolução
+compilada; 26C2 ainda não está materializado. Auto-publication do Catalog a partir de package
+code continua proibida.
 
 ## Consequências
 

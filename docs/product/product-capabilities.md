@@ -86,7 +86,7 @@
 
 ### Core de integração
 
-- Package binding/module resolution (26C2 aberto);
+- Package Manifest/build/module resolution (26C2 ratificado; não materializado);
 - primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

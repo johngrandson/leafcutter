@@ -196,7 +196,7 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. Availability, manifests e build permanecem na evolução ratificada. Catalog não executará artefatos.
+Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. O ADR-0023 ratifica Manifest v1 e a binding de build sem mover execução para o Catalog. Availability e a materialização do build permanecem posteriores.
 
 ## Connections
 
@@ -238,7 +238,7 @@ Transport
 → protocol
 ```
 
-O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 ratifica o primeiro Transport como uma boundary HTTP-specific, bounded e de uma tentativa; Package Manifest/module resolution e a primeira referência real permanecem separados em 26C2/26C3.
+O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 controla o primeiro Transport HTTP bounded. O ADR-0023 ratifica Manifest/build/module resolution em 26C2; a primeira referência real permanece separada em 26C3.
 
 # Transformation, Enrichment e Interceptor
 
@@ -301,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável e o Transport HTTP bounded estão materializados sem alterar o snapshot. Permanecem abertos os lifecycles ampliados, rolling upgrade, idempotência/invocation durável, retenção, Package Manifest/build/module resolution, primeira referência real, data plane, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável e o Transport HTTP bounded estão materializados sem alterar o snapshot. Manifest/build/module resolution possui contract ratificado, ainda sem código. Permanecem abertos os lifecycles ampliados, rolling upgrade, idempotência/invocation durável, retenção, primeira referência real, data plane, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -315,7 +315,7 @@ present
 → bounded HTTP Transport + supervised Finch HTTP/1 pool (26C1)
 
 next
-→ ratificar Package binding/module resolution (26C2)
+→ materializar Package Manifest/build binding/module resolution (26C2)
 
 future
 → durable Broadway integration data plane
