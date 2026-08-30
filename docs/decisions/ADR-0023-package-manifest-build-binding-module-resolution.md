@@ -227,8 +227,9 @@ O passo 37 materializa o parser de literals e a validação em
 `LeafcutterRuntime.PackageBuild`, carregada pela boundary Mix antes de derivar dependencies. A
 inventory compilada repete as invariantes que dependem dos BEAMs prontos e é exposta por
 `LeafcutterRuntime.ExecutablePackages.Inventory` sem leitura de filesystem em runtime. A
-inventory de produção permanece `[]`; um Mix project separado e `only: :test` fornece a prova
-de conformance.
+boundary exige dependency direta de `leafcutter_connectors` e rejeita dependencies para Core,
+Runtime ou API no grafo Mix resolvido. A inventory de produção permanece `[]`; um Mix project
+separado e `only: :test` fornece a prova de conformance.
 
 ### Dependency graph e release
 

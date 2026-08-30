@@ -39,6 +39,7 @@ ou API.
 packages/
 ├── build.exs
 └── <package>/
+    ├── .formatter.exs
     ├── mix.exs
     ├── manifest.json
     ├── lib/
@@ -348,9 +349,10 @@ A inventory vazia é válida antes de 26C3.
 O passo 37 materializa `packages/build.exs` com a lista de produção vazia e um parser que
 aceita somente o shape literal acima. A boundary valida keys e tipos exatos, unicidade,
 ordenação por app, contenção lexical e por realpath, arquivos obrigatórios e symlinks. Depois
-da compilação das dependencies, valida novamente digest, Manifest, `@external_resource`,
-ownership do binding no OTP app, callbacks, topology e behaviours. A fixture não pertence à
-inventory de produção e existe somente como dependency `only: :test`.
+da compilação das dependencies, exige dependency direta de `leafcutter_connectors`, rejeita
+dependencies para Core, Runtime ou API e valida novamente digest, Manifest,
+`@external_resource`, ownership do binding no OTP app, callbacks, topology e behaviours. A
+fixture não pertence à inventory de produção e existe somente como dependency `only: :test`.
 
 ## Mix dependency graph
 
@@ -383,6 +385,10 @@ materializa a release homogênea `:leafcutter`, com `leafcutter_api` como entryp
 build calcula a closure pela composição real de `Mix.Release` e exige Core, Connectors,
 Runtime, API e cada app da inventory. `mix quality` também executa compile com warnings como
 erros, format check, tests e Dialyzer dentro de cada package listado.
+
+Cada package mantém seu próprio `.formatter.exs` e declara Dialyxir como dependency somente de
+desenvolvimento/teste e `runtime: false`. O project é independente; as ferramentas da umbrella
+não ficam disponíveis automaticamente quando os gates executam dentro do diretório do package.
 
 ## Resolução pública do runtime
 

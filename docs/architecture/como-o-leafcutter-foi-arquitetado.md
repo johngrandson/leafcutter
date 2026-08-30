@@ -309,7 +309,7 @@ concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
-O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, Integrations, EnvironmentDeployments e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages e Records já existem.
+O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, Integrations, EnvironmentDeployments e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, packages de produto e Records já existem.
 
 ```text
 present

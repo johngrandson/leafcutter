@@ -89,7 +89,8 @@
 - SHA-256 dos bytes exatos do manifest;
 - refs source/destination ligadas a módulos Read/Write literais;
 - cobertura, ordem, unicidade e behaviours validados em compile time;
-- callbacks puros sem acesso ao filesystem em runtime.
+- callbacks puros sem acesso ao filesystem em runtime;
+- build inventory literal, dependencies Mix explícitas e closure da release.
 
 ### Package resolution compilada
 
@@ -104,7 +105,7 @@
 ### Core de integração
 
 - primeira Operation HTTP real (26C3 aberta);
-- Integration Packages;
+- Integration Packages de produto;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - lifecycle ampliado de Integrations, Triggers, promotion e homologation.
 

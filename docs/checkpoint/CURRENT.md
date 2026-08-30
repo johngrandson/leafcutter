@@ -105,11 +105,11 @@ Read/Write com cobertura, ordem, unicidade e behaviour conformance. Os callbacks
 não leem filesystem; a fixture é somente de conformance.
 
 `LeafcutterRuntime.ExecutablePackages.Inventory` embute a lista validada em compile time.
-O build rejeita shape, duplicidade, path/realpath, project/manifest, digest, ownership de app,
-external resource, topology e behaviour divergentes antes de produzir o runtime. Cada entry
-vira dependency Mix `:path`; `mix quality` prova a application closure da release e executa
-compile, format, tests e Dialyzer de cada package listado. A fixture é dependency somente em
-test e não entra na release.
+O build rejeita shape, duplicidade, path/realpath, project/manifest, dependency direction,
+digest, ownership de app, external resource, topology e behaviour divergentes antes de
+produzir o runtime. Cada entry vira dependency Mix `:path`; `mix quality` prova a application
+closure da release e executa compile, format, tests e Dialyzer de cada package listado. A
+fixture é dependency somente em test e não entra na release.
 
 `LeafcutterRuntime.ExecutablePackages.resolve/1` busca a projeção imutável pela API pública do
 Catalog, seleciona uma binding pelo digest exato, revalida name/version/topologia/módulos e
