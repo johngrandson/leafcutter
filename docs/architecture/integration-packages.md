@@ -1,8 +1,8 @@
 # Integration Packages
 
-> **Status: PARCIALMENTE MATERIALIZADO.** A authority relacional do Catalog existe. Manifest,
-> build inventory e module resolution estão ratificados no ADR-0023, ainda sem código ou
-> package de produto.
+> **Status: PARCIALMENTE MATERIALIZADO.** A authority relacional do Catalog e o contract de
+> Manifest/binding em `leafcutter_connectors` existem. Build inventory, module resolution e
+> package de produto permanecem pendentes.
 
 ## Estado materializado
 
@@ -33,7 +33,7 @@ packages/
 Cada Package é um Mix project independente fora de `apps/`. Ele é uma OTP application de
 produto, não uma quinta platform application.
 
-## Manifest v1 ratificado
+## Manifest v1 materializado na boundary
 
 O Manifest v1 contém somente:
 
@@ -44,24 +44,27 @@ one source ref
 one or more ordered destination refs
 ~~~
 
-Os bytes exatos produzem um SHA-256 lowercase. A futura materialização persistirá esse digest
-em PackageVersion, repetirá o valor em `packages/build.exs` e o embutirá na binding compilada.
+Os bytes exatos produzem um SHA-256 lowercase. O parser bounded e a binding compilada já
+calculam e embutem esse digest. Os passos seguintes o persistirão em PackageVersion e repetirão
+o valor em `packages/build.exs`.
 
 O JSON não contém UUID, app atom, module name, config concreta, credential ou raw secret.
 Operation e ContractVersion permanecem pinadas exclusivamente na projeção relacional.
 
 ## Binding compilada
 
-Package code usará `LeafcutterConnectors.Package` para ligar refs locais a módulos literais:
+Package code usa `LeafcutterConnectors.Package` para ligar refs locais a módulos literais:
 
 ~~~text
 source ref      → Operation.Read module
 destination ref → Operation.Write module
 ~~~
 
-`leafcutter_runtime` resolverá o digest na inventory compilada e combinará os módulos com
-`operation_id` e `contract_version_id` lidos pela API pública do Catalog. O resultado é
-in-memory e não altera RunSnapshot v1.
+A macro valida cobertura, ordem, unicidade e behaviours em compile time e embute somente a
+projeção validada, o digest e módulos literais. `leafcutter_runtime` ainda deverá resolver o
+digest na inventory compilada e combinar os módulos com `operation_id` e
+`contract_version_id` lidos pela API pública do Catalog. O resultado será in-memory e não
+alterará RunSnapshot v1.
 
 ## Build e release
 

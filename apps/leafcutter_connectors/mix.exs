@@ -19,7 +19,7 @@ defmodule LeafcutterConnectors.MixProject do
   def application do
     [
       mod: {LeafcutterConnectors.Application, []},
-      extra_applications: [:logger]
+      extra_applications: [:crypto, :logger]
     ]
   end
 
@@ -28,7 +28,9 @@ defmodule LeafcutterConnectors.MixProject do
 
   defp deps do
     [
-      {:finch, "~> 0.23.0"}
+      {:finch, "~> 0.23.0"},
+      {:jason, "~> 1.4"},
+      {:jsv, "~> 0.22.0"}
     ]
   end
 end

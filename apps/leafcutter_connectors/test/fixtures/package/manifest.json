@@ -1,0 +1,18 @@
+{
+  "manifest_version": 1,
+  "package": {
+    "name": "Conformance package",
+    "version": "2026.08"
+  },
+  "source": {
+    "ref": "source"
+  },
+  "destinations": [
+    {
+      "ref": "first-destination"
+    },
+    {
+      "ref": "second-destination"
+    }
+  ]
+}

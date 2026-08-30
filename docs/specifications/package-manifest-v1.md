@@ -1,6 +1,6 @@
 # Package Manifest v1
 
-- Estado: RATIFICADO — NÃO MATERIALIZADO
+- Estado: PARCIALMENTE MATERIALIZADO — PASSO 35 CONCLUÍDO
 - Decisão: `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
 
 ## Objetivo
@@ -265,7 +265,7 @@ A macro lê e valida `manifest.json` durante a compilação, registra o arquivo 
 `@external_resource` e embute o manifest validado e o digest no BEAM. Nenhum callback acessa o
 filesystem em runtime.
 
-A macro/contract materializado deverá expor funções puras equivalentes a:
+O contract materializado expõe funções puras equivalentes a:
 
 ~~~elixir
 @callback manifest() :: LeafcutterConnectors.Package.Manifest.t()
@@ -289,6 +289,19 @@ Invariantes:
 - nenhum processo OTP é criado.
 
 O manifest raw não é retornado, inspecionado ou logado.
+
+### Estado materializado no passo 35
+
+`LeafcutterConnectors.Package.Manifest` materializa parsing bounded, duplicate-key detection,
+JSON Schema Draft 2020-12 com JSV, validação semântica complementar e SHA-256 dos bytes exatos.
+`LeafcutterConnectors.Package` materializa bindings literais Read/Write, cobertura e ordem
+exatas, module uniqueness, behaviour conformance, resolução pura e callbacks sem acesso ao
+filesystem. Os testes de conformance usam somente fixture test-only.
+
+A macro exige path absoluto e registra exatamente esse arquivo em `@external_resource`. A
+prova de que ele é o `manifest.json` raiz do Mix project listado permanece responsabilidade da
+inventory do passo 37. Persistência no Catalog, inventory/release e resolução por projeção
+continuam nos passos 36–38.
 
 ## Build inventory
 

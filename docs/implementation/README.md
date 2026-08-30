@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. Os Slices 26A, 26B e 26C1 estão concluídos conforme ADR-0019, ADR-0021 e ADR-0022. O ADR-0023 ratifica Package Manifest/build/module resolution em 26C2, separado da primeira referência real em 26C3. A próxima tarefa materializa somente 26C2.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. Os Slices 26A, 26B e 26C1 estão concluídos conforme ADR-0019, ADR-0021 e ADR-0022. O ADR-0023 ratifica Package Manifest/build/module resolution em 26C2, separado da primeira referência real em 26C3. O passo 35 materializa Manifest e binding compilada; a próxima tarefa é persistir `PackageVersion.manifest_sha256` no passo 36.
 
 ## Documentos
 

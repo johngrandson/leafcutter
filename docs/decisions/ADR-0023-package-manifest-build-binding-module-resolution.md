@@ -1,7 +1,7 @@
 # ADR-0023 — Package Manifest v1, build inventory e resolução compilada
 
 - Status: Accepted
-- Estado de implementação: NÃO MATERIALIZADO
+- Estado de implementação: PARCIAL — PASSO 35 MATERIALIZADO
 - Data: 2026-08-30
 
 ## Contexto
@@ -167,7 +167,7 @@ A macro lê e valida o arquivo durante a compilação, registra o caminho com
 `@external_resource` e embute manifest e digest no BEAM. Os callbacks nunca leem filesystem em
 runtime.
 
-A materialização deverá gerar ou exigir funções puras para:
+O passo 35 materializa funções puras para:
 
 - devolver manifest validado e seu digest;
 - devolver exatamente uma binding source;
@@ -178,6 +178,11 @@ A materialização deverá gerar ou exigir funções puras para:
 O módulo source precisa implementar `LeafcutterConnectors.Operation.Read`; cada destination
 precisa implementar `LeafcutterConnectors.Operation.Write`. Conformance é verificada após a
 compilação do package. Nenhum processo OTP por package ou Operation é criado.
+
+O passo 35 está materializado em `leafcutter_connectors`: parsing bounded com rejeição de
+UTF-8/chaves duplicadas, validação JSV + semântica complementar, digest dos bytes exatos e o
+contract compilado com módulos literais, cobertura/ordem/role e `@external_resource`. A prova
+de que o arquivo é o `manifest.json` raiz do próprio package pertence à inventory do passo 37.
 
 ### Build inventory explícita
 
@@ -316,7 +321,7 @@ um execution path completo. Congelá-los agora criaria contract especulativo.
 
 ~~~text
 34. ratify Package Manifest/build binding/module resolution
-35. manifest validation + Package binding contract
+35. manifest validation + Package binding contract (materializado)
 36. PackageVersion manifest_sha256 + legacy enforcement
 37. explicit build inventory + Mix/release integration
 38. runtime resolution + Deployment/Run enforcement + quality gates
@@ -338,6 +343,10 @@ publicar a primeira Operation real.
 
 ## Evidência
 
+- `apps/leafcutter_connectors/lib/leafcutter_connectors/package.ex`
+- `apps/leafcutter_connectors/lib/leafcutter_connectors/package/manifest.ex`
+- `apps/leafcutter_connectors/test/leafcutter_connectors/package_test.exs`
+- `apps/leafcutter_connectors/test/leafcutter_connectors/package/manifest_test.exs`
 - `docs/specifications/package-manifest-v1.md`
 - `docs/decisions/ADR-0007-integration-packages.md`
 - `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
