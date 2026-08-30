@@ -35,15 +35,18 @@ A auditoria desta trilha encontrou:
   de conhecimento e 459 testes Elixir;
 - nenhuma configuração `.credo.exs`, portanto o repositório usa somente os
   checks padrão do Credo;
-- o check opt-in `Readability.Specs` encontra 12 funções públicas sem spec;
-- `Readability.UnsafeToAtom` e `Design.SkipTestWithoutComment` passam quando
-  habilitados isoladamente;
+- o check opt-in `Credo.Check.Readability.Specs` encontra 12 funções públicas
+  sem spec;
+- `Credo.Check.Warning.UnsafeToAtom` e
+  `Credo.Check.Design.SkipTestWithoutComment` passam quando habilitados
+  isoladamente;
 - os schemas Ecto atuais cumprem o formato canônico de `@doc` e possuem specs,
   mas nenhum gate protege esse contrato;
 - `mix hex.audit`, `mix deps.unlock --check-unused` e o grafo xref
   `compile-connected` passam quando executados separadamente;
-- o repositório não possui hook Git `pre-commit` funcional. O
-  `core.hooksPath` global aponta para `.husky/`, que não existe no projeto;
+- o repositório não possui hook Git `pre-commit` versionado. Na workstation
+  auditada, o `core.hooksPath` global aponta para `.husky/`, que não existe no
+  projeto;
 - os hooks de Codex e Claude formatam depois de edições, mas são conveniências
   de sessão. Eles suprimem falhas do formatter e não validam um commit;
 - não existe pipeline de CI versionado;
@@ -64,6 +67,9 @@ A auditoria desta trilha encontrou:
 - O futuro `pre-commit` executará o `mix quality` completo.
 - O hook rejeitará arquivos tracked com mudanças unstaged. Assim, o estado
   validado não mistura o que entrará no commit com outra edição tracked.
+- O hook rejeitará arquivos untracked não ignorados. Um arquivo novo sob
+  `lib/`, `config/` ou `test/` pode alterar o resultado do gate sem fazer parte
+  do commit.
 - O hook apenas verifica. Ele não formata, corrige ou altera arquivos.
 
 ## Princípios da trilha
@@ -85,33 +91,39 @@ A auditoria desta trilha encontrou:
 ### H0. Consolidar o contrato de qualidade
 
 Tornar `docs/implementation/quality-gates.md` a descrição detalhada do gate e
-fazer os documentos do harness apontarem para ela. Remover listas duplicadas
-que possam divergir. Registrar no ADR-0015 qualquer evolução normativa do
-contrato compartilhado.
+fazer os documentos do harness apontarem para ela. Fazer o operating model
+referenciar a ordem de leitura canônica de `AGENTS.md`, sem manter uma segunda
+lista. Remover cópias que possam divergir. Registrar no ADR-0015 a evolução
+normativa do contrato compartilhado.
 
 Saída:
 
 - uma fonte documental para os comandos obrigatórios;
 - separação explícita entre checks automáticos e review humano;
-- política de validação do estado exato do commit.
+- exigência manual do gate completo antes do commit, enquanto H2 não estiver
+  materializado.
+
+Specification: `docs/harness/specifications/H0-quality-contract.md`.
 
 ### H1. Materializar `mix quality` v2
 
-Adicionar enforcement em blocos independentes:
+Adicionar enforcement em subincrementos independentes:
 
-1. criar `.credo.exs`, corrigir as ausências reais de specs e habilitar somente
-   `Readability.Specs`, `Readability.UnsafeToAtom` e
-   `Design.SkipTestWithoutComment`;
-2. incluir `mix hex.audit`, `mix deps.unlock --check-unused` e
+1. H1A cria `.credo.exs`, corrige as ausências reais de specs e habilita
+   somente `Credo.Check.Readability.Specs`,
+   `Credo.Check.Warning.UnsafeToAtom` e
+   `Credo.Check.Design.SkipTestWithoutComment`;
+2. H1B inclui `mix hex.audit`, `mix deps.unlock --check-unused` e
    `mix xref graph --format cycles --label compile-connected --fail-above 0`;
-3. adicionar checker nativo para o `@doc` canônico das funções públicas de
-   schemas Ecto;
-4. proteger o grafo exato das OTP applications;
-5. proteger boundaries objetivas entre contexts, preservando projeções e
+3. H1C adiciona checker nativo para o `@doc` canônico das funções públicas
+   de schemas Ecto;
+4. H1D protege o grafo exato das OTP applications;
+5. H1E protege boundaries objetivas entre contexts, preservando projeções e
    tipos públicos ratificados.
 
-Cada bloco começa com um teste negativo que falha pela violação pretendida.
-Nenhuma dependency ou framework arquitetural novo faz parte deste incremento.
+Cada subincremento recebe specification e plano próprios. Ele começa com um
+teste negativo que falha pela violação pretendida. Nenhuma dependency ou
+framework arquitetural novo faz parte de H1.
 
 ### H2. Validar o commit local exato
 
@@ -119,13 +131,13 @@ Versionar um hook Git e um instalador idempotente. O hook:
 
 - confirma que o estado elegível para validação coincide com o commit;
 - rejeita tracked files com alterações unstaged;
+- rejeita arquivos untracked não ignorados;
 - executa o `mix quality` completo;
 - propaga qualquer exit status sem mascarar falhas;
 - nunca edita o working tree.
 
 Um teste de integração cria um repositório temporário e prova sucesso, falha do
-gate e rejeição de estado misto. A estratégia para arquivos untracked ainda
-precisa ser fechada antes da especificação deste incremento.
+gate e rejeição de estado misto.
 
 ### H3. Reproduzir o gate em CI limpa
 
@@ -175,8 +187,6 @@ entram depois do mecanismo de pre-commit.
 
 ## Decisões pendentes
 
-- decidir se o pre-commit rejeita todos os arquivos untracked não ignorados ou
-  valida o index em um checkout temporário;
 - escolher o provedor de CI antes de materializar H3;
 - definir o conjunto exato de referências cross-context permitidas antes do
   checker de boundaries de H1;
@@ -185,7 +195,8 @@ entram depois do mecanismo de pre-commit.
 
 ## Protocolo de execução
 
-Cada incremento recebe sua própria specification e plano antes de código. A
-implementação usa testes negativos primeiro, commits incrementais e o
-`mix quality` vigente. A trilha só atualiza `CURRENT.md` se o desenvolvedor
-decidir promovê-la a trabalho corrente do repositório.
+Cada incremento independente recebe sua própria specification e plano antes
+de código. H1A a H1E contam como incrementos independentes. A implementação
+usa testes negativos primeiro, commits incrementais e o `mix quality` vigente.
+A trilha só atualiza `CURRENT.md` se o desenvolvedor decidir promovê-la a
+trabalho corrente do repositório.

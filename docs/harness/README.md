@@ -14,6 +14,9 @@ A base em `docs/knowledge/` guarda conhecimento derivado. `AGENTS.md`,
 - `SESSION_HANDOFF.md`: passagem de contexto entre sessões.
 - `QUALITY_ENFORCEMENT_ROADMAP.md`: trilha alternativa para fortalecer os gates
   de qualidade, sem alterar o roadmap do produto.
+- `specifications/`: contratos dos incrementos alternativos antes da
+  implementação.
+- `plans/`: planos executáveis dos incrementos alternativos aprovados.
 
 ## Regra central
 
