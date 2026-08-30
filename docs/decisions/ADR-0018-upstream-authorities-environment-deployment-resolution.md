@@ -479,4 +479,3 @@ partir de package code continua proibida.
 - `apps/leafcutter_runtime/lib/leafcutter_runtime/runs.ex`;
 - `apps/leafcutter_runtime/test/leafcutter_runtime/runs_resolution_test.exs`;
 - `docs/checkpoint/CURRENT.md`.
-

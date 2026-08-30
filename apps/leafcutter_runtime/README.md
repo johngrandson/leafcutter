@@ -1,6 +1,7 @@
 # LeafcutterRuntime
 
-É a application layer operacional e o composition root dos packages executáveis.
+É a application layer operacional, hospeda o context Executions e atua como composition root
+dos packages executáveis.
 
 Materializa RuntimeNode liveness, ownership/fencing, coordenação e recovery de Runs, além da
 inventory compilada, resolução por digest e criação transacional de Run a partir de

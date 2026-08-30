@@ -6,7 +6,7 @@
 
 **Slice 26C2 materializado — resolução compilada fechada**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados no código versionado por este checkpoint. Os Slices 26A, 26B, 26C1 e 26C2 estão completos conforme os ADRs 0019, 0021, 0022 e 0023. Os passos 35–38 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada, persistência imutável/globalmente única em PackageVersion, inventory literal ligada ao dependency graph/release e resolução por digest combinada com os IDs autoritativos do Catalog. Nenhum fluxo real completo de 26C3 foi materializado e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados no código versionado por este checkpoint. Os Slices 26A, 26B, 26C1 e 26C2 estão completos conforme os ADRs 0019, 0021, 0022 e 0023. Os passos 35–38 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada, persistência imutável/globalmente única em PackageVersion, inventory literal ligada ao dependency graph/release e resolução por digest combinada com os IDs autoritativos do Catalog. Nenhum package de produto de 26C3 foi materializado e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -229,7 +229,7 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Fluxo HTTP real
+Package HTTP de produto
 Integration Packages de produto
 Broadway data plane
 OpenAPI completo
@@ -307,14 +307,14 @@ materializados em `leafcutter_connectors`, `leafcutter_core` e `leafcutter_runti
 v1 não contém UUIDs nem modules; PackageVersion pinna seu digest, `packages/build.exs`
 seleciona dependencies literais da release e o runtime combina somente módulos compilados com
 a projeção pública do Catalog. Deployment e Run repetem a enforcement ratificada. O primeiro
-fluxo de produto e suas matrizes vendor-specific por endpoint pertencem a 26C3.
+package de produto e suas matrizes vendor-specific por endpoint pertencem a 26C3.
 
 ## Próxima tarefa concreta
 
-Ratificar o incremento 26C3 antes de materializar o primeiro fluxo completo de produto:
+Ratificar o incremento 26C3 antes de materializar o primeiro package de produto:
 
 ~~~text
-select one complete external flow across one or more real systems
+select one product package across one or more real systems
 → select exactly one Read source and one or more Write destinations
 → ratify authentication and vendor codec for every selected endpoint
 → ratify Read pagination and Write batch semantics
@@ -322,19 +322,19 @@ select one complete external flow across one or more real systems
 → define the product package and deterministic conformance matrix
 ~~~
 
-26C3 precisa selecionar um fluxo executável completo, possivelmente entre mais de um sistema:
-uma source Read real e uma ou mais destinations Write reais. Autenticação, codec, paginação
-ou batch e o mapeamento de status/rate-limit/errors precisam ser fechados para cada endpoint
-antes da implementação. Uma Operation isolada não satisfaz a topologia ratificada de Package.
-Não criar package demonstrativo genérico, registry temporário ou execução parcial para
-antecipar essa decisão.
+26C3 precisa selecionar a topologia completa de um package de produto, possivelmente entre
+mais de um sistema: uma source Read real e uma ou mais destinations Write reais. Autenticação,
+codec, paginação ou batch e o mapeamento de status/rate-limit/errors precisam ser fechados para
+cada endpoint antes da implementação. Uma Operation isolada não satisfaz a topologia ratificada
+de Package. Não criar package demonstrativo genérico, registry temporário ou package com apenas
+parte da topologia para antecipar essa decisão.
 
 A inventory de produção permanece vazia até 26C3. Fixture de conformance é test-only. Persisted
 Attempt/Delivery errors, backoff, idempotency, durable fan-out e Broadway continuam fora.
 
 ## Principais decisões abertas
 
-- fluxo externo completo, endpoints Read/Write e suas matrizes de status/rate-limit/vendor mapping (26C3);
+- package de produto, endpoints Read/Write e suas matrizes de status/rate-limit/vendor mapping (26C3);
 - artifact signing/distribution, package retention e rolling upgrade;
 - request payload/batch limits além do response body cap do Transport;
 - data plane e durable fan-out;

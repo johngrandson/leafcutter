@@ -33,16 +33,16 @@ O Slice 26C passa a ser executado em três incrementos ordenados:
 ~~~text
 26C1 HTTP Transport boundary + Finch adapter
 → 26C2 Package Manifest/build executable binding + module resolution
-→ 26C3 first production integration flow, 1 Read → 1..N Write
+→ 26C3 first production reference Operation
 ~~~
 
 Este ADR ratificou somente 26C1, agora materializado. Naquele momento, 26C2 ainda precisava
-ser ratificado antes de qualquer mapeamento de `operation_id` para módulo. 26C3 exige a escolha
-explícita de um fluxo entre um ou mais sistemas externos, com uma Read source, uma ou mais
-Write destinations, autenticação, paginação ou batch e semântica de erros por endpoint.
+ser ratificado antes de qualquer mapeamento de `operation_id` para módulo. 26C3 exige uma escolha explícita de sistema
+externo,
+Operation, autenticação, paginação ou escrita e semântica de erros do vendor.
 
-Um servidor HTTP local ou adapter fake usado em testes de conformance não é uma referência de
-produto e não publica metadata no Catalog.
+Um servidor HTTP local ou adapter fake usado em testes de conformance não é uma Operation de
+referência de produto e não publica metadata no Catalog.
 
 ### Ownership e módulos
 
@@ -176,7 +176,7 @@ headers. Nenhum handler Leafcutter pode serializar esses campos. Eventos sanitiz
 Transport, se materializados, usam allowlist de method, scheme, host, status, reason e duração;
 eles não repassam metadata bruta do Finch.
 
-### Resolução de módulo e fluxo real
+### Resolução de módulo e referência real
 
 Este ADR proíbe como solução intermediária:
 
@@ -190,7 +190,7 @@ O ADR-0023 ratifica 26C2 como uma binding explícita e auditável entre
 `PackageVersion.manifest_sha256`, refs locais e módulos já compilados no build. O runtime
 compõe essa binding com APIs públicas do Catalog; `leafcutter_connectors` não consulta o banco.
 
-Somente depois dessa decisão um package com o fluxo real completo será publicado em 26C3.
+Somente depois dessa decisão uma Operation real será publicada como referência em 26C3.
 
 ## Alternativas consideradas
 
@@ -225,7 +225,7 @@ overflow, headers/trailers, compartilhamento por origem e ausência de segredos 
 
 ## Futuro preservado
 
-- fluxo real completo e tradução de status/vendor errors por endpoint;
+- primeira Operation real e tradução de status/vendor errors;
 - request payload/batch limits além do response body cap do Transport;
 - proxy, HTTP/2, streaming público, upload streaming e query-string authentication;
 - persisted Attempt/Delivery error, backoff, jitter e max attempts;
