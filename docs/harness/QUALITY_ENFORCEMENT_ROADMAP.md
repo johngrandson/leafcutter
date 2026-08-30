@@ -194,8 +194,8 @@ entram depois do mecanismo de pre-commit.
 - escolher o provedor de CI antes de materializar H3;
 - definir o conjunto exato de referências cross-context permitidas antes do
   checker de boundaries de H1;
-- definir quando esta trilha alternativa entra na fila em relação ao Slice
-  26C2.
+- definir quando os incrementos ainda pendentes desta trilha, a partir de H1B,
+  entram na fila em relação ao Slice 26C2.
 
 ## Protocolo de execução
 
