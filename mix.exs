@@ -1,6 +1,8 @@
 defmodule Leafcutter.MixProject do
   use Mix.Project
 
+  @repository_root __DIR__
+
   def project do
     [
       apps_path: "apps",
@@ -9,6 +11,7 @@ defmodule Leafcutter.MixProject do
       deps: deps(),
       # Dialyzer analyzes test support modules under MIX_ENV=test.
       dialyzer: [plt_add_apps: [:ex_unit]],
+      releases: releases(),
       aliases: aliases()
     ]
   end
@@ -42,10 +45,20 @@ defmodule Leafcutter.MixProject do
       quality: [
         &run_knowledge_quality/1,
         "compile --warnings-as-errors",
+        &validate_package_build/1,
         "format --check-formatted",
         "credo --strict",
         "test",
-        &run_dialyzer/1
+        &run_dialyzer/1,
+        &run_package_project_quality/1
+      ]
+    ]
+  end
+
+  defp releases do
+    [
+      leafcutter: [
+        applications: [leafcutter_api: :permanent]
       ]
     ]
   end
@@ -83,5 +96,81 @@ defmodule Leafcutter.MixProject do
   defp run_dialyzer(_) do
     args = if Mix.Project.apps_paths() == %{}, do: ["--plt"], else: []
     Mix.Task.run("dialyzer", args)
+  end
+
+  defp validate_package_build(_) do
+    entries = package_entries!()
+
+    release =
+      Mix.Release.from_config!(
+        :leafcutter,
+        Mix.Project.config(),
+        include_erts: false
+      )
+
+    release_applications = Map.keys(release.applications)
+
+    required_applications = [
+      :leafcutter_api,
+      :leafcutter_connectors,
+      :leafcutter_core,
+      :leafcutter_runtime
+    ] ++ Enum.map(entries, & &1.app)
+
+    missing_applications = required_applications -- release_applications
+
+    if missing_applications != [] do
+      Mix.raise("required platform or inventory apps are absent from the release closure")
+    end
+
+    if :leafcutter_package_inventory_fixture in release_applications do
+      Mix.raise("test-only package fixture entered the release closure")
+    end
+  end
+
+  defp run_package_project_quality(_) do
+    mix =
+      System.find_executable("mix") ||
+        Mix.raise("package quality failed: mix executable not found")
+
+    commands = [
+      ["compile", "--warnings-as-errors"],
+      ["format", "--check-formatted"],
+      ["test"],
+      ["dialyzer"]
+    ]
+
+    Enum.each(package_entries!(), &run_package_quality!(mix, commands, &1))
+  end
+
+  defp run_package_quality!(mix, commands, entry) do
+    package_path = Path.expand(entry.path, @repository_root)
+
+    Enum.each(commands, &run_package_command!(mix, package_path, entry.app, &1))
+  end
+
+  defp run_package_command!(mix, package_path, app, arguments) do
+    {output, status} =
+      System.cmd(mix, arguments,
+        cd: package_path,
+        env: [{"MIX_ENV", "test"}],
+        stderr_to_stdout: true
+      )
+
+    IO.write(output)
+
+    if status != 0 do
+      command = Enum.join(["mix" | arguments], " ")
+      Mix.raise("#{app} package quality failed: #{command}")
+    end
+  end
+
+  defp package_entries! do
+    inventory = LeafcutterRuntime.ExecutablePackages.Inventory
+
+    case Code.ensure_loaded(inventory) do
+      {:module, ^inventory} -> apply(inventory, :entries, [])
+      {:error, _reason} -> Mix.raise("compiled package inventory is unavailable")
+    end
   end
 end

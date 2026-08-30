@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSOS 35–36.**
+> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSOS 35–37.**
 
 ## Estrutura real
 
@@ -17,17 +17,20 @@ Grafo materializado entre applications Leafcutter:
 ```text
 leafcutter_core       → none
 leafcutter_connectors → none
-leafcutter_runtime    → leafcutter_core + leafcutter_connectors
+leafcutter_runtime    → leafcutter_core + leafcutter_connectors + installed packages
 leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
 
 Não existe ciclo e nenhum context recebe OTP application própria.
 
-Evolução do dependency graph ratificada para o passo 37, ainda não materializada:
+O ramo adicional é materializado somente quando `packages/build.exs` contém uma entry:
 
 ```text
 leafcutter_runtime → installed packages → leafcutter_connectors
 ```
+
+A inventory de produção atual é vazia. A fixture de conformance é uma dependency exclusiva de
+test e não integra o grafo ou a release de produção.
 
 ## `leafcutter_core`
 
@@ -137,13 +140,17 @@ A app API não contém regra de negócio.
 
 ## Release
 
-Uma release homogênea inicial continua ratificada:
+Uma release homogênea inicial está materializada:
 
 ```text
 :leafcutter
 ```
 
 Todos os nodes executarão core, connectors, runtime e api. Especialização de nodes só entra após necessidade medida.
+
+A configuração Mix da umbrella materializa `:leafcutter` com `leafcutter_api` como entrypoint.
+Core, Connectors, Runtime e os packages instalados entram pela dependency/application closure;
+o gate compara os apps da inventory com a closure produzida por `Mix.Release`.
 
 ## Integration Packages
 
@@ -161,7 +168,8 @@ packages/
 
 Packages não são uma quinta platform application. O ADR-0023 ratifica inventory literal em
 `packages/build.exs`, path dependencies explícitas de `leafcutter_runtime` e prova da
-application closure da release. A estratégia ainda não está materializada.
+application closure da release. Essa estratégia está materializada no passo 37; module
+resolution permanece no passo 38.
 
 ## Dependências permitidas
 
@@ -170,7 +178,7 @@ próprias. No contract v1, não depende de Core, Runtime ou API.
 
 ## Pontos futuros preservados
 
-- materialização do build explícito ratificado para packages instalados;
+- resolução do package instalado pela projeção do Catalog;
 - uma única release inicialmente;
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;

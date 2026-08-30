@@ -118,11 +118,11 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26C2 — Package binding e module resolution
 
-**Contract concreto ratificado no ADR-0023; passos 35–36 materializados.**
+**Contract concreto ratificado no ADR-0023; passos 35–37 materializados.**
 
 - Manifest v1 bounded + digest byte-exact e bindings Read/Write compiladas, materializados;
 - `manifest_sha256` imutável/globalmente único em PackageVersion, com legado legível, materializado;
-- `packages/build.exs` literal + Mix path dependencies/release closure, pendentes;
+- `packages/build.exs` literal + Mix path dependencies/release closure, materializados;
 - resolução via digest + projeção do Catalog, sem module string/UUID registry/atom dinâmico, pendente.
 
 ### Slice 26C3 — primeira referência HTTP
@@ -136,7 +136,8 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 PackageVersion 1 Source → N Destinations, criação automática de Run, a boundary in-memory de
 Operation e o Transport HTTP bounded possuem foundations materializadas. O contract 26C2 está
-ratificado e parcialmente materializado; a próxima fronteira é a inventory explícita do build.
+ratificado e parcialmente materializado; a próxima fronteira é a resolução compilada pela
+projeção do Catalog.
 A primeira referência permanece em 26C3.
 
 ## Data plane durável

@@ -2,7 +2,8 @@
 
 > **Status: PARCIALMENTE MATERIALIZADO.** A authority relacional do Catalog e o contract de
 > Manifest/binding em `leafcutter_connectors` existem; PackageVersion já pinna o digest.
-> Build inventory, module resolution e package de produto permanecem pendentes.
+> Build inventory/release também existem; module resolution e package de produto permanecem
+> pendentes.
 
 ## Estado materializado
 
@@ -45,9 +46,9 @@ one source ref
 one or more ordered destination refs
 ~~~
 
-Os bytes exatos produzem um SHA-256 lowercase. O parser bounded e a binding compilada já
-calculam e embutem esse digest. PackageVersion já o persiste; o passo 37 repetirá o valor em
-`packages/build.exs`.
+Os bytes exatos produzem um SHA-256 lowercase. O parser bounded e a binding compilada calculam
+e embutem esse digest. PackageVersion o persiste e `packages/build.exs` repete o valor para
+ligar o build ao mesmo manifest.
 
 O JSON não contém UUID, app atom, module name, config concreta, credential ou raw secret.
 Operation e ContractVersion permanecem pinadas exclusivamente na projeção relacional.
@@ -73,8 +74,15 @@ alterará RunSnapshot v1.
 existe glob ou auto-discovery. Cada entry vira Mix path dependency de `leafcutter_runtime`,
 entrando na dependency closure da release.
 
-Um diretório não listado não compila nem resolve. `mix quality` deverá validar inventory,
-manifest/digest, Mix app, behaviours, testes do package e presença na release.
+O parser aceita somente literals e valida shape, duplicidade, contenção por realpath e arquivos
+obrigatórios antes de derivar as dependencies. Depois da compilação, a inventory verifica o
+Mix app, manifest/digest, `@external_resource`, ownership do binding, topology e behaviours.
+Um diretório não listado não compila nem resolve.
+
+A release homogênea `:leafcutter` parte de `leafcutter_api`; sua closure transitiva inclui os
+packages instalados pelo runtime. `mix quality` prova essa closure e executa compile, format,
+tests e Dialyzer de cada package listado. A inventory de produção atual é vazia e a fixture de
+conformance é `only: :test`/`runtime: false`.
 
 ## Imutabilidade e legado
 

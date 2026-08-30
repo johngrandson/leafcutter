@@ -1,7 +1,7 @@
 # ADR-0023 — Package Manifest v1, build inventory e resolução compilada
 
 - Status: Accepted
-- Estado de implementação: PARCIAL — PASSOS 35–36 MATERIALIZADOS
+- Estado de implementação: PARCIAL — PASSOS 35–37 MATERIALIZADOS
 - Data: 2026-08-30
 
 ## Contexto
@@ -186,8 +186,9 @@ compilação do package. Nenhum processo OTP por package ou Operation é criado.
 
 O passo 35 está materializado em `leafcutter_connectors`: parsing bounded com rejeição de
 UTF-8/chaves duplicadas, validação JSV + semântica complementar, digest dos bytes exatos e o
-contract compilado com módulos literais, cobertura/ordem/role e `@external_resource`. A prova
-de que o arquivo é o `manifest.json` raiz do próprio package pertence à inventory do passo 37.
+contract compilado com módulos literais, cobertura/ordem/role e `@external_resource`. O passo
+37 materializa na inventory a prova de que o arquivo é o `manifest.json` raiz do próprio
+package.
 
 ### Build inventory explícita
 
@@ -222,6 +223,13 @@ para:
 A lista vazia é válida até 26C3. Um diretório sob `packages/` que não esteja no inventory não
 entra no build, na release nem na resolução.
 
+O passo 37 materializa o parser de literals e a validação em
+`LeafcutterRuntime.PackageBuild`, carregada pela boundary Mix antes de derivar dependencies. A
+inventory compilada repete as invariantes que dependem dos BEAMs prontos e é exposta por
+`LeafcutterRuntime.ExecutablePackages.Inventory` sem leitura de filesystem em runtime. A
+inventory de produção permanece `[]`; um Mix project separado e `only: :test` fornece a prova
+de conformance.
+
 ### Dependency graph e release
 
 Cada entry vira uma dependency Mix `:path` explícita de `leafcutter_runtime`. O package
@@ -243,6 +251,11 @@ uma OTP application sem supervisor próprio por default, não uma quinta platfor
 listados. Testes de dependencies não são assumidos como executados implicitamente pelo teste
 da umbrella. A prova de release verifica que todos os `:app` da inventory pertencem à
 application closure produzida.
+
+O passo 37 materializa a release `:leafcutter` com `leafcutter_api` como entrypoint. A closure
+transitiva inclui Core, Connectors, Runtime e todos os package apps derivados da inventory. O
+gate usa a própria composição de `Mix.Release` para rejeitar apps ausentes; a fixture test-only
+é `runtime: false` e não entra nessa closure.
 
 ### Resolução em runtime
 
@@ -333,7 +346,7 @@ um execution path completo. Congelá-los agora criaria contract especulativo.
 34. ratify Package Manifest/build binding/module resolution
 35. manifest validation + Package binding contract (materializado)
 36. PackageVersion manifest_sha256 + legacy enforcement (materializado)
-37. explicit build inventory + Mix/release integration
+37. explicit build inventory + Mix/release integration (materializado)
 38. runtime resolution + Deployment/Run enforcement + quality gates
 ~~~
 
@@ -361,6 +374,12 @@ publicar a primeira Operation real.
 - `apps/leafcutter_core/priv/repo/migrations/20260830070000_add_manifest_sha256_to_package_versions.exs`
 - `apps/leafcutter_core/priv/repo/migrations/20260830071000_require_manifest_sha256_for_package_versions.exs`
 - `apps/leafcutter_core/test/leafcutter/catalog/packages_test.exs`
+- `packages/build.exs`
+- `apps/leafcutter_runtime/mix.exs`
+- `apps/leafcutter_runtime/mix/package_build.exs`
+- `apps/leafcutter_runtime/lib/leafcutter_runtime/executable_packages/inventory.ex`
+- `apps/leafcutter_runtime/test/leafcutter_runtime/executable_packages/inventory_test.exs`
+- `mix.exs`
 - `docs/specifications/package-manifest-v1.md`
 - `docs/decisions/ADR-0007-integration-packages.md`
 - `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`

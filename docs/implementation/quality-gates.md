@@ -12,10 +12,16 @@ O alias atual executa:
 python3 -m unittest discover -s docs/scripts -p test_*.py
 python3 docs/scripts/kb_lint.py --kb docs/knowledge --strict
 mix compile --warnings-as-errors
+compiled package inventory + Mix release closure validation
 mix format --check-formatted
 mix credo --strict
 mix test
 mix dialyzer
+for each package in packages/build.exs:
+  MIX_ENV=test mix compile --warnings-as-errors
+  MIX_ENV=test mix format --check-formatted
+  MIX_ENV=test mix test
+  MIX_ENV=test mix dialyzer
 ```
 
 Os dois primeiros comandos validam a base de conhecimento uma única vez na
@@ -23,6 +29,13 @@ raiz da umbrella, antes da compilação: primeiro a suíte de testes unitários 
 linter e depois o lint estrito da base real. O ambiente precisa disponibilizar
 Python 3; o linter e seus testes usam apenas a biblioteca padrão, sem pacotes
 externos.
+
+Depois da compilação, o gate exige que Core, Connectors, Runtime, API e todos os
+apps da inventory pertençam à application closure produzida por `Mix.Release`.
+Os comandos por package são executados no próprio Mix project porque testes e
+Dialyzer de dependencies não são herdados pela suíte da umbrella. Com a
+inventory de produção vazia, esse loop termina sem executar subprojetos; a
+fixture de conformance continua coberta pela suíte do runtime.
 
 ## Mudanças com migration
 

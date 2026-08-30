@@ -1,6 +1,6 @@
 # Package Manifest v1
 
-- Estado: PARCIALMENTE MATERIALIZADO — PASSOS 35–36 CONCLUÍDOS
+- Estado: PARCIALMENTE MATERIALIZADO — PASSOS 35–37 CONCLUÍDOS
 - Decisão: `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
 
 ## Objetivo
@@ -294,7 +294,7 @@ Invariantes:
 
 O manifest raw não é retornado, inspecionado ou logado.
 
-### Estado materializado nos passos 35–36
+### Estado materializado nos passos 35–37
 
 `LeafcutterConnectors.Package.Manifest` materializa parsing bounded, duplicate-key detection,
 JSON Schema Draft 2020-12 com JSV, validação semântica complementar e SHA-256 dos bytes exatos.
@@ -303,9 +303,9 @@ exatas, module uniqueness, behaviour conformance, resolução pura e callbacks s
 filesystem. Os testes de conformance usam somente fixture test-only.
 
 A macro exige path absoluto e registra exatamente esse arquivo em `@external_resource`. A
-prova de que ele é o `manifest.json` raiz do Mix project listado permanece responsabilidade da
-inventory do passo 37. O Catalog já persiste o digest imutável e preserva rows históricas `nil`;
-inventory/release e resolução por projeção continuam nos passos 37–38.
+inventory do passo 37 prova que ele é o `manifest.json` raiz do Mix project listado. O Catalog
+persiste o digest imutável e preserva rows históricas `nil`; a resolução por projeção continua
+no passo 38.
 
 ## Build inventory
 
@@ -345,6 +345,13 @@ por `app`; a ordem não tem semântica de execução.
 
 A inventory vazia é válida antes de 26C3.
 
+O passo 37 materializa `packages/build.exs` com a lista de produção vazia e um parser que
+aceita somente o shape literal acima. A boundary valida keys e tipos exatos, unicidade,
+ordenação por app, contenção lexical e por realpath, arquivos obrigatórios e symlinks. Depois
+da compilação das dependencies, valida novamente digest, Manifest, `@external_resource`,
+ownership do binding no OTP app, callbacks, topology e behaviours. A fixture não pertence à
+inventory de produção e existe somente como dependency `only: :test`.
+
 ## Mix dependency graph
 
 `leafcutter_runtime` transforma cada entry validada em dependency `:path`. Não existe glob:
@@ -370,6 +377,12 @@ leafcutter_api
 ~~~
 
 Todos os package apps listados precisam aparecer na dependency/application closure da release.
+
+O passo 37 deriva somente dessas entries as dependencies `:path` de `leafcutter_runtime` e
+materializa a release homogênea `:leafcutter`, com `leafcutter_api` como entrypoint. O gate de
+build calcula a closure pela composição real de `Mix.Release` e exige Core, Connectors,
+Runtime, API e cada app da inventory. `mix quality` também executa compile com warnings como
+erros, format check, tests e Dialyzer dentro de cada package listado.
 
 ## Resolução pública do runtime
 

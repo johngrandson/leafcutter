@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26C2 parcialmente materializado — Manifest, binding e digest persistido**
+**Slice 26C2 parcialmente materializado — build e release explícitos**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. Os passos 35–36 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada e persistência imutável/globalmente única em PackageVersion, preservando rows históricas sem digest. Build inventory/release e resolução de runtime continuam nos passos 37–38; nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. Os passos 35–37 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada, persistência imutável/globalmente única em PackageVersion e inventory literal ligada ao dependency graph e à release. A resolução de runtime continua no passo 38; nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -23,11 +23,14 @@ apps/
 ```text
 leafcutter_core       → none
 leafcutter_connectors → none
-leafcutter_runtime    → core + connectors
+leafcutter_runtime    → core + connectors + installed packages
 leafcutter_api        → core + runtime
 ```
 
 `leafcutter_core` supervisiona um Repo, PubSub e Oban compartilhados. Migrations são centralizadas em core.
+`leafcutter_runtime` deriva installed packages somente das entries literais de
+`packages/build.exs`; a inventory de produção atual é vazia. A release homogênea
+`:leafcutter` parte de `leafcutter_api` e inclui a closure transitiva desse grafo.
 
 ### Organizations
 
@@ -100,6 +103,13 @@ calcula SHA-256 sobre bytes exatos. `LeafcutterConnectors.Package` lê o manifes
 time, registra `@external_resource`, embute a projeção/digest e liga refs a módulos literais
 Read/Write com cobertura, ordem, unicidade e behaviour conformance. Os callbacks são puros e
 não leem filesystem; a fixture é somente de conformance.
+
+`LeafcutterRuntime.ExecutablePackages.Inventory` embute a lista validada em compile time.
+O build rejeita shape, duplicidade, path/realpath, project/manifest, digest, ownership de app,
+external resource, topology e behaviour divergentes antes de produzir o runtime. Cada entry
+vira dependency Mix `:path`; `mix quality` prova a application closure da release e executa
+compile, format, tests e Dialyzer de cada package listado. A fixture é dependency somente em
+test e não entra na release.
 
 ### Connections
 
@@ -212,7 +222,7 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Build inventory + runtime resolution (26C2, passos 37–38)
+Runtime package resolution (26C2, passo 38)
 Referência HTTP real
 Integration Packages
 Broadway data plane
@@ -271,6 +281,7 @@ Package Manifest/build binding/module resolution ratification
 Package Manifest v1 validation materialization
 Compiled Package binding contract materialization
 PackageVersion manifest digest persistence and legacy compatibility
+Explicit package build inventory and release closure
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -282,11 +293,12 @@ Os Slices 26A, 26B e 26C1 estão integralmente materializados. O Transport HTTP 
 `leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
 A facade valida os dois lados do adapter contract e faz exatamente uma tentativa bounded.
 
-Manifest/build/module resolution possui contract fechado no ADR-0023 e os passos 35–36 estão
-materializados em `leafcutter_connectors` e `leafcutter_core`. O Manifest v1 não contém UUIDs
-nem modules; PackageVersion já pinna seu digest. Os passos seguintes materializam
-`packages/build.exs` com path/app/binding literals e compõem a resolução no runtime. A
-primeira Operation de produto e sua matriz vendor-specific pertencem a 26C3.
+Manifest/build/module resolution possui contract fechado no ADR-0023 e os passos 35–37 estão
+materializados em `leafcutter_connectors`, `leafcutter_core` e `leafcutter_runtime`. O Manifest
+v1 não contém UUIDs nem modules; PackageVersion pinna seu digest e `packages/build.exs`
+seleciona dependencies literais da release. O passo seguinte compõe a resolução com a projeção
+do Catalog e repete a enforcement em Deployment/Run. A primeira Operation de produto e sua
+matriz vendor-specific pertencem a 26C3.
 
 ## Próxima tarefa concreta
 
@@ -295,8 +307,8 @@ Materializar somente o incremento 26C2 na ordem ratificada:
 ~~~text
 35. Manifest v1 validation + LeafcutterConnectors.Package binding contract (materializado)
 36. PackageVersion.manifest_sha256 + legacy executability enforcement (materializado)
-37. packages/build.exs + explicit Mix/release dependency closure (próximo)
-38. runtime resolution + Deployment/Run enforcement + quality gates
+37. packages/build.exs + explicit Mix/release dependency closure (materializado)
+38. runtime resolution + Deployment/Run enforcement + quality gates (próximo)
 ~~~
 
 A resolução usa digest e refs locais para selecionar somente modules literais já compilados,
