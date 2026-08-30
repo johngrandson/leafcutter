@@ -1,7 +1,7 @@
 # H1A: enforcement de specs e riscos objetivos no Credo
 
-> **Status: APROVADA NO TRILHO ALTERNATIVO.** Esta specification detalha o
-> subincremento H1A do harness. Ela não altera a sequência de produto nem
+> **Status: MATERIALIZADO NO TRILHO ALTERNATIVO.** Esta specification detalha
+> o subincremento H1A do harness. Ela não altera a sequência de produto nem
 > `docs/checkpoint/CURRENT.md`.
 
 ## Objetivo
@@ -147,6 +147,16 @@ Ao materializar H1A:
 
 O ADR-0015 já define `mix quality` como gate compartilhado. H1A materializa uma
 parte desse gate sem alterar a decisão, portanto não exige novo ADR.
+
+## Evidência
+
+- `.credo.exs` com os três checks opt-in;
+- specs nos módulos listados nesta specification;
+- prova negativa temporária executada antes da correção;
+- `mix credo --strict` sem issues;
+- `mix quality` com status `0`.
+
+Plan: `docs/harness/plans/2026-08-30-h1a-credo-enforcement.md`.
 
 ## Fora de escopo
 

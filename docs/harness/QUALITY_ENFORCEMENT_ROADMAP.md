@@ -111,8 +111,8 @@ Plan: `docs/harness/plans/2026-08-30-h0-quality-contract.md`.
 
 Adicionar enforcement em subincrementos independentes:
 
-1. H1A cria `.credo.exs`, corrige as ausências reais de specs e habilita
-   somente `Credo.Check.Readability.Specs`,
+1. H1A, materializado, cria `.credo.exs`, corrige as ausências reais de specs e
+   habilita somente `Credo.Check.Readability.Specs`,
    `Credo.Check.Warning.UnsafeToAtom` e
    `Credo.Check.Design.SkipTestWithoutComment`. Specification:
    `docs/harness/specifications/H1A-credo-enforcement.md`. Plan:

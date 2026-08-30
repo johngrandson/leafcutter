@@ -43,6 +43,21 @@ Dialyzer de dependencies não são herdados pela suíte da umbrella. Com a
 inventory de produção vazia, esse loop termina sem executar subprojetos; a
 fixture de conformance continua coberta pela suíte do runtime.
 
+### Configuração do Credo
+
+A etapa `mix credo --strict` carrega `.credo.exs`. Além dos checks padrão
+fixados para o Credo 1.7.19, a configuração habilita somente estes checks
+opt-in:
+
+```text
+Credo.Check.Design.SkipTestWithoutComment
+Credo.Check.Readability.Specs com include_defp: false
+Credo.Check.Warning.UnsafeToAtom
+```
+
+O check de specs cobre funções públicas. Checks controversos ou experimentais
+adicionais exigem um incremento próprio com prova negativa.
+
 ## Mudanças com migration
 
 ```bash
