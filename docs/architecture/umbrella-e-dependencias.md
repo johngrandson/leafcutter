@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSO 35.**
+> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSOS 35–36.**
 
 ## Estrutura real
 

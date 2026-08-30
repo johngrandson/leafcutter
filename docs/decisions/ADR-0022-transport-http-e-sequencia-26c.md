@@ -225,7 +225,7 @@ overflow, headers/trailers, compartilhamento por origem e ausência de segredos 
 
 ## Futuro preservado
 
-- conclusão do Package Manifest/build/module resolution nos passos 36–38 do ADR-0023;
+- conclusão do Package Manifest/build/module resolution nos passos 37–38 do ADR-0023;
 - primeira Operation real e tradução de status/vendor errors;
 - request payload/batch limits além do response body cap do Transport;
 - proxy, HTTP/2, streaming público, upload streaming e query-string authentication;
@@ -245,9 +245,10 @@ overflow, headers/trailers, compartilhamento por origem e ausência de segredos 
 
 ## Evolução posterior
 
-O ADR-0023 fecha o contract de 26C2 sem alterar a boundary HTTP. Seu passo 35 materializa
-Manifest v1 por digest e bindings literais; `packages/build.exs`, persistência do digest e
-resolução no runtime permanecem nos passos 36–38. 26C3 continua separado.
+O ADR-0023 fecha o contract de 26C2 sem alterar a boundary HTTP. Seus passos 35–36 materializam
+Manifest v1 por digest, bindings literais e persistência imutável do digest;
+`packages/build.exs` e resolução no runtime permanecem nos passos 37–38. 26C3 continua
+separado.
 
 ## Evidência
 

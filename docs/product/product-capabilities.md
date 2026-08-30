@@ -40,6 +40,7 @@
 - publicação com validação e build JSV, compilação e validação reutilizáveis;
 - Package, PackageVersion e endpoints relacionais;
 - topologia 1 Source → 1..N Destinations publicada atomicamente;
+- manifest digest obrigatório, imutável e globalmente único em novas PackageVersions;
 - rejeição de ContractVersions identity-only legadas em novas PackageVersions;
 - ordem, references, role compatibility e imutabilidade protegidas no banco.
 
@@ -94,7 +95,7 @@
 
 ### Core de integração
 
-- `PackageVersion.manifest_sha256`, build inventory e resolução em runtime (26C2, passos 36–38);
+- build inventory e resolução em runtime (26C2, passos 37–38);
 - primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

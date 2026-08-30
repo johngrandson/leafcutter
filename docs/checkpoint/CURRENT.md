@@ -88,9 +88,9 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; toda nova publicação exige `manifest_sha256` lowercase hex de 64 caracteres e globalmente único. O modelo físico mantém a coluna nullable para rows históricas, enquanto CHECK e trigger selam novos inserts e a mutation trigger impede troca do digest durante a publicação. Antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado ou sem digest permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; toda nova publicação exige `manifest_sha256` lowercase hex de 64 caracteres e globalmente único. O modelo físico mantém a coluna nullable para rows históricas, enquanto CHECK e trigger selam novos inserts e a mutation trigger impede troca do digest durante a publicação. Antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com ContractVersions legadas ou sem digest permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
-A rejeição de versões legadas em novas PackageVersions, novos Deployments e novas Runs resolvidas está materializada. PackageVersions, Deployments, Runs e RunSnapshots históricos permanecem legíveis sem reescrita.
+A rejeição de ContractVersions legadas em novas PackageVersions, novos Deployments e novas Runs resolvidas está materializada. PackageVersions, Deployments, Runs e RunSnapshots históricos permanecem legíveis sem reescrita.
 
 ### Package Manifest e binding compilada
 
@@ -195,7 +195,8 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 
 `leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors`
 materializa a boundary executável de Operation, o Transport HTTP 26C1 e o contract de Manifest
-e binding compilada do passo 35. `LeafcutterConnectors.Application` supervisiona
+e binding compilada do passo 35. O passo 36 persiste o digest na PackageVersion, sob ownership
+do Catalog. `LeafcutterConnectors.Application` supervisiona
 exclusivamente a instância Finch HTTP/1; a application não depende de Core, Ecto, Repo ou
 runtime.
 
@@ -211,7 +212,7 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-PackageVersion.manifest_sha256 + build inventory + runtime resolution (26C2, passos 36–38)
+Build inventory + runtime resolution (26C2, passos 37–38)
 Referência HTTP real
 Integration Packages
 Broadway data plane

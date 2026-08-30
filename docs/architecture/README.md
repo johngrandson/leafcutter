@@ -21,7 +21,7 @@ Esta pasta contém tanto a arquitetura **já materializada** quanto a arquitetur
 
 | Documento | Estado |
 |---|---|
-| `connectors-operations-transports.md` | 26B + HTTP 26C1 MATERIALIZADOS; 26C2 PARCIAL — PASSO 35; 26C3 ABERTO |
+| `connectors-operations-transports.md` | 26B + HTTP 26C1 MATERIALIZADOS; 26C2 PARCIAL — PASSOS 35–36; 26C3 ABERTO |
 | `contracts-json-schema.md` | SLICE 26A MATERIALIZADO |
 | `integration-packages.md` | CATALOG + MANIFEST/BINDING MATERIALIZADOS; BUILD 26C2 PENDENTE |
 | `transformations-enrichments-interceptors.md` | RATIFICADO — NÃO MATERIALIZADO |

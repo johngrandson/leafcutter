@@ -132,9 +132,7 @@ defmodule Leafcutter.Catalog.PackageVersion do
         []
       else
         [
-          {field,
-           {"must be exactly 64 lowercase hexadecimal characters",
-            validation: :format}}
+          {field, {"must be exactly 64 lowercase hexadecimal characters", validation: :format}}
         ]
       end
     end)

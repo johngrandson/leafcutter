@@ -136,7 +136,8 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 PackageVersion 1 Source → N Destinations, criação automática de Run, a boundary in-memory de
 Operation e o Transport HTTP bounded possuem foundations materializadas. O contract 26C2 está
-ratificado e parcialmente materializado; a próxima fronteira é persistir o digest. A primeira referência permanece em 26C3.
+ratificado e parcialmente materializado; a próxima fronteira é a inventory explícita do build.
+A primeira referência permanece em 26C3.
 
 ## Data plane durável
 

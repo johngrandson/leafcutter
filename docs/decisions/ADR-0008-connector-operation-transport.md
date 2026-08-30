@@ -1,7 +1,7 @@
 # ADR-0008 — Connector → Operation → Transport
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION + HTTP 26C1 + 26C2/PASSO 35
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION + HTTP 26C1 + 26C2/PASSOS 35–36
 
 ## Decisão
 
@@ -37,7 +37,8 @@ Materializado conforme o ADR-0022:
 Parcialmente materializado conforme o ADR-0023:
 
 - Manifest e binding compilada existem no passo 35;
-- persistência do digest, build inventory e resolução em runtime permanecem nos passos 36–38.
+- persistência imutável do digest existe no passo 36;
+- build inventory e resolução em runtime permanecem nos passos 37–38.
 
 Ainda não ratificado:
 
@@ -64,5 +65,5 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 ~~~
 
 O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos
-materializados. O ADR-0023 controla 26C2 sem registry implícito; o passo 35 está materializado
-e a referência real permanece em 26C3.
+materializados. O ADR-0023 controla 26C2 sem registry implícito; os passos 35–36 estão
+materializados e a referência real permanece em 26C3.

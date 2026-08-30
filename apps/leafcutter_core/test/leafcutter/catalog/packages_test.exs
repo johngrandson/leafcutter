@@ -554,9 +554,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
           Repo.transaction(
             fn ->
               package_version
-              |> Changeset.change(
-                manifest_sha256: @alternate_manifest_sha256
-              )
+              |> Changeset.change(manifest_sha256: @alternate_manifest_sha256)
               |> Repo.update!()
             end,
             mode: :savepoint
@@ -867,6 +865,8 @@ defmodule Leafcutter.Catalog.PackagesTest do
     {:ok, dumped_package_id} = Ecto.UUID.dump(package.id)
     {:ok, dumped_package_version_id} = Ecto.UUID.dump(package_version_id)
 
+    # This models a pre-migration row without changing trigger definitions while
+    # the sandbox transaction may still have deferred publication events.
     SQL.query!(
       Repo,
       "SET LOCAL session_replication_role = replica",
