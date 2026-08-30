@@ -1,6 +1,7 @@
 defmodule LeafcutterPackageInventoryFixture.MixProject do
   use Mix.Project
 
+  @spec project() :: keyword()
   def project do
     [
       app: :leafcutter_package_inventory_fixture,
@@ -18,6 +19,7 @@ defmodule LeafcutterPackageInventoryFixture.MixProject do
     ]
   end
 
+  @spec application() :: keyword()
   def application do
     [extra_applications: [:logger]]
   end
