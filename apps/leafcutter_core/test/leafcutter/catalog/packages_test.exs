@@ -869,7 +869,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
 
     SQL.query!(
       Repo,
-      "ALTER TABLE package_versions DISABLE TRIGGER package_versions_require_manifest_sha256",
+      "SET LOCAL session_replication_role = replica",
       []
     )
 
@@ -892,7 +892,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
     after
       SQL.query!(
         Repo,
-        "ALTER TABLE package_versions ENABLE TRIGGER package_versions_require_manifest_sha256",
+        "SET LOCAL session_replication_role = origin",
         []
       )
     end
