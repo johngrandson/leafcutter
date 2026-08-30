@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26C2 parcialmente materializado — Manifest e binding compilada**
+**Slice 26C2 parcialmente materializado — Manifest, binding e digest persistido**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. O passo 35 de 26C2 materializa Manifest v1 bounded, digest dos bytes exatos e binding compilada em `leafcutter_connectors`. Persistência em PackageVersion, build inventory/release e resolução de runtime continuam nos passos 36–38; nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. Os passos 35–36 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada e persistência imutável/globalmente única em PackageVersion, preservando rows históricas sem digest. Build inventory/release e resolução de runtime continuam nos passos 37–38; nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -88,7 +88,7 @@ Catalog.Packages.publish_version/2
 Catalog.Packages.get_version/1
 ```
 
-ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
+ConnectorVersion e suas Operations são publicadas atomicamente. Um estado interno não publicado existe somente dentro da transação; constraint e mutation triggers impedem commit sem sealing, append tardio, update e delete. A boundary pública de ContractVersion exige `version` e `schema`, faz cast por `SchemaDocument` e conclui a política pura e o build JSV antes do insert. O modelo físico mantém `schema :jsonb` nullable para preservar rows identity-only legadas, mas um CHECK rejeita raízes diferentes de object/boolean/SQL NULL e uma trigger `BEFORE INSERT` rejeita novos SQL NULL. A trigger existente de update/delete também protege o schema publicado. `Contracts.compile/1` distingue ausência e legado, reaplica a política, constrói no máximo uma root por chamada e retorna um validator Leafcutter opaco sem cache compartilhado. `Contracts.validate/2` rejeita termos não JSON antes do JSV, desabilita casts, reutiliza a root compilada e devolve o payload original ou um erro Leafcutter com paths e kinds ordenados, somente values JSON e sem messages dependentes do payload. PackageVersion publica uma source e uma ou mais destinations ordenadas; toda nova publicação exige `manifest_sha256` lowercase hex de 64 caracteres e globalmente único. O modelo físico mantém a coluna nullable para rows históricas, enquanto CHECK e trigger selam novos inserts e a mutation trigger impede troca do digest durante a publicação. Antes de inserir cada endpoint, a boundary confirma que sua ContractVersion possui schema persistido e faz rollback integral com erro em `contract_version_id` para versões legadas. PackageVersions históricas com legado ou sem digest permanecem legíveis. Constraints e triggers continuam protegendo cardinalidade, compatibilidade de Operation role, referências, sealing e imutabilidade. Names, versions e refs rejeitam UTF-8 inválido antes da persistência.
 
 A rejeição de versões legadas em novas PackageVersions, novos Deployments e novas Runs resolvidas está materializada. PackageVersions, Deployments, Runs e RunSnapshots históricos permanecem legíveis sem reescrita.
 
@@ -265,6 +265,7 @@ HTTP Transport boundary materialization
 Package Manifest/build binding/module resolution ratification
 Package Manifest v1 validation materialization
 Compiled Package binding contract materialization
+PackageVersion manifest digest persistence and legacy compatibility
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -276,9 +277,9 @@ Os Slices 26A, 26B e 26C1 estão integralmente materializados. O Transport HTTP 
 `leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
 A facade valida os dois lados do adapter contract e faz exatamente uma tentativa bounded.
 
-Manifest/build/module resolution possui contract fechado no ADR-0023 e o passo 35 está
-materializado em `leafcutter_connectors`. O Manifest v1 não contém UUIDs nem modules; os
-passos seguintes fazem PackageVersion pinnar seu digest, materializam
+Manifest/build/module resolution possui contract fechado no ADR-0023 e os passos 35–36 estão
+materializados em `leafcutter_connectors` e `leafcutter_core`. O Manifest v1 não contém UUIDs
+nem modules; PackageVersion já pinna seu digest. Os passos seguintes materializam
 `packages/build.exs` com path/app/binding literals e compõem a resolução no runtime. A
 primeira Operation de produto e sua matriz vendor-specific pertencem a 26C3.
 
@@ -288,8 +289,8 @@ Materializar somente o incremento 26C2 na ordem ratificada:
 
 ~~~text
 35. Manifest v1 validation + LeafcutterConnectors.Package binding contract (materializado)
-36. PackageVersion.manifest_sha256 + legacy executability enforcement (próximo)
-37. packages/build.exs + explicit Mix/release dependency closure
+36. PackageVersion.manifest_sha256 + legacy executability enforcement (materializado)
+37. packages/build.exs + explicit Mix/release dependency closure (próximo)
 38. runtime resolution + Deployment/Run enforcement + quality gates
 ~~~
 

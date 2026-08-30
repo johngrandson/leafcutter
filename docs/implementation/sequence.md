@@ -84,12 +84,15 @@ incrementos 26C2 e 26C3 permanecem separados e não podem ser substituídos por 
 → bounded JSON parsing + Draft 2020-12/JSV validation
 → exact-byte SHA-256 + compile-time external resource
 → literal ordered Read/Write modules + pure resolution callbacks
-→ no PackageVersion, inventory, runtime resolution or production package yet
+36. PackageVersion.manifest_sha256 + legacy enforcement
+→ required lowercase hex digest for every new publication
+→ globally unique + immutable, with nullable historical rows still readable
+→ no inventory, runtime resolution or production package yet
 ~~~
 
-O ADR-0023 e `docs/specifications/package-manifest-v1.md` controlam 26C2. O passo 35 está
-materializado; a próxima etapa é 36, seguida por inventory/release no passo 37 e resolução/gates
-no passo 38. A inventory de produção permanece vazia até 26C3.
+O ADR-0023 e `docs/specifications/package-manifest-v1.md` controlam 26C2. Os passos 35–36 estão
+materializados; a próxima etapa é inventory/release no passo 37, seguida por resolução/gates no
+passo 38. A inventory de produção permanece vazia até 26C3.
 
 ## Sequência ratificada posterior
 
@@ -102,7 +105,7 @@ minimal Catalog authorities (materialized)
 → ContractVersion executable + JSON Schema/JSV through PackageVersion/Deployment/Run (26A, materialized)
 → Operation executable contract (26B, materialized)
 → HTTP Transport boundary + Finch adapter (26C1, materialized)
-→ Package Manifest/build binding + module resolution (26C2, partial; step 36 next)
+→ Package Manifest/build binding + module resolution (26C2, partial; step 37 next)
 → first production HTTP Operation (26C3, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -110,4 +113,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation e 26C1 materializou o Transport HTTP. O contract 26C2 está ratificado e o passo 35 está materializado; a próxima etapa persiste o digest em PackageVersion. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation e 26C1 materializou o Transport HTTP. O contract 26C2 está ratificado e os passos 35–36 estão materializados; a próxima etapa fecha inventory explícita e integração Mix/release. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.

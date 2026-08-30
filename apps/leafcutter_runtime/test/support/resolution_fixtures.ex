@@ -63,6 +63,7 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
 
     {:ok, package_version} =
       Packages.publish_version(package.id, %{
+        manifest_sha256: manifest_sha256_fixture(),
         version: "1",
         source: %{
           ref: "source",
@@ -258,5 +259,10 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
 
   defp destination_connector_version_id(fixture) do
     fixture.destination_operation.connector_version_id
+  end
+
+  defp manifest_sha256_fixture do
+    hex = Ecto.UUID.generate() |> String.replace("-", "")
+    hex <> hex
   end
 end

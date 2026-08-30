@@ -3,8 +3,8 @@ defmodule Leafcutter.Catalog.Packages do
   Public capability module for Package identities and immutable topologies.
 
   PackageVersion and PackageVersionEndpoint rows are published atomically as
-  a relational projection independent from the draft Package Manifest. Every
-  new endpoint must pin an executable ContractVersion.
+  a relational projection bound to a Package Manifest digest. Every new
+  endpoint must pin an executable ContractVersion.
   """
 
   import Ecto.Query
@@ -34,6 +34,7 @@ defmodule Leafcutter.Catalog.Packages do
   @type publish_version_attrs ::
           %{
             required(:version) => String.t(),
+            required(:manifest_sha256) => String.t(),
             required(:source) => endpoint_attrs(),
             required(:destinations) => nonempty_list(endpoint_attrs())
           }
@@ -71,7 +72,7 @@ defmodule Leafcutter.Catalog.Packages do
 
   * Package identities are global and not scoped to an Organization.
   * Creating an identity does not publish a PackageVersion.
-  * Manifest and build lifecycles are handled separately in future slices.
+  * Manifest compilation and build inventory are owned outside this identity API.
   """
   @spec create(Package.create_attrs()) ::
           {:ok, Package.t()} | {:error, Changeset.t()}
@@ -163,6 +164,7 @@ defmodule Leafcutter.Catalog.Packages do
   * Destination endpoints follow in their persisted position order.
   * Each Operation includes its immutable ConnectorVersion association.
   * Historical endpoints that pin identity-only ContractVersions remain readable.
+  * Historical PackageVersions without a manifest digest remain readable.
   * The projection has no availability filtering in this slice.
   """
   @spec get_version(PackageVersion.id()) ::
@@ -189,7 +191,7 @@ defmodule Leafcutter.Catalog.Packages do
   ## Parameters
 
   * `package_id` - The stable Package identity receiving the version
-  * `attrs` - The opaque version, one source, and an ordered non-empty destination list
+  * `attrs` - The version, manifest digest, one source, and ordered non-empty destinations
 
   ## Returns
 
@@ -213,6 +215,8 @@ defmodule Leafcutter.Catalog.Packages do
       ...>   Leafcutter.Catalog.Packages.publish_version(
       ...>     package.id,
       ...>     %{
+      ...>       manifest_sha256:
+      ...>         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
       ...>       version: "2026.08",
       ...>       source: %{
       ...>         ref: "source",
@@ -235,6 +239,8 @@ defmodule Leafcutter.Catalog.Packages do
   ## Notes
 
   * Exactly one source and one or more destinations are required.
+  * Every new PackageVersion requires a globally unique lowercase SHA-256 manifest digest.
+  * Historical PackageVersions without a digest remain readable through `get_version/1`.
   * Destination position is derived from list order and is not caller supplied.
   * Endpoint refs are unique across the complete PackageVersion.
   * Every endpoint role must match its referenced Operation role.
@@ -259,6 +265,7 @@ defmodule Leafcutter.Catalog.Packages do
           %PackageVersion{},
           %{
             package_id: package.id,
+            manifest_sha256: attribute(attrs, :manifest_sha256),
             version: attribute(attrs, :version)
           }
         )

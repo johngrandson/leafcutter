@@ -118,10 +118,10 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26C2 — Package binding e module resolution
 
-**Contract concreto ratificado no ADR-0023; passo 35 materializado.**
+**Contract concreto ratificado no ADR-0023; passos 35–36 materializados.**
 
 - Manifest v1 bounded + digest byte-exact e bindings Read/Write compiladas, materializados;
-- `manifest_sha256` imutável em PackageVersion, pendente;
+- `manifest_sha256` imutável/globalmente único em PackageVersion, com legado legível, materializado;
 - `packages/build.exs` literal + Mix path dependencies/release closure, pendentes;
 - resolução via digest + projeção do Catalog, sem module string/UUID registry/atom dinâmico, pendente.
 

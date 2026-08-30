@@ -1,7 +1,7 @@
 # ADR-0023 — Package Manifest v1, build inventory e resolução compilada
 
 - Status: Accepted
-- Estado de implementação: PARCIAL — PASSO 35 MATERIALIZADO
+- Estado de implementação: PARCIAL — PASSOS 35–36 MATERIALIZADOS
 - Data: 2026-08-30
 
 ## Contexto
@@ -322,7 +322,7 @@ um execution path completo. Congelá-los agora criaria contract especulativo.
 ~~~text
 34. ratify Package Manifest/build binding/module resolution
 35. manifest validation + Package binding contract (materializado)
-36. PackageVersion manifest_sha256 + legacy enforcement
+36. PackageVersion manifest_sha256 + legacy enforcement (materializado)
 37. explicit build inventory + Mix/release integration
 38. runtime resolution + Deployment/Run enforcement + quality gates
 ~~~
@@ -347,6 +347,10 @@ publicar a primeira Operation real.
 - `apps/leafcutter_connectors/lib/leafcutter_connectors/package/manifest.ex`
 - `apps/leafcutter_connectors/test/leafcutter_connectors/package_test.exs`
 - `apps/leafcutter_connectors/test/leafcutter_connectors/package/manifest_test.exs`
+- `apps/leafcutter_core/lib/leafcutter/catalog/schemas/package_version.ex`
+- `apps/leafcutter_core/priv/repo/migrations/20260830070000_add_manifest_sha256_to_package_versions.exs`
+- `apps/leafcutter_core/priv/repo/migrations/20260830071000_require_manifest_sha256_for_package_versions.exs`
+- `apps/leafcutter_core/test/leafcutter/catalog/packages_test.exs`
 - `docs/specifications/package-manifest-v1.md`
 - `docs/decisions/ADR-0007-integration-packages.md`
 - `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`

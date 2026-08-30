@@ -1,6 +1,6 @@
 # Package Manifest v1
 
-- Estado: PARCIALMENTE MATERIALIZADO — PASSO 35 CONCLUÍDO
+- Estado: PARCIALMENTE MATERIALIZADO — PASSOS 35–36 CONCLUÍDOS
 - Decisão: `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
 
 ## Objetivo
@@ -238,6 +238,10 @@ Toda publicação nova exige o campo. Rows históricas `nil` permanecem legívei
 ser usadas por novo deployment/replacement ou nova Run resolvida. Não existe backfill por name,
 version, ref ou filesystem.
 
+A persistência, validação, unicidade global, sealing de novos inserts e leitura de rows
+históricas `nil` estão materializados no passo 36. A rejeição nas boundaries de Deployment e
+Run permanece parte do passo 38.
+
 RunSnapshot v1 não recebe campo novo. O runtime lê o digest da PackageVersion imutável
 referenciada por `definition.package_version_id`.
 
@@ -290,7 +294,7 @@ Invariantes:
 
 O manifest raw não é retornado, inspecionado ou logado.
 
-### Estado materializado no passo 35
+### Estado materializado nos passos 35–36
 
 `LeafcutterConnectors.Package.Manifest` materializa parsing bounded, duplicate-key detection,
 JSON Schema Draft 2020-12 com JSV, validação semântica complementar e SHA-256 dos bytes exatos.
@@ -300,8 +304,8 @@ filesystem. Os testes de conformance usam somente fixture test-only.
 
 A macro exige path absoluto e registra exatamente esse arquivo em `@external_resource`. A
 prova de que ele é o `manifest.json` raiz do Mix project listado permanece responsabilidade da
-inventory do passo 37. Persistência no Catalog, inventory/release e resolução por projeção
-continuam nos passos 36–38.
+inventory do passo 37. O Catalog já persiste o digest imutável e preserva rows históricas `nil`;
+inventory/release e resolução por projeção continuam nos passos 37–38.
 
 ## Build inventory
 

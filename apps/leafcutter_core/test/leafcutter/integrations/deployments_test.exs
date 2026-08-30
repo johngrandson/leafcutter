@@ -816,6 +816,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
 
     {:ok, package_version} =
       Packages.publish_version(package.id, %{
+        manifest_sha256: manifest_sha256_fixture(),
         version: "1",
         source: %{
           ref: "source",
@@ -926,6 +927,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       %PackageVersion{}
       |> PackageVersion.publish_changeset(%{
         package_id: scope.package.id,
+        manifest_sha256: manifest_sha256_fixture(),
         version: version
       })
       |> Repo.insert!()
@@ -969,6 +971,7 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
 
     {:ok, package_version} =
       Packages.publish_version(scope.package.id, %{
+        manifest_sha256: manifest_sha256_fixture(),
         version: Map.fetch!(attrs, :version),
         source: %{
           ref: "source",
@@ -1013,6 +1016,11 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       %{ref: "source", connection_id: scope.source_connection.id},
       %{ref: "warehouse", connection_id: scope.destination_connection.id}
     ]
+  end
+
+  defp manifest_sha256_fixture do
+    hex = Ecto.UUID.generate() |> String.replace("-", "")
+    hex <> hex
   end
 
   defp force_integrity_constraints do

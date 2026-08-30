@@ -160,6 +160,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
 
       {:ok, other_package_version} =
         Packages.publish_version(other_package.id, %{
+          manifest_sha256: manifest_sha256_fixture(),
           version: "1",
           source: %{
             ref: "source",
@@ -312,6 +313,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       %PackageVersion{}
       |> PackageVersion.publish_changeset(%{
         package_id: fixture.package.id,
+        manifest_sha256: manifest_sha256_fixture(),
         version: "legacy"
       })
       |> Repo.insert!()
@@ -492,6 +494,11 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
   end
 
   defp shared_lock?(query), do: String.contains?(query, "FOR SHARE")
+
+  defp manifest_sha256_fixture do
+    hex = Ecto.UUID.generate() |> String.replace("-", "")
+    hex <> hex
+  end
 
   defp unique_name(prefix) do
     "#{prefix} #{System.unique_integer([:positive])}"

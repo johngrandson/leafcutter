@@ -1,8 +1,8 @@
 # Integration Packages
 
 > **Status: PARCIALMENTE MATERIALIZADO.** A authority relacional do Catalog e o contract de
-> Manifest/binding em `leafcutter_connectors` existem. Build inventory, module resolution e
-> package de produto permanecem pendentes.
+> Manifest/binding em `leafcutter_connectors` existem; PackageVersion já pinna o digest.
+> Build inventory, module resolution e package de produto permanecem pendentes.
 
 ## Estado materializado
 
@@ -11,6 +11,7 @@ O Catalog materializa:
 ~~~text
 Package
 └── immutable PackageVersion
+    ├── globally unique manifest_sha256
     ├── exactly one source endpoint
     └── one or more ordered destination endpoints
 ~~~
@@ -45,8 +46,8 @@ one or more ordered destination refs
 ~~~
 
 Os bytes exatos produzem um SHA-256 lowercase. O parser bounded e a binding compilada já
-calculam e embutem esse digest. Os passos seguintes o persistirão em PackageVersion e repetirão
-o valor em `packages/build.exs`.
+calculam e embutem esse digest. PackageVersion já o persiste; o passo 37 repetirá o valor em
+`packages/build.exs`.
 
 O JSON não contém UUID, app atom, module name, config concreta, credential ou raw secret.
 Operation e ContractVersion permanecem pinadas exclusivamente na projeção relacional.
@@ -77,9 +78,11 @@ manifest/digest, Mix app, behaviours, testes do package e presença na release.
 
 ## Imutabilidade e legado
 
-PackageVersion publicada continua imutável. A coluna `manifest_sha256` será nullable somente
-para rows históricas; novas publicações exigirão digest. Versões legadas permanecerão legíveis,
-mas não poderão originar novos deployments ou Runs.
+PackageVersion publicada continua imutável. A coluna `manifest_sha256` é nullable somente para
+rows históricas; validação, CHECK e trigger exigem digest lowercase hex de 64 caracteres em
+novas publicações, e um índice garante unicidade global. Versões legadas permanecem legíveis e
+sem backfill. A rejeição dessas versões em novos deployments e Runs será materializada no passo
+38.
 
 ## Dependências
 
