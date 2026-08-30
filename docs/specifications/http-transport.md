@@ -1,6 +1,6 @@
 # HTTP Transport
 
-- Estado: RATIFICADO — NÃO MATERIALIZADO
+- Estado: MATERIALIZADO
 - Decisão: `docs/decisions/ADR-0022-transport-http-e-sequencia-26c.md`
 
 ## Objetivo
@@ -26,6 +26,17 @@ leafcutter_connectors
 
 Não existe dependency para `leafcutter_core`, Catalog, Repo ou runtime. Não existe behaviour
 genérico `Transport` neste primeiro incremento.
+
+## Implementação e evidência
+
+O contract está materializado em `apps/leafcutter_connectors`. A application supervisiona
+somente a instância Finch nomeada; a facade e os valores permanecem livres de Core, Catalog,
+Repo e runtime. A dependency e os limites centrais estão em `mix.exs`/`mix.lock` e config.
+
+A prova executável inclui testes puros de Request/Response/adapter contract e testes de rede com
+`test/support/http_server.ex`. O servidor TCP local verifica status, chunks, trailers, body cap,
+timeouts, uma única tentativa, compartilhamento de pool por origin e ausência de segredos em
+logs sem internet ou credenciais reais.
 
 ## API pública
 
@@ -257,7 +268,7 @@ Finch emite eventos com `%Finch.Request{}` e response headers na metadata. Handl
 não podem serializar esses campos. Qualquer evento próprio do Transport usa allowlist de
 method, scheme, host, status, reason e duração, sem copiar metadata bruta.
 
-## Matriz mínima de testes da materialização
+## Matriz de testes materializada
 
 ### Request
 

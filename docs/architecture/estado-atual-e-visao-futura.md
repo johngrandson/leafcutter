@@ -199,7 +199,7 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Connectors atuais
 
-`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. O contract HTTP 26C1 está ratificado no ADR-0022, mas ainda não há Transport nem implementação concreta de connector no código.
+`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. Também materializa o Transport HTTP bounded de 26C1, com facade/Adapter, Request/Response/Error e Finch HTTP/1 supervisionado. Ainda não existe Connector/Operation concreta de produto.
 
 ## Arquitetura ratificada ainda não materializada
 
@@ -225,7 +225,6 @@ Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-HTTP Transport boundary (26C1 ratificado; não materializado)
 Package Manifest/build binding + module resolution (26C2)
 first production HTTP Operation (26C3)
 ```
@@ -304,7 +303,7 @@ Sequência ratificada:
 → 26C3 first production HTTP Operation
 ```
 
-26A e 26B estão materializados. O HTTP Transport 26C1 está ratificado, ainda sem código; 26C2/26C3 preservam package binding e referência real como decisões próprias. Outros transports entram somente com demanda real.
+26A, 26B e o HTTP Transport 26C1 estão materializados. 26C2/26C3 preservam package binding e referência real como decisões próprias. Outros transports entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -344,7 +343,7 @@ Entre as principais:
 - histórico concreto de EnvironmentDeployment;
 - Package Manifest JSON Schema v1;
 - inclusão de `packages/*` no build;
-- materialização do client/pool HTTP 26C1 e seu tuning por métricas;
+- tuning futuro do client/pool HTTP por métricas;
 - lifecycle completo de Run, pause/resume/cancel e terminalização;
 - Record/Delivery/Attempt/Checkpoint e data plane Broadway;
 - secret provider/encryption;
@@ -361,7 +360,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e os Slices 26A/26B estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e os Slices 26A/26B/26C1 estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -378,9 +377,11 @@ ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (2
 ↓
 Operation executable contract (26B materializado)
 ↓
-HTTP Transport boundary (26C1 ratificado; materialização seguinte)
+HTTP Transport boundary (26C1 materializado)
 ↓
-Package binding/module resolution + reference Operation (26C2/26C3 abertos)
+Package binding/module resolution (26C2 aberto)
+↓
+reference Operation (26C3 aberto)
 ```
 
-O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A e o ADR-0021 controla 26B, todos materializados. O ADR-0022 e `http-transport.md` controlam 26C1 ratificado. A próxima fronteira é materializar somente o Transport HTTP; package binding, referência real, coordinator e Broadway permanecem posteriores.
+O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. A próxima fronteira é ratificar 26C2; package binding, referência real, coordinator e Broadway permanecem posteriores até decisão própria.

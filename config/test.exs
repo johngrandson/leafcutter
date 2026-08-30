@@ -24,3 +24,9 @@ config :leafcutter_runtime, LeafcutterRuntime.NodeHeartbeat,
   mode: :telemetry_only
 
 config :leafcutter_runtime, LeafcutterRuntime.RunRecovery, enabled: false
+
+config :leafcutter_connectors, LeafcutterConnectors.Transport.HTTP,
+  pool_size: 1,
+  connect_timeout_ms: 5_000,
+  pool_max_idle_time_ms: 300_000,
+  max_response_body_bytes: 64

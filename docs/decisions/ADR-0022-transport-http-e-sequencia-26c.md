@@ -1,8 +1,9 @@
 # ADR-0022 — Transport HTTP e sequência do Slice 26C
 
 - Status: Accepted
-- Estado de implementação: NÃO MATERIALIZADO
+- Estado de implementação: MATERIALIZADO — 26C1
 - Data: 2026-08-29
+- Materializado em: 2026-08-30
 
 ## Contexto
 
@@ -35,8 +36,9 @@ O Slice 26C passa a ser executado em três incrementos ordenados:
 → 26C3 first production reference Operation
 ~~~
 
-Somente 26C1 está ratificado por este ADR. 26C2 precisa ser ratificado antes de qualquer
-mapeamento de `operation_id` para módulo. 26C3 exige uma escolha explícita de sistema externo,
+Este ADR ratifica somente 26C1, agora materializado. 26C2 precisa ser ratificado antes de
+qualquer mapeamento de `operation_id` para módulo. 26C3 exige uma escolha explícita de sistema
+externo,
 Operation, autenticação, paginação ou escrita e semântica de erros do vendor.
 
 Um servidor HTTP local ou adapter fake usado em testes de conformance não é uma Operation de
@@ -214,8 +216,12 @@ conexões HTTP. Isolamento futuro exige evidência operacional.
 
 ## Estado atual
 
-O código atual contém somente a boundary de Operation do ADR-0021. Não existe dependency HTTP,
-supervisor em `leafcutter_connectors`, Request/Response de Transport, pool ou chamada de rede.
+O código materializa a facade e o Adapter contract HTTP, Request/Response/Error validados,
+Inspect redigido e o adapter Finch HTTP/1. `LeafcutterConnectors.Application` supervisiona uma
+instância nomeada com pools por origem iniciados sob demanda. A resposta é acumulada por
+`stream_while/5` e interrompida sem retorno parcial ao exceder o menor cap central/por request.
+Testes puros e um servidor TCP local determinístico cobrem contrato, uma tentativa, timeouts,
+overflow, headers/trailers, compartilhamento por origem e ausência de segredos em logs.
 
 ## Futuro preservado
 
@@ -230,8 +236,8 @@ supervisor em `leafcutter_connectors`, Request/Response de Transport, pool ou ch
 
 ## Consequências
 
-- `leafcutter_connectors` ganha dependency Finch e um supervisor somente quando 26C1 for
-  materializado;
+- `leafcutter_connectors` possui dependency Finch e um supervisor limitado ao lifecycle do
+  pool HTTP;
 - uma chamada HTTP fica bounded por timeouts e body limit explícitos;
 - redirect e retry não podem ocorrer sem decisão visível da Operation/runtime;
 - Transport errors e HTTP responses possuem responsabilidades separadas;
@@ -240,6 +246,11 @@ supervisor em `leafcutter_connectors`, Request/Response de Transport, pool ou ch
 
 ## Evidência
 
+- `apps/leafcutter_connectors/lib/leafcutter_connectors/transport/http.ex`
+- `apps/leafcutter_connectors/lib/leafcutter_connectors/transport/http/finch.ex`
+- `apps/leafcutter_connectors/test/leafcutter_connectors/transport/http/`
+- `apps/leafcutter_connectors/test/support/http_server.ex`
+- `apps/leafcutter_connectors/mix.exs`, `config/config.exs`, `config/test.exs` e `mix.lock`
 - `docs/specifications/http-transport.md`
 - `docs/decisions/ADR-0008-connector-operation-transport.md`
 - `docs/decisions/ADR-0021-operation-executavel.md`

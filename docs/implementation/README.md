@@ -4,7 +4,7 @@ Esta pasta traduz a arquitetura ratificada em sequência de slices, gates e crit
 
 ## Estado
 
-A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. Os Slices 26A e 26B estão concluídos conforme ADR-0019 e ADR-0021. O ADR-0022 ratifica o Transport HTTP 26C1 e separa Package Manifest/module resolution (26C2) da primeira referência real (26C3). A próxima tarefa materializa somente 26C1.
+A foundation inicial, RunSnapshot v1 e o workflow completo `EnvironmentDeployment → RunSnapshot v1` estão materializados. Os Slices 26A, 26B e 26C1 estão concluídos conforme ADR-0019, ADR-0021 e ADR-0022. Package Manifest/module resolution (26C2) permanece separado da primeira referência real (26C3). A próxima tarefa é ratificar 26C2.
 
 ## Documentos
 

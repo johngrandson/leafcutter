@@ -301,7 +301,7 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, as authorities upstream, ContractVersion e Operation executáveis estão materializados sem alterar o snapshot. O Transport HTTP possui contract ratificado, ainda sem código. Permanecem abertos os lifecycles ampliados, rolling upgrade, idempotência/invocation durável, retenção, Package Manifest/build/module resolution, primeira referência real, data plane, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável e o Transport HTTP bounded estão materializados sem alterar o snapshot. Permanecem abertos os lifecycles ampliados, rolling upgrade, idempotência/invocation durável, retenção, Package Manifest/build/module resolution, primeira referência real, data plane, secrets concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
@@ -312,11 +312,9 @@ present
 → RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
 → ContractVersion + JSON Schema/JSV + enforcement em PackageVersion/Deployment/Run
 → Operation Read/Write behaviours + in-memory validation (26B)
+→ bounded HTTP Transport + supervised Finch HTTP/1 pool (26C1)
 
 next
-→ materializar HTTP Transport boundary (26C1)
-
-then
 → ratificar Package binding/module resolution (26C2)
 
 future

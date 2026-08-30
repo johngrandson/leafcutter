@@ -57,6 +57,12 @@ config :leafcutter_runtime, LeafcutterRuntime.RunRecovery,
   initial_backoff: 1_000,
   max_backoff: 30_000
 
+config :leafcutter_connectors, LeafcutterConnectors.Transport.HTTP,
+  pool_size: 10,
+  connect_timeout_ms: 5_000,
+  pool_max_idle_time_ms: 300_000,
+  max_response_body_bytes: 8_388_608
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

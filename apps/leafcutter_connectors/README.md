@@ -1,6 +1,6 @@
 # LeafcutterConnectors
 
-Owns the in-memory contracts for executable connector operations.
+Owns executable connector contracts and their bounded transport boundaries.
 
-The application is a process-free library. It does not depend on Catalog, Ecto,
-Repo, HTTP, or runtime internals.
+The application supervises the shared HTTP/1 Finch client used by connector
+packages. It does not depend on Catalog, Ecto, Repo, or runtime internals.

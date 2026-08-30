@@ -51,7 +51,7 @@ podem ter ocorrido e preserva at-least-once.
 
 ## HTTP boundary
 
-O ADR-0022 ratifica `HTTP.Error` como erro de protocolo/conexão separado de
+O ADR-0022 materializa `HTTP.Error` como erro de protocolo/conexão separado de
 `Operation.Error`. Todo status HTTP bem-formado continua sendo Response. A Operation futura
 decide status, `Retry-After` e vendor body, produzindo somente code/metadata allowlisted.
 

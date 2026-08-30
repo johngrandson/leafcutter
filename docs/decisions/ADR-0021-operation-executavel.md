@@ -185,8 +185,9 @@ As invariantes são verificáveis por predicados puros:
 - `Write.Result.valid_for?/2` para completude, ordem e correlação;
 - `Read.valid_return?/2` e `Write.valid_return?/2` para o retorno integral do callback.
 
-A application não inicia supervisor próprio e não adiciona dependency de Core, Ecto, Repo,
-HTTP ou runtime. Transport, module resolution e payload validation pelo caller continuam fora.
+A materialização de 26B não iniciou supervisor nem adicionou dependency de Core, Ecto, Repo,
+HTTP ou runtime. Os módulos de Operation permanecem process-free e independentes de Transport;
+o supervisor Finch introduzido posteriormente pertence exclusivamente ao ADR-0022.
 
 ## Consequências
 
@@ -197,7 +198,7 @@ HTTP ou runtime. Transport, module resolution e payload validation pelo caller c
 - o erro de Operation é in-memory e não antecipa o schema persistido de Attempt/Delivery;
 - credentials permanecem fora de RunSnapshot, structs inspecionáveis e errors;
 - nenhum GenServer ou dependency nova é necessário para materializar o contrato;
-- HTTP e tradução de status/vendor errors continuam no Slice 26C.
+- HTTP foi separado em 26C1; tradução de status/vendor errors permanece em 26C3.
 
 ## Fora de escopo
 
@@ -221,7 +222,7 @@ HTTP ou runtime. Transport, module resolution e payload validation pelo caller c
 - Write prova batch completo, ordem, correlação por `ref` e partial success;
 - categories e `retry_after_ms` obedecem a matriz;
 - valores duráveis rejeitam termos não JSON e UTF-8 inválido;
-- nenhuma dependency para Core, processo OTP ou detalhe HTTP é introduzido.
+- os módulos de Operation não introduzem dependency para Core, processo OTP ou detalhe HTTP.
 
 ## Evolução posterior
 

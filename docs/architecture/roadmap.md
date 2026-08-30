@@ -107,7 +107,7 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 
 ### Slice 26C1 — Transport HTTP
 
-**Contract concreto ratificado no ADR-0022; ainda não materializado.**
+**Contract concreto materializado conforme o ADR-0022.**
 
 - facade HTTP e Adapter behaviour síncrono;
 - Request/Response/Error com validation e Inspect redigido;
@@ -133,9 +133,9 @@ O contract upstream foi materializado integralmente conforme o ADR-0018. A front
 - status, rate-limit e vendor-error mapping;
 - conformance tests sem credentials reais.
 
-PackageVersion 1 Source → N Destinations, criação automática de Run e a boundary in-memory de
-Operation possuem foundations materializadas. A próxima fronteira é materializar somente
-26C1; carregamento no runtime permanece posterior a 26C2/26C3.
+PackageVersion 1 Source → N Destinations, criação automática de Run, a boundary in-memory de
+Operation e o Transport HTTP bounded possuem foundations materializadas. A próxima fronteira
+é ratificar 26C2; carregamento no runtime permanece posterior a 26C2/26C3.
 
 ## Data plane durável
 

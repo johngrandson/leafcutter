@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26C1 ratificado — boundary de Transport HTTP**
+**Slice 26C1 materializado — boundary de Transport HTTP**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A e 26B estão completos conforme os ADRs 0019 e 0021. O ADR-0022 ratifica a boundary HTTP do incremento 26C1 e separa Package Manifest/module resolution (26C2) da primeira Operation real (26C3). Nenhum código HTTP foi materializado e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. A boundary HTTP inclui Finch HTTP/1 supervisionado, limites finitos e testes locais determinísticos. Package Manifest/module resolution (26C2) e a primeira Operation real (26C3) permanecem separados; RunSnapshot v1 continua inalterado.
 
 ## Estado materializado
 
@@ -184,7 +184,7 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 
 ### API e connectors
 
-`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` é uma library sem processo próprio e materializa a boundary executável de Operation. Ela não depende de Core, Ecto, Repo ou HTTP.
+`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` materializa a boundary executável de Operation e o Transport HTTP 26C1. `LeafcutterConnectors.Application` supervisiona exclusivamente a instância Finch HTTP/1; a application não depende de Core, Ecto, Repo ou runtime.
 
 ## Arquitetura ratificada preservada
 
@@ -198,7 +198,6 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Transport HTTP ratificado — não materializado
 Module resolution e referência HTTP real
 Integration Packages
 Broadway data plane
@@ -252,6 +251,7 @@ Run resolution executable ContractVersion enforcement
 Executable Operation contract ratification
 Executable Operation boundary materialization
 HTTP Transport contract and Slice 26C sequencing ratification
+HTTP Transport boundary materialization
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -259,37 +259,32 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-Os Slices 26A e 26B estão integralmente materializados. O contract do Transport HTTP 26C1
-está ratificado no ADR-0022, mas ainda não existe no código. A decisão preserva
-`leafcutter_connectors` como owner e introduz processo somente para o lifecycle real do pool.
+Os Slices 26A, 26B e 26C1 estão integralmente materializados. O Transport HTTP pertence a
+`leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
+A facade valida os dois lados do adapter contract e faz exatamente uma tentativa bounded.
 
-Package Manifest/build e module resolution foram movidos explicitamente para 26C2. A
-primeira Operation de produto e sua matriz vendor-specific pertencem a 26C3. Não existe
-registry temporário de UUID, filesystem discovery ou módulo derivado de string persistida.
+Package Manifest/build e module resolution permanecem explicitamente em 26C2. A primeira
+Operation de produto e sua matriz vendor-specific pertencem a 26C3. Não existe registry
+temporário de UUID, filesystem discovery ou módulo derivado de string persistida.
 
 ## Próxima tarefa concreta
 
-Materializar somente o incremento 26C1:
+Ratificar o incremento 26C2 antes de qualquer implementação:
 
 ~~~text
-HTTP facade + Adapter behaviour
-→ Request/Response/Error values + pure validation and redacted Inspect
-→ Finch HTTP/1 dependency + named supervised pool
-→ one-attempt streaming with finite timeouts and response body limits
-→ deterministic local conformance tests
+Package Manifest JSON Schema v1
+→ inclusão explícita e auditável de packages no build/release
+→ binding versionada de ConnectorVersion/Operation refs para módulos compilados
+→ resolução pública sem UUID registry temporário, filesystem discovery ou atom dinâmico
 ~~~
 
-A implementação pertence a `leafcutter_connectors`, não depende de Core/Repo/runtime e não
-publica Connector, Package ou Operation no Catalog. Todo status HTTP retorna Response; somente
-falhas de protocolo/conexão viram `HTTP.Error`. Redirect, retry, JSON codec, cookie jar,
-HTTP/2 e public streaming permanecem desabilitados.
+A decisão precisa fixar ownership, formato persistido/publicado, compatibilidade e composição
+com APIs públicas do Catalog. Nenhum módulo pode ser derivado de string externa ou nome livre
+persistido. 26C2 não publica a primeira Operation real nem antecipa status/vendor mapping de
+26C3.
 
-Os testes usam servidor local e precisam provar uma única tentativa, body cap, timeout/error
-normalization, headers/trailers ordenados e ausência de path/query/headers/body em Inspect,
-logs e eventos Leafcutter.
-
-Package Manifest completo, persisted Attempt/Delivery errors, backoff, idempotency, request
-payload/batch limits gerais, durable fan-out e Broadway continuam fora desse incremento.
+Persisted Attempt/Delivery errors, backoff, idempotency, request payload/batch limits gerais,
+durable fan-out e Broadway continuam fora desse incremento.
 
 ## Principais decisões abertas
 

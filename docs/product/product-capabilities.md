@@ -70,13 +70,22 @@
 - cursor JSON opaco e conclusão por `nil`;
 - write batch completo, ordenado e correlacionado por ref;
 - partial success e erro normalizado;
-- invariantes puras sem Transport, Repo ou processo próprio.
+- invariantes puras da Operation, independentes de Transport, Repo ou processo próprio.
+
+### Transport HTTP bounded
+
+- facade e Adapter contract síncronos;
+- Request/Response/Error validados e com Inspect redigido;
+- exatamente uma tentativa, sem redirect ou retry automático;
+- Finch HTTP/1 com pool nomeado supervisionado e compartilhado por origem;
+- connect/pool/receive/request timeouts finitos;
+- response body limitado pelo menor cap central/por request;
+- testes determinísticos sem internet nem credenciais reais.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Transport HTTP bounded (26C1 ratificado; não materializado);
 - Package binding/module resolution (26C2 aberto);
 - primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;

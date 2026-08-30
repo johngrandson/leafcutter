@@ -10,7 +10,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 | `contract-version-execution.md` | MATERIALIZADO |
 | `durable-fanout.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
-| `http-transport.md` | RATIFICADO — NÃO MATERIALIZADO |
+| `http-transport.md` | MATERIALIZADO |
 | `operation-contract.md` | MATERIALIZADO |
 | `package-manifest-v1.md` | DRAFT / ABERTO |
 | `source-identity.md` | RATIFICADO — NÃO MATERIALIZADO |

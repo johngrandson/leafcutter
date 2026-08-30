@@ -45,7 +45,7 @@ Package
 
 ConnectorVersion e suas Operations são publicadas atomicamente. Novas ContractVersions publicam schema Draft 2020-12 object/boolean, validado e construído com JSV, e expõem compile/validate; versões identity-only legadas permanecem históricas. PackageVersion publica atomicamente uma source e destinations ordenadas, pinando Operation e ContractVersion em endpoints relacionais imutáveis e rejeitando versões legadas em novas publicações.
 
-O Slice 26A está materializado conforme o ADR-0019, e a boundary executável de Operation do Slice 26B está materializada conforme o ADR-0021. O ADR-0022 ratifica o Transport HTTP 26C1, ainda sem código, e mantém Package Manifest/module resolution e a primeira referência nos incrementos 26C2/26C3.
+O Slice 26A está materializado conforme o ADR-0019, a boundary executável de Operation do Slice 26B conforme o ADR-0021 e o Transport HTTP bounded de 26C1 conforme o ADR-0022. Package Manifest/module resolution e a primeira referência permanecem nos incrementos 26C2/26C3.
 
 ### Connections mínimo
 

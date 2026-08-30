@@ -1,8 +1,8 @@
 # Connectors, Operations e Transports
 
-> **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata e a boundary executável
-> de Operation existem. O Transport HTTP 26C1 está ratificado no ADR-0022, ainda sem código;
-> Package Manifest/module resolution (26C2) e a primeira referência real (26C3) estão abertos.
+> **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata, a boundary executável
+> de Operation e o Transport HTTP 26C1 existem. Package Manifest/module resolution (26C2) e
+> a primeira referência real (26C3) estão abertos.
 
 ## Estado materializado
 
@@ -13,15 +13,19 @@ leafcutter_core
         └── Operation metadata
 
 leafcutter_connectors
-└── LeafcutterConnectors.Operation
-    ├── Read behaviour + values
-    ├── Write behaviour + values
-    └── Error
+├── LeafcutterConnectors.Operation
+│   ├── Read behaviour + values
+│   ├── Write behaviour + values
+│   └── Error
+└── LeafcutterConnectors.Transport.HTTP
+    ├── Adapter + Request/Response/Error
+    └── supervised Finch HTTP/1 adapter
 ~~~
 
 `Leafcutter.Catalog.Connectors` cria e lê Connector identities e publica ConnectorVersion
 com suas Operations atomicamente. `leafcutter_connectors` materializa os behaviours, structs
-e predicados puros do contract executável, sem processo próprio.
+e predicados puros de Operation. Essa boundary permanece process-free; a application
+supervisiona somente a instância Finch necessária ao Transport HTTP.
 
 ## Separação
 
@@ -148,7 +152,7 @@ da category. O schema persistido de Attempt/Delivery continua posterior.
 O ADR-0022 corrige a dependência entre Transport, packages e uma referência de produto:
 
 ~~~text
-26C1 HTTP Transport boundary + Finch adapter (ratificado; não materializado)
+26C1 HTTP Transport boundary + Finch adapter (materializado)
 → 26C2 Package Manifest/build binding + module resolution (aberto)
 → 26C3 first production reference Operation (aberto)
 ~~~
@@ -185,6 +189,8 @@ traduz isso para `Operation.Error`.
 
 Request e Response redigem path, query, headers e body em Inspect. Handlers Leafcutter não
 serializam a metadata bruta dos eventos Finch; qualquer evento próprio usa campos allowlisted.
+A implementação e os testes locais determinísticos estão materializados em
+`apps/leafcutter_connectors`.
 
 ### 26C2 — executable package binding
 

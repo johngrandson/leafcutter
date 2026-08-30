@@ -1,7 +1,7 @@
 # ADR-0008 — Connector → Operation → Transport
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION; HTTP RATIFICADO
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION + HTTP 26C1
 
 ## Decisão
 
@@ -27,7 +27,7 @@ Materializado em `leafcutter_connectors`:
 - behaviours, invocation/result structs e error contract de Operation definidos no ADR-0021;
 - paginação opaca, partial-success completo/ordenado, redaction e invariantes puras.
 
-Ratificado no ADR-0022, ainda não materializado:
+Materializado conforme o ADR-0022:
 
 - facade/Adapter HTTP-specific;
 - Request/Response/Error bounded;
@@ -58,4 +58,4 @@ A fronteira seguinte ao ADR-0018 foi dividida:
 26C3 first production reference Operation
 ~~~
 
-O ADR-0019 controla 26A e o ADR-0021 controla 26B, ambos materializados. O ADR-0022 ratifica 26C1 e impede antecipar 26C2 por registry implícito. A referência real permanece em 26C3.
+O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos materializados. O ADR-0022 impede antecipar 26C2 por registry implícito; a referência real permanece em 26C3.
