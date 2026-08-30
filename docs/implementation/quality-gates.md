@@ -1,5 +1,8 @@
 # Quality gates
 
+`mix.exs` define o comportamento executável do gate. Este documento é sua
+descrição operacional canônica para pessoas e agentes.
+
 ## Gate agregado
 
 ```bash
@@ -30,6 +33,9 @@ linter e depois o lint estrito da base real. O ambiente precisa disponibilizar
 Python 3; o linter e seus testes usam apenas a biblioteca padrão, sem pacotes
 externos.
 
+Esses comandos formam o enforcement automático materializado. Reviews humanos
+continuam responsáveis pelas regras que não possuem checker objetivo.
+
 Depois da compilação, o gate exige que Core, Connectors, Runtime, API e todos os
 apps da inventory pertençam à application closure produzida por `Mix.Release`.
 Os comandos por package são executados no próprio Mix project porque testes e
@@ -55,19 +61,25 @@ mix compile --warnings-as-errors
 mix test path/to/relevant_test.exs
 ```
 
-Antes do merge, execute o gate completo.
+Checks focados reduzem o tempo de feedback. Eles não substituem o gate
+agregado.
 
-## Verificações documentais
+Antes de cada commit, execute o gate completo.
+
+## Verificações manuais de review
 
 Para mudanças arquiteturais, revisar manualmente:
 
 ```text
-CURRENT.md
-architecture/estado-atual-e-visao-futura.md
-ADR related
-specification related
-public docs/examples
+decisões ratificadas e escopo autorizado
+ownership e APIs públicas entre contexts
+necessidade de processos OTP e abstrações
+CURRENT.md e estado atual/visão futura
+ADR, specification e contracts afetados
+exposição de segredos ou dados sensíveis
 ```
+
+O checklist detalhado está em `docs/harness/REVIEW_CHECKLIST.md`.
 
 ## Critério
 
