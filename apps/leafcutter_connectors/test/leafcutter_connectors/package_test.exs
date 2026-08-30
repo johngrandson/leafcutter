@@ -62,10 +62,8 @@ defmodule LeafcutterConnectors.PackageTest do
       manifest: Path.expand("../fixtures/package/manifest.json", __DIR__),
       source: {"source", LeafcutterConnectors.PackageTest.SourceOperation},
       destinations: [
-        {"first-destination",
-         LeafcutterConnectors.PackageTest.FirstDestinationOperation},
-        {"second-destination",
-         LeafcutterConnectors.PackageTest.SecondDestinationOperation}
+        {"first-destination", LeafcutterConnectors.PackageTest.FirstDestinationOperation},
+        {"second-destination", LeafcutterConnectors.PackageTest.SecondDestinationOperation}
       ]
   end
 
@@ -210,7 +208,6 @@ defmodule LeafcutterConnectors.PackageTest do
         __ENV__
       )
     end
-
   end
 
   test "rejects malformed binding shapes deterministically" do

@@ -298,9 +298,8 @@ defmodule LeafcutterConnectors.Package.Manifest do
     end
   end
 
-  @spec reverse_normalized_list(
+  @spec reverse_normalized_list({:ok, [term()], non_neg_integer()} | {:error, error()}) ::
           {:ok, [term()], non_neg_integer()} | {:error, error()}
-        ) :: {:ok, [term()], non_neg_integer()} | {:error, error()}
   defp reverse_normalized_list({:ok, values, node_count}) do
     {:ok, Enum.reverse(values), node_count}
   end
@@ -313,8 +312,7 @@ defmodule LeafcutterConnectors.Package.Manifest do
     entries
     |> Enum.reduce_while(%{}, fn {key, _value}, seen ->
       if Map.has_key?(seen, key) do
-        {:halt,
-         {:error, {:duplicate_object_key, safe_path(path ++ [key])}}}
+        {:halt, {:error, {:duplicate_object_key, safe_path(path ++ [key])}}}
       else
         {:cont, Map.put(seen, key, true)}
       end

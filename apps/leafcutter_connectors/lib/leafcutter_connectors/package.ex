@@ -56,18 +56,18 @@ defmodule LeafcutterConnectors.Package do
       @leafcutter_package_manifest_path unquote(manifest_path)
 
       @leafcutter_package_compiled_binding LeafcutterConnectors.Package.__compile_binding__!(
-                                            @leafcutter_package_manifest_path,
-                                            unquote(Macro.escape(source)),
-                                            unquote(Macro.escape(destinations)),
-                                            __ENV__
-                                          )
+                                             @leafcutter_package_manifest_path,
+                                             unquote(Macro.escape(source)),
+                                             unquote(Macro.escape(destinations)),
+                                             __ENV__
+                                           )
       @external_resource @leafcutter_package_manifest_path
 
       @leafcutter_package_manifest elem(@leafcutter_package_compiled_binding, 0)
       @leafcutter_package_manifest_sha256 elem(
-                                           @leafcutter_package_compiled_binding,
-                                           1
-                                         )
+                                            @leafcutter_package_compiled_binding,
+                                            1
+                                          )
       @leafcutter_package_source unquote(Macro.escape(source))
       @leafcutter_package_destinations unquote(Macro.escape(destinations))
 

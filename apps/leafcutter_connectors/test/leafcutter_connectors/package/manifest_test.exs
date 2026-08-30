@@ -86,12 +86,9 @@ defmodule LeafcutterConnectors.Package.ManifestTest do
 
     test "rejects blank identity fields and refs at deterministic paths" do
       invalid_fields = [
-        {put_in(valid_document(), ["package", "name"], "  \n"),
-         ["package", "name"]},
-        {put_in(valid_document(), ["package", "version"], "\t"),
-         ["package", "version"]},
-        {put_in(valid_document(), ["source", "ref"], " "),
-         ["source", "ref"]},
+        {put_in(valid_document(), ["package", "name"], "  \n"), ["package", "name"]},
+        {put_in(valid_document(), ["package", "version"], "\t"), ["package", "version"]},
+        {put_in(valid_document(), ["source", "ref"], " "), ["source", "ref"]},
         {put_in(valid_document(), ["destinations", Access.at(0), "ref"], "\r\n"),
          ["destinations", 0, "ref"]}
       ]
