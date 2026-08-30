@@ -34,7 +34,8 @@
 - [ ] Happy path e failure paths.
 - [ ] Constraints de banco.
 - [ ] Concorrência determinística quando relevante.
-- [ ] `mix quality` passa.
+- [ ] `mix quality` passa conforme
+  `docs/implementation/quality-gates.md`.
 
 ## Documentação
 

@@ -6,7 +6,8 @@
 2. implementar menor diff;
 3. testar;
 4. atualizar docs in-code;
-5. executar quality gates.
+5. executar `mix quality` conforme
+   `docs/implementation/quality-gates.md` antes do commit.
 
 ## Materialização de arquitetura já ratificada
 

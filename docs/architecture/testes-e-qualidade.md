@@ -4,26 +4,12 @@
 
 ## Quality gate canônico
 
-```bash
-mix quality
-```
+O gate agregado é `mix quality`. Sua composição atual, os comandos adicionais
+para migrations e o momento de execução estão em
+`docs/implementation/quality-gates.md`.
 
-O alias executa, conforme a configuração atual:
-
-```text
-compile --warnings-as-errors
-format --check-formatted
-credo --strict
-test
-dialyzer
-```
-
-Quando houver migration nova, executar também:
-
-```bash
-mix ecto.migrate
-MIX_ENV=test mix ecto.migrate
-```
+Este documento mantém a estratégia e a cobertura de testes. Ele não replica a
+lista interna do alias.
 
 ## Cobertura materializada
 
