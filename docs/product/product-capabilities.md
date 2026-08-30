@@ -82,11 +82,19 @@
 - response body limitado pelo menor cap central/por request;
 - testes determinísticos sem internet nem credenciais reais.
 
+### Package Manifest e binding compilada
+
+- Manifest v1 com parsing bounded e JSON Schema Draft 2020-12;
+- SHA-256 dos bytes exatos do manifest;
+- refs source/destination ligadas a módulos Read/Write literais;
+- cobertura, ordem, unicidade e behaviours validados em compile time;
+- callbacks puros sem acesso ao filesystem em runtime.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Package Manifest/build/module resolution (26C2 ratificado; não materializado);
+- `PackageVersion.manifest_sha256`, build inventory e resolução em runtime (26C2, passos 36–38);
 - primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

@@ -32,7 +32,7 @@ Dialyzer
 A auditoria desta trilha encontrou:
 
 - `mix quality` verde em cerca de 18 segundos, com 61 testes do linter da base
-  de conhecimento e 459 testes Elixir;
+  de conhecimento e 485 testes Elixir;
 - nenhuma configuração `.credo.exs`, portanto o repositório usa somente os
   checks padrão do Credo;
 - o check opt-in `Credo.Check.Readability.Specs` encontra 12 funções públicas

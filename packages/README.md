@@ -1,6 +1,7 @@
 # Integration Packages
 
-> **Status: RATIFICADO — NÃO MATERIALIZADO.**
+> **Status: PARCIALMENTE MATERIALIZADO.** O Manifest v1 e a binding compilada existem em
+> `leafcutter_connectors`; build inventory e packages de produto permanecem pendentes.
 
 Este diretório é a fronteira física reservada para o código executável de Integration
 Packages. O layout ratificado é:
@@ -15,7 +16,7 @@ packages/
     └── test
 ~~~
 
-Quando o Slice 26C2 for materializado, somente entries literais de `build.exs` entrarão no
+Quando o passo 37 for materializado, somente entries literais de `build.exs` entrarão no
 dependency graph do Mix e na release; descoberta por varredura de diretórios é proibida.
 `packages/build.exs` e os packages executáveis ainda não existem. A inventory de produção
 permanecerá vazia até o Slice 26C3 selecionar o primeiro sistema externo e a primeira

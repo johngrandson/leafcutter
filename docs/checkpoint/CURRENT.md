@@ -193,7 +193,11 @@ Runs `pending` sem snapshot ou com formato desconhecido permanecem inelegíveis.
 
 ### API e connectors
 
-`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors` materializa a boundary executável de Operation e o Transport HTTP 26C1. `LeafcutterConnectors.Application` supervisiona exclusivamente a instância Finch HTTP/1; a application não depende de Core, Ecto, Repo ou runtime.
+`leafcutter_api` possui Phoenix Endpoint/Router/Telemetry básicos. `leafcutter_connectors`
+materializa a boundary executável de Operation, o Transport HTTP 26C1 e o contract de Manifest
+e binding compilada do passo 35. `LeafcutterConnectors.Application` supervisiona
+exclusivamente a instância Finch HTTP/1; a application não depende de Core, Ecto, Repo ou
+runtime.
 
 ## Arquitetura ratificada preservada
 
@@ -207,7 +211,7 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Package Manifest/build/module resolution ratificado — não materializado
+PackageVersion.manifest_sha256 + build inventory + runtime resolution (26C2, passos 36–38)
 Referência HTTP real
 Integration Packages
 Broadway data plane

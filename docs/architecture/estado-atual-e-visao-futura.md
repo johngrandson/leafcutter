@@ -199,7 +199,12 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Connectors atuais
 
-`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores, `Operation.Error`, redaction de credentials e invariantes puras. Também materializa o Transport HTTP bounded de 26C1, com facade/Adapter, Request/Response/Error e Finch HTTP/1 supervisionado. Ainda não existe Connector/Operation concreta de produto.
+`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores,
+`Operation.Error`, redaction de credentials e invariantes puras. Também materializa o
+Transport HTTP bounded de 26C1, com facade/Adapter, Request/Response/Error e Finch HTTP/1
+supervisionado. O passo 35 de 26C2 adiciona parsing bounded do Manifest v1, digest dos bytes
+exatos e binding compilada de refs para módulos Read/Write literais. Ainda não existe
+Connector/Operation concreta de produto.
 
 ## Arquitetura ratificada ainda não materializada
 
@@ -225,7 +230,7 @@ Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-Package Manifest/build binding + module resolution (26C2 ratificado; não materializado)
+PackageVersion digest + build inventory + runtime resolution (26C2, passos 36–38)
 first production HTTP Operation (26C3)
 ```
 
@@ -299,11 +304,14 @@ Sequência ratificada:
 
 26C1 HTTP Transport boundary
 → bounded one-attempt Finch adapter
-→ 26C2 Package binding/module resolution (ratificado)
+→ 26C2 Package binding/module resolution (parcial; passo 35 materializado)
 → 26C3 first production HTTP Operation
 ```
 
-26A, 26B e o HTTP Transport 26C1 estão materializados. O contract de 26C2 está ratificado no ADR-0023, ainda sem código; 26C3 preserva a referência real como decisão própria. Outros transports entram somente com demanda real.
+26A, 26B e o HTTP Transport 26C1 estão materializados. O passo 35 de 26C2 também está
+materializado conforme o ADR-0023; persistência do digest, inventory/release e resolução em
+runtime permanecem nos passos 36–38. 26C3 preserva a referência real como decisão própria.
+Outros transports entram somente com demanda real.
 
 ### Notifications e Audit
 
@@ -331,7 +339,9 @@ packages/<package>/
 ```
 
 O ADR-0023 ratifica `packages/build.exs`, Mix path dependencies explícitas em runtime,
-Manifest v1 por digest e resolução compilada. A estratégia ainda não está materializada.
+Manifest v1 por digest e resolução compilada. Manifest e binding compilada estão
+materializados em `leafcutter_connectors`; build inventory, package de produto e resolução em
+runtime permanecem pendentes.
 
 ## Decisões abertas
 
@@ -379,9 +389,13 @@ Operation executable contract (26B materializado)
 ↓
 HTTP Transport boundary (26C1 materializado)
 ↓
-Package binding/module resolution (26C2 ratificado; materialização seguinte)
+Package binding/module resolution (26C2 parcial; passo 36 seguinte)
 ↓
 reference Operation (26C3 aberto)
 ```
 
-O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. O ADR-0023 e `package-manifest-v1.md` controlam 26C2 ratificado. A próxima fronteira é materializar somente 26C2; referência real, coordinator e Broadway permanecem posteriores.
+O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e
+o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. O ADR-0023 e
+`package-manifest-v1.md` controlam 26C2, cujo passo 35 está materializado. A próxima fronteira
+é persistir `PackageVersion.manifest_sha256` no passo 36; referência real, coordinator e
+Broadway permanecem posteriores.

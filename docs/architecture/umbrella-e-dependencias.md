@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO ATÉ 26C1; EVOLUÇÃO 26C2 RATIFICADA.**
+> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSO 35.**
 
 ## Estrutura real
 
@@ -23,7 +23,7 @@ leafcutter_api        → leafcutter_core + leafcutter_runtime
 
 Não existe ciclo e nenhum context recebe OTP application própria.
 
-Evolução ratificada para 26C2, ainda não materializada:
+Evolução do dependency graph ratificada para o passo 37, ainda não materializada:
 
 ```text
 leafcutter_runtime → installed packages → leafcutter_connectors
@@ -62,7 +62,7 @@ Isso inclui `runtime_nodes` e `runs`, embora seu ownership pertença a Execution
 
 ## `leafcutter_connectors`
 
-Boundary executável materializada para Operation e Transport HTTP.
+Boundary executável materializada para Operation, Transport HTTP e Package Manifest/binding.
 
 Hospeda hoje:
 
@@ -70,6 +70,7 @@ Hospeda hoje:
 Operation Read/Write behaviours and values
 bounded HTTP Transport facade
 Finch HTTP/1 adapter and supervised pool
+Package Manifest v1 validation and compiled bindings
 ```
 
 Hospedará futuramente outros transports e connector implementations conforme demanda real.
