@@ -38,12 +38,11 @@ defmodule LeafcutterRuntime.ExecutablePackages do
           | :manifest_mismatch
           | :invalid_binding
 
-  @typedoc "A resolution error after the PackageVersion projection is already loaded."
-  @type projection_error ::
-          :package_not_bound
-          | :package_not_installed
-          | :manifest_mismatch
-          | :invalid_binding
+  @typep projection_error ::
+           :package_not_bound
+           | :package_not_installed
+           | :manifest_mismatch
+           | :invalid_binding
 
   @typep compiled_binding :: %{
            required(:manifest) => Manifest.t(),
@@ -64,25 +63,17 @@ defmodule LeafcutterRuntime.ExecutablePackages do
   def resolve(package_version_id) do
     case Packages.get_version(package_version_id) do
       {:ok, package_version} ->
-        resolve_projection(package_version)
+        resolve_projection(package_version, Inventory.runtime_entries())
 
       {:error, :not_found} ->
         {:error, :package_version_not_found}
     end
   end
 
-  @doc false
-  @spec resolve_projection(PackageVersion.t()) ::
-          {:ok, Binding.t()} | {:error, projection_error()}
-  def resolve_projection(%PackageVersion{} = package_version) do
-    resolve_projection(package_version, Inventory.runtime_entries())
-  end
-
-  @doc false
   @spec resolve_projection(PackageVersion.t(), [Inventory.entry()]) ::
           {:ok, Binding.t()} | {:error, projection_error()}
-  def resolve_projection(%PackageVersion{} = package_version, inventory_entries)
-      when is_list(inventory_entries) do
+  defp resolve_projection(%PackageVersion{} = package_version, inventory_entries)
+       when is_list(inventory_entries) do
     with {:ok, manifest_sha256} <- package_manifest_sha256(package_version),
          {:ok, inventory_entry} <-
            fetch_inventory_entry(inventory_entries, manifest_sha256),
@@ -131,10 +122,10 @@ defmodule LeafcutterRuntime.ExecutablePackages do
        )
        when is_atom(binding) do
     if valid_package_module?(binding) do
-      manifest = apply(binding, :manifest, [])
-      binding_manifest_sha256 = apply(binding, :manifest_sha256, [])
-      source = apply(binding, :source, [])
-      destinations = apply(binding, :destinations, [])
+      manifest = binding.manifest()
+      binding_manifest_sha256 = binding.manifest_sha256()
+      source = binding.source()
+      destinations = binding.destinations()
 
       validate_compiled_values(
         binding,
@@ -397,17 +388,17 @@ defmodule LeafcutterRuntime.ExecutablePackages do
   defp resolver_valid?(binding, {source_ref, source_module}, destinations) do
     destination_resolutions_valid? =
       Enum.all?(destinations, fn {ref, module} ->
-        apply(binding, :resolve, [ref, :destination]) == {:ok, module} and
-          apply(binding, :resolve, [ref, :source]) == {:error, :not_found}
+        binding.resolve(ref, :destination) == {:ok, module} and
+          binding.resolve(ref, :source) == {:error, :not_found}
       end)
 
     unlisted_ref = unlisted_ref([source_ref | Enum.map(destinations, &elem(&1, 0))])
 
-    apply(binding, :resolve, [source_ref, :source]) == {:ok, source_module} and
-      apply(binding, :resolve, [source_ref, :destination]) == {:error, :not_found} and
+    binding.resolve(source_ref, :source) == {:ok, source_module} and
+      binding.resolve(source_ref, :destination) == {:error, :not_found} and
       destination_resolutions_valid? and
-      apply(binding, :resolve, [unlisted_ref, :source]) == {:error, :not_found} and
-      apply(binding, :resolve, [unlisted_ref, :destination]) == {:error, :not_found}
+      binding.resolve(unlisted_ref, :source) == {:error, :not_found} and
+      binding.resolve(unlisted_ref, :destination) == {:error, :not_found}
   end
 
   @spec unlisted_ref([String.t()]) :: String.t()
@@ -462,8 +453,7 @@ defmodule LeafcutterRuntime.ExecutablePackages do
 
   @spec module_behaviours(module()) :: [module()]
   defp module_behaviours(module) do
-    module
-    |> apply(:module_info, [:attributes])
+    module.module_info(:attributes)
     |> Keyword.get_values(:behaviour)
     |> List.flatten()
     |> Enum.uniq()

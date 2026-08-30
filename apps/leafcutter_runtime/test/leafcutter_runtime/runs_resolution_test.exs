@@ -23,6 +23,7 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
   alias Leafcutter.Repo
   alias LeafcutterRuntime.ResolutionFixtures
   alias LeafcutterRuntime.Runs
+  alias LeafcutterRuntime.RuntimeInventoryFixtures
 
   setup do
     owner = Sandbox.start_owner!(Repo, shared: false)
@@ -232,6 +233,25 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       |> Repo.update!()
 
       assert {:error, {:environment_deployment_not_executable, :manifest_mismatch}} =
+               Runs.create_from_deployment(fixture.deployment.id)
+
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects an invalid compiled binding before persisting a Run" do
+      fixture = ResolutionFixtures.deployment_fixture()
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      restore_inventory =
+        RuntimeInventoryFixtures.replace_binding(
+          LeafcutterPackageInventoryFixture.InvalidOperationPackage
+        )
+
+      on_exit(restore_inventory)
+
+      assert {:error, {:environment_deployment_not_executable, :invalid_binding}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert Repo.aggregate(Run, :count) == run_count

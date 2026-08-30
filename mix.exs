@@ -40,6 +40,7 @@ defmodule Leafcutter.MixProject do
 
   defp aliases do
     [
+      compile: [&compile_package_contracts_first/1, "compile"],
       tidewave:
         "run --no-halt -e '{:ok, _} = Application.ensure_all_started(:tidewave); {:ok, _} = Application.ensure_all_started(:bandit); Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: String.to_integer(System.get_env(\"TIDEWAVE_PORT\", \"4001\"))) end)'",
       quality: [
@@ -53,6 +54,28 @@ defmodule Leafcutter.MixProject do
         &run_package_project_quality/1
       ]
     ]
+  end
+
+  # Mix compiles external path dependencies before umbrella children. Installed
+  # packages depend on the public connector contracts, so make those contracts
+  # available before Mix starts compiling package dependencies from a clean build.
+  defp compile_package_contracts_first(arguments) do
+    mix =
+      System.find_executable("mix") ||
+        Mix.raise("package contract compilation failed: mix executable not found")
+
+    {output, status} =
+      System.cmd(mix, ["compile" | arguments],
+        cd: Path.join(@repository_root, "apps/leafcutter_connectors"),
+        env: [{"MIX_ENV", Atom.to_string(Mix.env())}],
+        stderr_to_stdout: true
+      )
+
+    IO.write(output)
+
+    if status != 0 do
+      Mix.raise("package contract compilation failed with exit status #{status}")
+    end
   end
 
   defp releases do

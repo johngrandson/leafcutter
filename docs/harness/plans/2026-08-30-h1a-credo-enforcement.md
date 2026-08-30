@@ -62,7 +62,7 @@ materializado.
 - Consumes: `mix credo --strict` já chamado pelo alias raiz; defaults do Credo
   1.7.19; tipos públicos dos schemas retornados por `ResolutionFixtures`.
 - Produces: `.credo.exs` com os três opt-ins; `ResolutionFixtures.fixture/0`;
-  specs para as 12 definições reportadas e 13 aridades públicas.
+  specs para as 12 definições reportadas e 14 aridades públicas.
 
 - [ ] **Step 1: Criar a fixture negativa temporária antes da configuração**
 
@@ -183,7 +183,7 @@ alias Leafcutter.Integrations.{EnvironmentDeployment, Integration}
 alias Leafcutter.Organizations.{Environment, Organization}
 ```
 
-Adicionar a shape completa e as specs antes de `deployment_fixture/1`:
+Adicionar a shape completa e as specs antes de `deployment_fixture/2`:
 
 ```elixir
 @type fixture :: %{
@@ -210,6 +210,7 @@ Adicionar a shape completa e as specs antes de `deployment_fixture/1`:
 
 @spec deployment_fixture() :: fixture()
 @spec deployment_fixture(String.t()) :: fixture()
+@spec deployment_fixture(String.t(), keyword()) :: fixture()
 ```
 
 Adicionar antes de `delete_persisted_fixture/1`:

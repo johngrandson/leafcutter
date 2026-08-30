@@ -177,6 +177,11 @@ pela projeção pública do Catalog está materializada no passo 38.
 Package pode depender de contracts públicos de `leafcutter_connectors` e de dependencies Mix
 próprias. No contract v1, não depende de Core, Runtime ou API.
 
+Como o Mix compila path dependencies externas antes dos filhos da umbrella, o alias raiz de
+`compile` materializa `leafcutter_connectors` antes de iniciar packages instalados. Isso torna
+o build limpo determinístico sem inverter a dependency direction: packages continuam
+dependendo somente dos contracts públicos de Connectors.
+
 ## Pontos futuros preservados
 
 - uma única release inicialmente;

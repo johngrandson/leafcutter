@@ -27,6 +27,12 @@ for each package in packages/build.exs:
   MIX_ENV=test mix dialyzer
 ```
 
+O alias raiz de `compile` materializa primeiro `leafcutter_connectors`. O Mix
+compila path dependencies externas antes dos filhos da umbrella; essa ordenação
+explícita garante que packages instalados encontrem os contracts públicos de
+Connectors mesmo com `_build` vazio. A compilação normal da umbrella continua em
+seguida e preserva o mesmo dependency graph.
+
 Os dois primeiros comandos validam a base de conhecimento uma única vez na
 raiz da umbrella, antes da compilação: primeiro a suíte de testes unitários do
 linter e depois o lint estrito da base real. O ambiente precisa disponibilizar

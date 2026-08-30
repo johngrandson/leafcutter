@@ -74,15 +74,15 @@ existentes:
 
 | Módulo | Funções |
 |---|---|
-| `LeafcutterRuntime.ResolutionFixtures` | `deployment_fixture/0`, `deployment_fixture/1`, `delete_persisted_fixture/1` |
+| `LeafcutterRuntime.ResolutionFixtures` | `deployment_fixture/0`, `deployment_fixture/1`, `deployment_fixture/2`, `delete_persisted_fixture/1` |
 | `LeafcutterApi.Telemetry` | `start_link/1`, `metrics/0` |
 | `LeafcutterApi.ErrorJSON` | `render/2` |
 | `LeafcutterApi` | `static_paths/0`, `router/0`, `channel/0`, `controller/0`, `verified_routes/0` |
 | `LeafcutterRuntime` | `hello/0` |
 | `LeafcutterCore` | `hello/0` |
 
-O Credo reporta 12 definições. `deployment_fixture/1` possui argumento default,
-por isso o contrato precisa declarar também a aridade pública `/0`.
+O Credo reporta 12 definições. `deployment_fixture/2` possui dois argumentos default,
+por isso o contrato precisa declarar também as aridades públicas `/0` e `/1`.
 
 ### Precisão esperada
 

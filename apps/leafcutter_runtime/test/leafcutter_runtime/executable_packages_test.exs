@@ -31,8 +31,9 @@ defmodule LeafcutterRuntime.ExecutablePackagesTest do
   alias Leafcutter.Repo
 
   alias LeafcutterRuntime.ExecutablePackages
-  alias LeafcutterRuntime.ExecutablePackages.{Binding, Inventory}
+  alias LeafcutterRuntime.ExecutablePackages.Binding
   alias LeafcutterRuntime.ResolutionFixtures
+  alias LeafcutterRuntime.RuntimeInventoryFixtures
 
   setup do
     owner = Sandbox.start_owner!(Repo, shared: false)
@@ -44,6 +45,10 @@ defmodule LeafcutterRuntime.ExecutablePackagesTest do
   test "returns a named error for an unknown PackageVersion" do
     assert {:error, :package_version_not_found} =
              ExecutablePackages.resolve(Ecto.UUID.generate())
+  end
+
+  test "exposes only the ratified identifier-based resolution API" do
+    assert ExecutablePackages.__info__(:functions) == [resolve: 1]
   end
 
   test "resolves compiled modules with authoritative Catalog identifiers and order" do
@@ -124,36 +129,49 @@ defmodule LeafcutterRuntime.ExecutablePackagesTest do
              ExecutablePackages.resolve(fixture.package_version.id)
   end
 
+  test "rejects an Operation role that drifts from the persisted endpoint role" do
+    fixture = ResolutionFixtures.deployment_fixture()
+    replace_operation_role!(fixture.source_operation.id, "destination")
+
+    assert {:error, :manifest_mismatch} =
+             ExecutablePackages.resolve(fixture.package_version.id)
+  end
+
+  test "rejects destination order that drifts from the compiled manifest" do
+    fixture = ResolutionFixtures.deployment_fixture()
+    warehouse = Enum.find(fixture.package_version.endpoints, &(&1.ref == "warehouse"))
+    crm = Enum.find(fixture.package_version.endpoints, &(&1.ref == "crm"))
+    swap_destination_positions!(warehouse.id, crm.id)
+
+    assert {:error, :manifest_mismatch} =
+             ExecutablePackages.resolve(fixture.package_version.id)
+  end
+
   test "rejects a module that violates the compiled package contract" do
     fixture = ResolutionFixtures.deployment_fixture()
-    [entry] = Inventory.runtime_entries()
 
-    invalid_entry = %{
-      entry
-      | binding: LeafcutterPackageInventoryFixture.InvalidOperationPackage
-    }
+    restore_inventory =
+      RuntimeInventoryFixtures.replace_binding(
+        LeafcutterPackageInventoryFixture.InvalidOperationPackage
+      )
 
-    assert {:error, :invalid_binding} =
-             ExecutablePackages.resolve_projection(
-               fixture.package_version,
-               [invalid_entry]
-             )
+    on_exit(restore_inventory)
+
+    assert {:error, :invalid_binding} = ExecutablePackages.resolve(fixture.package_version.id)
   end
 
   test "keeps unexpected package callback exceptions visible" do
     fixture = ResolutionFixtures.deployment_fixture()
-    [entry] = Inventory.runtime_entries()
 
-    exploding_entry = %{
-      entry
-      | binding: LeafcutterRuntime.ExecutablePackages.ExplodingPackageFixture
-    }
+    restore_inventory =
+      RuntimeInventoryFixtures.replace_binding(
+        LeafcutterRuntime.ExecutablePackages.ExplodingPackageFixture
+      )
+
+    on_exit(restore_inventory)
 
     assert_raise RuntimeError, "fixture package callback failed", fn ->
-      ExecutablePackages.resolve_projection(
-        fixture.package_version,
-        [exploding_entry]
-      )
+      ExecutablePackages.resolve(fixture.package_version.id)
     end
   end
 
@@ -183,6 +201,38 @@ defmodule LeafcutterRuntime.ExecutablePackagesTest do
         Repo,
         "UPDATE package_version_endpoints SET ref = $2 WHERE id = $1",
         [dump_uuid!(endpoint_id), ref]
+      )
+    end)
+  end
+
+  defp replace_operation_role!(operation_id, role) do
+    with_replication_triggers_disabled(fn ->
+      SQL.query!(
+        Repo,
+        "UPDATE operations SET role = $2 WHERE id = $1",
+        [dump_uuid!(operation_id), role]
+      )
+    end)
+  end
+
+  defp swap_destination_positions!(first_endpoint_id, second_endpoint_id) do
+    with_replication_triggers_disabled(fn ->
+      SQL.query!(
+        Repo,
+        "UPDATE package_version_endpoints SET position = 2 WHERE id = $1",
+        [dump_uuid!(first_endpoint_id)]
+      )
+
+      SQL.query!(
+        Repo,
+        "UPDATE package_version_endpoints SET position = 0 WHERE id = $1",
+        [dump_uuid!(second_endpoint_id)]
+      )
+
+      SQL.query!(
+        Repo,
+        "UPDATE package_version_endpoints SET position = 1 WHERE id = $1",
+        [dump_uuid!(first_endpoint_id)]
       )
     end)
   end
