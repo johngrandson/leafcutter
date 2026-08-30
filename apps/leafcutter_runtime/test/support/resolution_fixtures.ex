@@ -7,6 +7,19 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
 
   alias Ecto.Adapters.SQL
 
+  alias Leafcutter.Catalog.{
+    Connector,
+    Contract,
+    ContractVersion,
+    Operation,
+    Package,
+    PackageVersion
+  }
+
+  alias Leafcutter.Connections.{Connection, Secret, SecretVersion}
+  alias Leafcutter.Integrations.{EnvironmentDeployment, Integration}
+  alias Leafcutter.Organizations.{Environment, Organization}
+
   alias Leafcutter.Catalog.{Connectors, Contracts, Packages}
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Secrets
@@ -16,6 +29,31 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
 
+  @type fixture :: %{
+          organization: Organization.t(),
+          environment: Environment.t(),
+          source_connector: Connector.t(),
+          destination_connector: Connector.t(),
+          contract: Contract.t(),
+          package: Package.t(),
+          package_version: PackageVersion.t(),
+          integration: Integration.t(),
+          deployment: EnvironmentDeployment.t(),
+          source_operation: Operation.t(),
+          destination_operation: Operation.t(),
+          source_contract_version: ContractVersion.t(),
+          warehouse_contract_version: ContractVersion.t(),
+          crm_contract_version: ContractVersion.t(),
+          source_secret: Secret.t(),
+          source_secret_version: SecretVersion.t(),
+          source_connection: Connection.t(),
+          warehouse_connection: Connection.t(),
+          crm_connection: Connection.t()
+        }
+
+  @spec deployment_fixture() :: fixture()
+  @spec deployment_fixture(String.t()) :: fixture()
+  @spec deployment_fixture(String.t(), keyword()) :: fixture()
   def deployment_fixture(prefix \\ "Resolution", options \\ []) do
     suffix = System.unique_integer([:positive])
     installed? = Keyword.get(options, :installed, true)
@@ -197,6 +235,7 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
     }
   end
 
+  @spec delete_persisted_fixture(fixture()) :: :ok
   def delete_persisted_fixture(fixture) do
     Repo.transaction(fn ->
       SQL.query!(Repo, "SET LOCAL session_replication_role = replica", [])
