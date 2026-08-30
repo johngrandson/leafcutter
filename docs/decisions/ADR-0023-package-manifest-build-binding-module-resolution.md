@@ -146,6 +146,11 @@ PackageVersions históricas sem digest:
 - são rejeitadas novamente pela resolução de uma nova Run;
 - não selecionam fallback de módulo.
 
+O erro público de `Deployments.create/1` e `Deployments.replace/2` é
+`{:error, :package_not_bound}`. `Runs.create_from_deployment/1` preserva o envelope já
+ratificado e devolve
+`{:error, {:environment_deployment_not_executable, :package_not_bound}}`.
+
 `RunSnapshot v1` continua contendo somente `package_version_id`. O digest é lido da
 PackageVersion imutável quando o runtime resolve código; ele não é copiado para o snapshot.
 
@@ -280,6 +285,11 @@ package code permanecem defects visíveis.
 Uma PackageVersion pode existir no Catalog antes de estar presente numa release. Isso permite
 publicação e rollout separados. A criação de nova Run falha antes de persistir Run/RunSnapshot
 quando a release não contém o digest ou quando a projeção diverge.
+
+`Runs.create_from_deployment/1` propaga os demais failures determinísticos de resolução no
+mesmo envelope: `:package_not_installed`, `:manifest_mismatch` ou `:invalid_binding`. O reason
+`:package_version_not_found` permanece exclusivo de `ExecutablePackages.resolve/1`, porque um
+EnvironmentDeployment persistido mantém uma foreign key válida para PackageVersion.
 
 Hot install, unload, code fetching e fallback para outra versão não existem no primeiro
 caminho. Adicionar ou remover package exige novo build/release. Retenção de versões para Runs

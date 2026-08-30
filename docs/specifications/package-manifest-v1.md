@@ -446,6 +446,27 @@ A materialização repete a proteção em duas bordas:
 Uma PackageVersion válida pode ser publicada antes do rollout da release. A ausência no build
 é erro de disponibilidade de código no momento da resolução, não corrupção do Catalog.
 
+Contratos públicos:
+
+~~~elixir
+@type package_execution_error ::
+        :package_not_bound
+        | :package_not_installed
+        | :manifest_mismatch
+        | :invalid_binding
+
+# Deployments.create/1 and Deployments.replace/2
+{:error, :package_not_bound}
+
+# Runs.create_from_deployment/1
+{:error, {:environment_deployment_not_executable, package_execution_error()}}
+~~~
+
+Create/replace valida somente a presença do digest e, portanto, não devolve os demais reasons.
+A resolução da Run pode devolver qualquer `package_execution_error()`. O reason
+`:package_version_not_found` pertence somente a `ExecutablePackages.resolve/1`: um deployment
+persistido referencia PackageVersion por foreign key.
+
 ## Quality e release gates
 
 A materialização precisa provar:

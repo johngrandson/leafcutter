@@ -239,6 +239,8 @@ No instante da escrita:
 - Organization e Environment existem, correspondem e estão ativos;
 - Integration existe, pertence à Organization e está ativa;
 - PackageVersion pertence ao Package da Integration;
+- PackageVersion possui o digest executável ratificado pelo ADR-0023; ausência devolve
+  `{:error, :package_not_bound}`;
 - bindings correspondem exatamente aos endpoints da PackageVersion;
 - Connections pertencem ao mesmo Organization e Environment;
 - Connections estão ativas;
@@ -391,6 +393,10 @@ O resolver não adiciona Organization, Environment, Integration ou Deployment ID
         | :environment_disabled
         | :integration_disabled
         | :package_version_mismatch
+        | :package_not_bound
+        | :package_not_installed
+        | :manifest_mismatch
+        | :invalid_binding
         | {:contract_versions_not_executable,
            nonempty_list(ContractVersion.id())}
         | {:binding_mismatch,
@@ -406,7 +412,13 @@ O resolver não adiciona Organization, Environment, Integration ou Deployment ID
         | {:secret_version_scope_mismatch, SecretVersion.id()}
 ```
 
-Refs em erros são ordenadas. Erros podem expor IDs e refs, nunca config ou material sensível. Erros operacionais de banco continuam como exceções.
+Refs em erros são ordenadas. Erros podem expor IDs e refs, nunca config ou material sensível.
+Erros operacionais de banco continuam como exceções.
+
+Os reasons de package são allowlisted pelo ADR-0023. `:package_not_bound` repete no runtime a
+proteção aplicada por create/replace; os outros três representam availability ou divergência
+da binding compilada. `:package_version_not_found` não integra este envelope porque a foreign
+key do EnvironmentDeployment preserva a referência à PackageVersion.
 
 ## Repetição
 
