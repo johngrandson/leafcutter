@@ -36,7 +36,7 @@ Referências por ID não criam dependência de API. Workflows cross-context pert
 | Context | Estado | Materializado | Preservado para o futuro |
 |---|---|---|---|
 | Organizations | MATERIALIZADO | tenancy, Environment, User, ServiceAccount, Membership, Role, permissions, assignments, authorize | autenticação concreta e matriz ampliada |
-| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation metadata, Contract, ContractVersion executável com schema/JSV, Package, PackageVersion e endpoints com rejeição de legado | Operation executável, availability, manifest e build posteriores |
+| Catalog | PARCIALMENTE MATERIALIZADO | Connector, ConnectorVersion, Operation metadata, Contract, ContractVersion executável com schema/JSV, Package, PackageVersion e endpoints com rejeição de legado | availability, manifest e build posteriores |
 | Connections | MATERIALIZADO — SLICE MÍNIMO | Connection, Secret, SecretVersion e lifecycle/config binding | OAuth state, providers, rotation e retention |
 | Integrations | MATERIALIZADO — SLICE MÍNIMO | Integration, EnvironmentDeployment, bindings e lifecycle mínimo | promotion, homologation, Triggers, IdentityMapping |
 | Executions | PARCIALMENTE MATERIALIZADO | RuntimeNode, Run, RunSnapshot, criação atômica, ownership, fencing, recovery | Record, Delivery, Attempt, Checkpoint, ExecutionEvent |

@@ -294,24 +294,26 @@ não presume ausência de efeitos externos.
 
 ~~~text
 Read.Result.records
-→ Leafcutter.Catalog.Contracts.validate(source_contract_version_id, payload)
+→ Leafcutter.Catalog.Contracts.validate(source_validator, payload)
 → future SourceIdentity/PayloadHash/Record/Delivery/Checkpoint
 ~~~
 
 A validação acontece antes de qualquer payload ser tratado como record confiável ou de o
-checkpoint avançar.
+checkpoint avançar. O caller obtém `source_validator` previamente por
+`Leafcutter.Catalog.Contracts.compile/1`.
 
 ### Destination
 
 ~~~text
 Transformation output
-→ Leafcutter.Catalog.Contracts.validate(destination_contract_version_id, payload)
+→ Leafcutter.Catalog.Contracts.validate(destination_validator, payload)
 → Write.Item
 → Write.write/1
 ~~~
 
 Uma falha local de ContractVersion impede a chamada externa. Uma rejeição de negócio/vendor
-depois dessa validação usa `Operation.Error{category: :validation}`.
+depois dessa validação usa `Operation.Error{category: :validation}`. O caller obtém
+`destination_validator` previamente por `Leafcutter.Catalog.Contracts.compile/1`.
 
 O caller em `leafcutter_runtime` compõe as APIs. O behaviour e sua implementação não chamam
 Catalog ou Contracts.

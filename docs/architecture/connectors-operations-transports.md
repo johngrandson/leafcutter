@@ -117,7 +117,7 @@ Source:
 
 ~~~text
 Read.read/1
-→ Contracts.validate(source_contract_version_id, payload)
+→ Contracts.validate(source_validator, payload)
 → future durable source processing
 ~~~
 
@@ -125,12 +125,13 @@ Destination:
 
 ~~~text
 Transformation
-→ Contracts.validate(destination_contract_version_id, payload)
+→ Contracts.validate(destination_validator, payload)
 → Write.write/1
 ~~~
 
 A validação pertence ao caller em `leafcutter_runtime`, que pode usar Core e Connectors. A
-Operation não chama `Contracts.validate/2`.
+Operation não chama `Contracts.validate/2`. Os validators opacos são obtidos previamente por
+`Contracts.compile/1`.
 
 ## Error taxonomy materializada na boundary
 

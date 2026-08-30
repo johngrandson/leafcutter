@@ -1,6 +1,7 @@
 # LeafcutterConnectors
 
-Owns executable connector contracts and their bounded transport boundaries.
+É responsável pelos contratos executáveis de conectores e pelas fronteiras de transporte com
+limites explícitos.
 
-The application supervises the shared HTTP/1 Finch client used by connector
-packages. It does not depend on Catalog, Ecto, Repo, or runtime internals.
+A aplicação supervisiona o cliente Finch HTTP/1 compartilhado pelos pacotes de integração. Não
+depende do Catalog, Ecto, Repo nem de componentes internos do runtime.
