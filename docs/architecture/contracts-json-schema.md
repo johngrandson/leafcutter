@@ -132,16 +132,15 @@ O ADR-0022 ratifica um cap obrigatório e um hard maximum central para o respons
 26C1 HTTP Transport boundary
 → bounded one-attempt Finch adapter
 
-26C2 executable package binding + module resolution (parcial; passos 35–36 materializados)
+26C2 executable package binding + module resolution (materializado)
 
 26C3 first reference Operation (aberto)
 ~~~
 
 O ADR-0021 ratifica os pontos source/destination de validação, paginação opaca e partial
-success. O client/pool HTTP de 26C1 está materializado conforme o ADR-0022. Os passos 35–36 do
-Package Manifest/module resolution estão materializados conforme o ADR-0023; inventory/release
-e resolução em runtime permanecem nos passos 37–38. Referência real e data plane continuam
-posteriores.
+success. O client/pool HTTP de 26C1 está materializado conforme o ADR-0022. Package
+Manifest/module resolution está integralmente materializado conforme o ADR-0023. Referência
+real e data plane continuam posteriores.
 
 ## Especificação próxima do código
 

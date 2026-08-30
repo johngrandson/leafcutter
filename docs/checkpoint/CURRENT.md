@@ -4,9 +4,9 @@
 
 ## Fase atual
 
-**Slice 26C2 parcialmente materializado — build e release explícitos**
+**Slice 26C2 materializado — resolução compilada fechada**
 
-As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B e 26C1 estão completos conforme os ADRs 0019, 0021 e 0022. Os passos 35–37 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada, persistência imutável/globalmente única em PackageVersion e inventory literal ligada ao dependency graph e à release. A resolução de runtime continua no passo 38; nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
+As foundations de tenancy/RBAC, runtime control plane e o workflow `EnvironmentDeployment → RunSnapshot v1` estão materializados na `main`. Os Slices 26A, 26B, 26C1 e 26C2 estão completos conforme os ADRs 0019, 0021, 0022 e 0023. Os passos 35–38 de 26C2 materializam Manifest v1 bounded, digest dos bytes exatos, binding compilada, persistência imutável/globalmente única em PackageVersion, inventory literal ligada ao dependency graph/release e resolução por digest combinada com os IDs autoritativos do Catalog. Nenhuma Operation real de 26C3 foi materializada e RunSnapshot v1 permanece inalterado.
 
 ## Estado materializado
 
@@ -110,6 +110,13 @@ external resource, topology e behaviour divergentes antes de produzir o runtime.
 vira dependency Mix `:path`; `mix quality` prova a application closure da release e executa
 compile, format, tests e Dialyzer de cada package listado. A fixture é dependency somente em
 test e não entra na release.
+
+`LeafcutterRuntime.ExecutablePackages.resolve/1` busca a projeção imutável pela API pública do
+Catalog, seleciona uma binding pelo digest exato, revalida name/version/topologia/módulos e
+compõe refs e módulos literais com `operation_id` e `contract_version_id` autoritativos. A
+binding resultante existe somente em memória. Deployment create/replace rejeita
+PackageVersion histórica sem digest, e a criação de Run repete a resolução antes de persistir
+Run/RunSnapshot.
 
 ### Connections
 
@@ -222,7 +229,6 @@ Delivery
 Attempt
 Checkpoint
 ExecutionEvent
-Runtime package resolution (26C2, passo 38)
 Referência HTTP real
 Integration Packages
 Broadway data plane
@@ -282,6 +288,9 @@ Package Manifest v1 validation materialization
 Compiled Package binding contract materialization
 PackageVersion manifest digest persistence and legacy compatibility
 Explicit package build inventory and release closure
+Compiled runtime package resolution
+EnvironmentDeployment executable package enforcement
+Run executable package enforcement
 Local derived knowledge base governance
 Local knowledge schema and Claude adapters
 Knowledge lint in mix quality
@@ -289,32 +298,33 @@ Knowledge lint in mix quality
 
 ## Em andamento
 
-Os Slices 26A, 26B e 26C1 estão integralmente materializados. O Transport HTTP pertence a
-`leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
+Os Slices 26A, 26B, 26C1 e 26C2 estão integralmente materializados. O Transport HTTP pertence
+a `leafcutter_connectors`; sua única árvore de processo nova supervisiona o pool Finch HTTP/1.
 A facade valida os dois lados do adapter contract e faz exatamente uma tentativa bounded.
 
-Manifest/build/module resolution possui contract fechado no ADR-0023 e os passos 35–37 estão
+Manifest/build/module resolution possui contract fechado no ADR-0023 e os passos 35–38 estão
 materializados em `leafcutter_connectors`, `leafcutter_core` e `leafcutter_runtime`. O Manifest
-v1 não contém UUIDs nem modules; PackageVersion pinna seu digest e `packages/build.exs`
-seleciona dependencies literais da release. O passo seguinte compõe a resolução com a projeção
-do Catalog e repete a enforcement em Deployment/Run. A primeira Operation de produto e sua
-matriz vendor-specific pertencem a 26C3.
+v1 não contém UUIDs nem modules; PackageVersion pinna seu digest, `packages/build.exs`
+seleciona dependencies literais da release e o runtime combina somente módulos compilados com
+a projeção pública do Catalog. Deployment e Run repetem a enforcement ratificada. A primeira
+Operation de produto e sua matriz vendor-specific pertencem a 26C3.
 
 ## Próxima tarefa concreta
 
-Materializar somente o incremento 26C2 na ordem ratificada:
+Ratificar o incremento 26C3 antes de materializar a primeira referência de produto:
 
 ~~~text
-35. Manifest v1 validation + LeafcutterConnectors.Package binding contract (materializado)
-36. PackageVersion.manifest_sha256 + legacy executability enforcement (materializado)
-37. packages/build.exs + explicit Mix/release dependency closure (materializado)
-38. runtime resolution + Deployment/Run enforcement + quality gates (próximo)
+select one real external system and one Read or Write Operation
+→ ratify authentication and vendor codec
+→ ratify pagination or batch semantics
+→ ratify status, rate-limit and vendor-error mapping
+→ define the product package and deterministic conformance matrix
 ~~~
 
-A resolução usa digest e refs locais para selecionar somente modules literais já compilados,
-compondo-os com `operation_id`/`contract_version_id` vindos da API pública do Catalog. Não
-persistir module name, não criar UUID registry, não varrer filesystem/BEAM e não alterar
-RunSnapshot v1.
+26C3 precisa selecionar um sistema externo real e fechar autenticação, codec, paginação ou
+batch e o mapeamento de status/rate-limit/errors antes de qualquer implementação. Não criar
+package demonstrativo genérico, registry temporário ou execução parcial para antecipar essa
+decisão.
 
 A inventory de produção permanece vazia até 26C3. Fixture de conformance é test-only. Persisted
 Attempt/Delivery errors, backoff, idempotency, durable fan-out e Broadway continuam fora.

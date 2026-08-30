@@ -2,7 +2,10 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1 e as authorities upstream estão materializados conforme o ADR-0018. ContractVersion, Operation executável e Transport HTTP 26C1 estão materializados conforme os ADRs 0019, 0021 e 0022. O ADR-0023 ratifica Package Manifest/build/module resolution em 26C2; a primeira referência de produto permanece separada em 26C3.
+RunSnapshot v1 e as authorities upstream estão materializados conforme o ADR-0018.
+ContractVersion, Operation executável, Transport HTTP 26C1 e Package
+Manifest/build/module resolution 26C2 estão materializados conforme os ADRs 0019, 0021, 0022
+e 0023. A primeira referência de produto permanece separada em 26C3.
 
 ## Domínio
 

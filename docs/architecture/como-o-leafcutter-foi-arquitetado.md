@@ -301,10 +301,9 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável e o Transport
-HTTP bounded estão materializados sem alterar o snapshot. Os passos 35–36 de 26C2 materializam
-Manifest, binding compilada e persistência do digest; build inventory e resolução em runtime
-continuam pendentes. Permanecem abertos os lifecycles ampliados, rolling upgrade,
+RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável, o Transport
+HTTP bounded e a resolução compilada de 26C2 estão materializados sem alterar o snapshot.
+Permanecem abertos os lifecycles ampliados, rolling upgrade,
 idempotência/invocation durável, retenção, primeira referência real, data plane, secrets
 concretos, OpenAPI e infraestrutura de produção.
 
@@ -318,10 +317,10 @@ present
 → ContractVersion + JSON Schema/JSV + enforcement em PackageVersion/Deployment/Run
 → Operation Read/Write behaviours + in-memory validation (26B)
 → bounded HTTP Transport + supervised Finch HTTP/1 pool (26C1)
-→ Manifest v1 + compiled Read/Write binding + persisted digest (26C2, passos 35–36)
+→ Manifest v1 + build inventory + compiled module resolution (26C2)
 
 next
-→ materializar build inventory e resolver modules (26C2, passos 37–38)
+→ ratificar a primeira referência real (26C3)
 
 future
 → durable Broadway integration data plane

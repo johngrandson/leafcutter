@@ -1,7 +1,7 @@
 # ADR-0007 — Integration Packages fora de `apps/`
 
 - Status: Accepted
-- Estado de implementação: PARCIAL — MANIFEST + BINDING + DIGEST MATERIALIZADOS; BUILD PENDENTE
+- Estado de implementação: MATERIALIZADO EM 26C2; PACKAGE DE PRODUTO PENDENTE
 
 ## Decisão
 
@@ -30,9 +30,9 @@ O ADR-0023 ratifica o mecanismo de 26C2:
 
 O validator de Manifest v1 e o contract compilado de binding estão materializados em
 `leafcutter_connectors`; `PackageVersion.manifest_sha256` e sua compatibilidade com rows
-históricas estão materializados em `leafcutter_core`. Inventory, dependency/release closure e
-resolução em runtime permanecem nos passos 37–38. A inventory pode permanecer vazia até a
-primeira referência de produto em 26C3.
+históricas estão materializados em `leafcutter_core`; inventory, dependency/release closure e
+resolução em runtime estão materializadas em `leafcutter_runtime`. A inventory pode permanecer
+vazia até a primeira referência de produto em 26C3.
 
 ## Consequências
 

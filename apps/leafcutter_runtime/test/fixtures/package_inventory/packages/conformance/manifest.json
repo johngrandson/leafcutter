@@ -9,10 +9,10 @@
   },
   "destinations": [
     {
-      "ref": "first-destination"
+      "ref": "warehouse"
     },
     {
-      "ref": "second-destination"
+      "ref": "crm"
     }
   ]
 }

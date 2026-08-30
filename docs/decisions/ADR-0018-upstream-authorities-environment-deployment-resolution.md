@@ -451,8 +451,7 @@ Continuam fora deste slice:
 Os ADRs 0019, 0021 e 0022 materializaram ContractVersion, Operation e Transport HTTP sem
 alterar a projeção deste ADR. O ADR-0023 ratificou posteriormente os field names mínimos do
 Manifest v1, seu digest em PackageVersion, a inventory explícita de build e a resolução
-compilada. Os passos 35–36 materializam Manifest, binding compilada e persistência do digest;
-inventory e resolução em runtime permanecem nos passos 37–38. Auto-publication do Catalog a
+compilada. Os passos 35–38 materializam esse contract completo. Auto-publication do Catalog a
 partir de package code continua proibida.
 
 ## Consequências
@@ -461,8 +460,8 @@ partir de package code continua proibida.
 - o resolver obtém refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade são revalidadas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- após este ADR, Contracts/JSV e os contracts executáveis de Operation/Transport foram
-  materializados; a próxima fronteira atual é a inventory explícita do passo 37 de 26C2.
+- após este ADR, Contracts/JSV e os contracts executáveis de Operation/Transport/package
+  resolution foram materializados; a próxima fronteira atual é a referência real de 26C3.
 
 ## Evidência
 

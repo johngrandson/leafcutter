@@ -52,8 +52,8 @@ defmodule LeafcutterPackageInventoryFixture.Package do
     manifest: Path.expand("../manifest.json", __DIR__),
     source: {"source", LeafcutterPackageInventoryFixture.Source},
     destinations: [
-      {"first-destination", LeafcutterPackageInventoryFixture.FirstDestination},
-      {"second-destination", LeafcutterPackageInventoryFixture.SecondDestination}
+      {"warehouse", LeafcutterPackageInventoryFixture.FirstDestination},
+      {"crm", LeafcutterPackageInventoryFixture.SecondDestination}
     ]
 end
 
@@ -89,18 +89,18 @@ defmodule LeafcutterPackageInventoryFixture.InvalidOperationPackage do
   @impl true
   def destinations do
     [
-      {"first-destination", LeafcutterPackageInventoryFixture.FirstDestination},
-      {"second-destination", LeafcutterPackageInventoryFixture.SecondDestination}
+      {"warehouse", LeafcutterPackageInventoryFixture.FirstDestination},
+      {"crm", LeafcutterPackageInventoryFixture.SecondDestination}
     ]
   end
 
   @impl true
   def resolve("source", :source), do: {:ok, LeafcutterPackageInventoryFixture.InvalidRead}
 
-  def resolve("first-destination", :destination),
+  def resolve("warehouse", :destination),
     do: {:ok, LeafcutterPackageInventoryFixture.FirstDestination}
 
-  def resolve("second-destination", :destination),
+  def resolve("crm", :destination),
     do: {:ok, LeafcutterPackageInventoryFixture.SecondDestination}
 
   def resolve(_ref, _role), do: {:error, :not_found}
@@ -126,8 +126,8 @@ defmodule LeafcutterPackageInventoryFixture.InvalidTopologyPackage do
   @impl true
   def destinations do
     [
-      {"second-destination", LeafcutterPackageInventoryFixture.SecondDestination},
-      {"first-destination", LeafcutterPackageInventoryFixture.FirstDestination}
+      {"crm", LeafcutterPackageInventoryFixture.SecondDestination},
+      {"warehouse", LeafcutterPackageInventoryFixture.FirstDestination}
     ]
   end
 
@@ -135,10 +135,10 @@ defmodule LeafcutterPackageInventoryFixture.InvalidTopologyPackage do
   def resolve("wrong-source", :source),
     do: {:ok, LeafcutterPackageInventoryFixture.Source}
 
-  def resolve("second-destination", :destination),
+  def resolve("crm", :destination),
     do: {:ok, LeafcutterPackageInventoryFixture.SecondDestination}
 
-  def resolve("first-destination", :destination),
+  def resolve("warehouse", :destination),
     do: {:ok, LeafcutterPackageInventoryFixture.FirstDestination}
 
   def resolve(_ref, _role), do: {:error, :not_found}

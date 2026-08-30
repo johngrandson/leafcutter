@@ -1,8 +1,8 @@
 # Connectors, Operations e Transports
 
 > **Status: PARCIALMENTE MATERIALIZADO.** Connector/Operation metadata, a boundary executável
-> de Operation, o Transport HTTP 26C1 e os passos 35–36 de 26C2 existem. Inventory e module
-> resolution permanecem pendentes; a referência real 26C3 continua aberta.
+> de Operation, o Transport HTTP 26C1 e o Slice 26C2 existem. A referência real 26C3 continua
+> aberta.
 
 ## Estado materializado
 
@@ -156,7 +156,7 @@ O ADR-0022 corrige a dependência entre Transport, packages e uma referência de
 
 ~~~text
 26C1 HTTP Transport boundary + Finch adapter (materializado)
-→ 26C2 Package Manifest/build binding + module resolution (parcial; passos 35–36 materializados)
+→ 26C2 Package Manifest/build binding + module resolution (materializado)
 → 26C3 first production reference Operation (aberto)
 ~~~
 
@@ -207,10 +207,11 @@ ligadas a módulos Read/Write literais com cobertura, ordem, unicidade e behavio
 em compile time. Os callbacks não acessam filesystem em runtime.
 
 O passo 36 persiste o digest imutável/globalmente único em PackageVersion, exige-o em novas
-publicações e mantém rows históricas sem digest legíveis. Os passos 37–38 ainda materializarão
-a inventory/release e farão `leafcutter_runtime` combinar a binding com
-`operation_id`/`contract_version_id` da projeção pública do Catalog. Não existe module name no
-JSON/DB, UUID registry, application config, filesystem discovery ou atom derivado de dado.
+publicações e mantém rows históricas sem digest legíveis. O passo 37 liga a inventory literal
+ao dependency graph e à release; o passo 38 faz `leafcutter_runtime` combinar a binding com
+`operation_id`/`contract_version_id` da projeção pública do Catalog e aplica a enforcement em
+Deployment/Run. Não existe module name no JSON/DB, UUID registry, application config,
+filesystem discovery ou atom derivado de dado.
 
 ### 26C3 — referência de produto
 

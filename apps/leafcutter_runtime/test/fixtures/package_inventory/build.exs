@@ -3,6 +3,6 @@
     app: :leafcutter_package_inventory_fixture,
     path: "packages/conformance",
     binding: LeafcutterPackageInventoryFixture.Package,
-    manifest_sha256: "b1b183950fdbc0cc55392e8bc9582392c721e06c9885ce68a078b83a4fe34ce0"
+    manifest_sha256: "cce7d8f992ab739429f9dccb46985e9c2ee73338eac96dbdd6a108717f75a3a1"
   }
 ]

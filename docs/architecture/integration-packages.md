@@ -1,9 +1,8 @@
 # Integration Packages
 
-> **Status: PARCIALMENTE MATERIALIZADO.** A authority relacional do Catalog e o contract de
-> Manifest/binding em `leafcutter_connectors` existem; PackageVersion já pinna o digest.
-> Build inventory/release também existem; module resolution e package de produto permanecem
-> pendentes.
+> **Status: MATERIALIZADO EM 26C2.** Authority relacional, Manifest/binding, digest,
+> inventory/release e module resolution existem. O primeiro package de produto permanece em
+> 26C3.
 
 ## Estado materializado
 
@@ -63,10 +62,10 @@ destination ref → Operation.Write module
 ~~~
 
 A macro valida cobertura, ordem, unicidade e behaviours em compile time e embute somente a
-projeção validada, o digest e módulos literais. `leafcutter_runtime` ainda deverá resolver o
-digest na inventory compilada e combinar os módulos com `operation_id` e
-`contract_version_id` lidos pela API pública do Catalog. O resultado será in-memory e não
-alterará RunSnapshot v1.
+projeção validada, o digest e módulos literais. `leafcutter_runtime` resolve o digest na
+inventory compilada, revalida a projeção e combina os módulos com `operation_id` e
+`contract_version_id` lidos pela API pública do Catalog. O resultado é in-memory e não altera
+RunSnapshot v1.
 
 ## Build e release
 
@@ -89,8 +88,8 @@ conformance é `only: :test`/`runtime: false`.
 PackageVersion publicada continua imutável. A coluna `manifest_sha256` é nullable somente para
 rows históricas; validação, CHECK e trigger exigem digest lowercase hex de 64 caracteres em
 novas publicações, e um índice garante unicidade global. Versões legadas permanecem legíveis e
-sem backfill. A rejeição dessas versões em novos deployments e Runs será materializada no passo
-38.
+sem backfill. Novos deployments/replacements e novas Runs rejeitam essas versões conforme o
+passo 38.
 
 ## Dependências
 

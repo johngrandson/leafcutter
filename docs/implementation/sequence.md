@@ -76,7 +76,7 @@ O ADR-0021 e `docs/specifications/operation-contract.md` controlam o contract co
 O ADR-0022 e `docs/specifications/http-transport.md` controlam 26C1 materializado. Os
 incrementos 26C2 e 26C3 permanecem separados e não podem ser substituídos por registry temporário.
 
-## Slice 26C2 em materialização
+## Slice 26C2 materializado
 
 ~~~text
 34. Package Manifest/build binding/module resolution ratification
@@ -92,11 +92,15 @@ incrementos 26C2 e 26C3 permanecem separados e não podem ser substituídos por 
 → one explicit runtime path dependency per listed package
 → compiled app/manifest/binding conformance and release closure proof
 → production inventory empty; conformance package only in test
+38. runtime resolution + Deployment/Run enforcement + quality gates
+→ exact digest lookup in the compiled inventory
+→ Catalog name/version/ref/role/order reconciliation
+→ in-memory modules composed with authoritative Catalog IDs
+→ digest enforcement in Deployment and complete resolution before Run persistence
 ~~~
 
-O ADR-0023 e `docs/specifications/package-manifest-v1.md` controlam 26C2. Os passos 35–37 estão
-materializados; a próxima etapa é resolução/gates no passo 38. A inventory de produção
-permanece vazia até 26C3.
+O ADR-0023 e `docs/specifications/package-manifest-v1.md` controlam 26C2, agora integralmente
+materializado nos passos 35–38. A inventory de produção permanece vazia até 26C3.
 
 ## Sequência ratificada posterior
 
@@ -109,7 +113,7 @@ minimal Catalog authorities (materialized)
 → ContractVersion executable + JSON Schema/JSV through PackageVersion/Deployment/Run (26A, materialized)
 → Operation executable contract (26B, materialized)
 → HTTP Transport boundary + Finch adapter (26C1, materialized)
-→ Package Manifest/build binding + module resolution (26C2, partial; step 38 next)
+→ Package Manifest/build binding + module resolution (26C2, materialized)
 → first production HTTP Operation (26C3, pending ratification)
 → Record/Delivery/Attempt/Checkpoint
 → Source/Destination Broadway
@@ -117,4 +121,4 @@ minimal Catalog authorities (materialized)
 → governance/notifications/audit
 ```
 
-A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation e 26C1 materializou o Transport HTTP. O contract 26C2 está ratificado e os passos 35–37 estão materializados; a próxima etapa compõe a resolução pela projeção do Catalog e repete a enforcement em Deployment/Run. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.
+A ordem upstream foi concluída conforme o ADR-0018, o Slice 26A completou a propagação por Deployment e Run, o Slice 26B materializou a boundary de Operation, 26C1 materializou o Transport HTTP e 26C2 fechou a resolução compilada. 26C3 preserva a referência real para decisão própria. A sequência posterior não deve criar Broadway com definição implícita.

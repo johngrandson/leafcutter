@@ -6,7 +6,7 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
 
   @fixture_root Path.expand("../../fixtures/package_inventory", __DIR__)
   @fixture_build_file Path.join(@fixture_root, "build.exs")
-  @fixture_digest "b1b183950fdbc0cc55392e8bc9582392c721e06c9885ce68a078b83a4fe34ce0"
+  @fixture_digest "cce7d8f992ab739429f9dccb46985e9c2ee73338eac96dbdd6a108717f75a3a1"
 
   @fixture_entry %{
     app: :leafcutter_package_inventory_fixture,
@@ -17,6 +17,11 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
 
   test "keeps the production inventory empty before the first product package" do
     assert Inventory.entries() == []
+  end
+
+  test "uses the conformance package only for test runtime resolution" do
+    assert Inventory.entries() == []
+    assert Inventory.runtime_entries() == [@fixture_entry]
   end
 
   test "loads literal entries in deterministic application order" do

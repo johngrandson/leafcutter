@@ -12,7 +12,7 @@ Specifications definem contracts mais próximos da implementação. Cada arquivo
 | `error-retry-model.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `http-transport.md` | MATERIALIZADO |
 | `operation-contract.md` | MATERIALIZADO |
-| `package-manifest-v1.md` | PARCIALMENTE MATERIALIZADO — PASSOS 35–36 |
+| `package-manifest-v1.md` | MATERIALIZADO — PASSOS 35–38 |
 | `source-identity.md` | RATIFICADO — NÃO MATERIALIZADO |
 | `transformation-contract.md` | RATIFICADO — NÃO MATERIALIZADO |
 

@@ -18,8 +18,8 @@ Materialized / Partial / Not materialized
 | ADR-0004 | OTP operacional; PostgreSQL durável | MATERIALIZADO NO CONTROL PLANE |
 | ADR-0005 | Broadway como data plane | NÃO MATERIALIZADO |
 | ADR-0006 | JSON Schema 2020-12 + JSV | MATERIALIZADO — SLICE 26A CONCLUÍDO |
-| ADR-0007 | Integration Packages fora de `apps/` | PARCIAL — MANIFEST + BINDING + DIGEST + BUILD |
-| ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA + OPERATION + HTTP + 26C2/PASSOS 35–37 |
+| ADR-0007 | Integration Packages fora de `apps/` | MATERIALIZADO EM 26C2; PACKAGE DE PRODUTO PENDENTE |
+| ADR-0008 | Connector → Operation → Transport | PARCIAL — METADATA + OPERATION + HTTP + 26C2; REFERÊNCIA REAL PENDENTE |
 | ADR-0009 | Semântica `at-least-once` | MATERIALIZADA COMO PRINCÍPIO; DATA PLANE PENDENTE |
 | ADR-0010 | Fan-out durável sem fila externa inicial | NÃO MATERIALIZADO |
 | ADR-0011 | Ownership por RuntimeNode + generation/fencing | MATERIALIZADO, INCLUINDO RECOVERY |
@@ -34,7 +34,7 @@ Materialized / Partial / Not materialized
 | ADR-0020 | Base de conhecimento local derivada | MATERIALIZADO |
 | ADR-0021 | Contrato executável de Operation | MATERIALIZADO |
 | ADR-0022 | Transport HTTP e sequência do Slice 26C | MATERIALIZADO — 26C1 |
-| ADR-0023 | Package Manifest, build binding e module resolution | PARCIAL — PASSOS 35–37 MATERIALIZADOS |
+| ADR-0023 | Package Manifest, build binding e module resolution | MATERIALIZADO — PASSOS 35–38 |
 
 ## Convenção de status decisório
 

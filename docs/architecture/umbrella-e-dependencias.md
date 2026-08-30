@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO ATÉ 26C1; 26C2 PARCIAL — PASSOS 35–37.**
+> **Status: MATERIALIZADO ATÉ 26C2.**
 
 ## Estrutura real
 
@@ -94,6 +94,7 @@ RunRecovery
 RunSupervisor
 RunCoordinator
 runtime workflows
+compiled package inventory and resolution
 ```
 
 Supervision tree atual:
@@ -168,8 +169,8 @@ packages/
 
 Packages não são uma quinta platform application. O ADR-0023 ratifica inventory literal em
 `packages/build.exs`, path dependencies explícitas de `leafcutter_runtime` e prova da
-application closure da release. Essa estratégia está materializada no passo 37; module
-resolution permanece no passo 38.
+application closure da release. Essa estratégia está materializada no passo 37; a resolução
+pela projeção pública do Catalog está materializada no passo 38.
 
 ## Dependências permitidas
 
@@ -178,7 +179,6 @@ próprias. No contract v1, não depende de Core, Runtime ou API.
 
 ## Pontos futuros preservados
 
-- resolução do package instalado pela projeção do Catalog;
 - uma única release inicialmente;
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;

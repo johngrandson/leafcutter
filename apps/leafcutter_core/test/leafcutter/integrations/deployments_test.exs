@@ -198,6 +198,17 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
                )
     end
 
+    test "rejects a historical PackageVersion without a manifest digest" do
+      scope = deployment_scope()
+      clear_manifest_sha256!(scope.package_version.id)
+
+      assert {:error, :package_not_bound} =
+               Deployments.create(deployment_attrs(scope))
+
+      assert Repo.aggregate(EnvironmentDeployment, :count) == 0
+      assert Repo.aggregate(EnvironmentDeploymentBinding, :count) == 0
+    end
+
     test "rejects legacy ContractVersions with unique sorted identifiers" do
       scope = deployment_scope()
       first_legacy = legacy_contract_version_fixture("create-first")
@@ -580,6 +591,35 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       assert {:ok, persisted} = Deployments.get(deployment.id)
       assert persisted.package_version_id == deployment.package_version_id
       assert persisted.promotable_config == %{"stable" => true}
+      assert Enum.map(persisted.bindings, & &1.id) == original_binding_ids
+    end
+
+    test "rejects a digest-less PackageVersion and preserves the complete deployment" do
+      scope = deployment_scope()
+
+      {:ok, deployment} =
+        Deployments.create(
+          deployment_attrs(scope,
+            promotable_config: %{"stable" => true},
+            local_config: %{"region" => "eu-west-1"}
+          )
+        )
+
+      original_binding_ids = Enum.map(deployment.bindings, & &1.id)
+      clear_manifest_sha256!(scope.package_version.id)
+
+      assert {:error, :package_not_bound} =
+               Deployments.replace(deployment.id, %{
+                 package_version_id: scope.package_version.id,
+                 promotable_config: %{"changed" => true},
+                 local_config: %{"region" => "us-east-1"},
+                 bindings: binding_attrs(scope)
+               })
+
+      assert {:ok, persisted} = Deployments.get(deployment.id)
+      assert persisted.package_version_id == deployment.package_version_id
+      assert persisted.promotable_config == %{"stable" => true}
+      assert persisted.local_config == %{"region" => "eu-west-1"}
       assert Enum.map(persisted.bindings, & &1.id) == original_binding_ids
     end
 
@@ -1021,6 +1061,22 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
   defp manifest_sha256_fixture do
     hex = Ecto.UUID.generate() |> String.replace("-", "")
     hex <> hex
+  end
+
+  defp clear_manifest_sha256!(package_version_id) do
+    {:ok, dumped_package_version_id} = Ecto.UUID.dump(package_version_id)
+
+    SQL.query!(Repo, "SET LOCAL session_replication_role = replica", [])
+
+    try do
+      SQL.query!(
+        Repo,
+        "UPDATE package_versions SET manifest_sha256 = NULL WHERE id = $1",
+        [dumped_package_version_id]
+      )
+    after
+      SQL.query!(Repo, "SET LOCAL session_replication_role = origin", [])
+    end
   end
 
   defp force_integrity_constraints do

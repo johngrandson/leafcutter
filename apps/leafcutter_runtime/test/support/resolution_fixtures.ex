@@ -1,6 +1,10 @@
 defmodule LeafcutterRuntime.ResolutionFixtures do
   @moduledoc false
 
+  @installed_manifest_sha256 "cce7d8f992ab739429f9dccb46985e9c2ee73338eac96dbdd6a108717f75a3a1"
+  @installed_package_name "Inventory conformance package"
+  @installed_package_version "2026.08"
+
   alias Ecto.Adapters.SQL
 
   alias Leafcutter.Catalog.{Connectors, Contracts, Packages}
@@ -12,8 +16,9 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
 
-  def deployment_fixture(prefix \\ "Resolution") do
+  def deployment_fixture(prefix \\ "Resolution", options \\ []) do
     suffix = System.unique_integer([:positive])
+    installed? = Keyword.get(options, :installed, true)
 
     {:ok, organization} =
       Organizations.create(%{name: "#{prefix} Organization #{suffix}"})
@@ -58,13 +63,21 @@ defmodule LeafcutterRuntime.ResolutionFixtures do
     {:ok, crm_contract_version} =
       Contracts.publish_version(contract.id, %{version: "crm", schema: true})
 
-    {:ok, package} =
-      Packages.create(%{name: "#{prefix} Package #{suffix}"})
+    package_name =
+      if installed?, do: @installed_package_name, else: "#{prefix} Package #{suffix}"
+
+    package_version =
+      if installed?, do: @installed_package_version, else: "uninstalled-#{suffix}"
+
+    manifest_sha256 =
+      if installed?, do: @installed_manifest_sha256, else: manifest_sha256_fixture()
+
+    {:ok, package} = Packages.create(%{name: package_name})
 
     {:ok, package_version} =
       Packages.publish_version(package.id, %{
-        manifest_sha256: manifest_sha256_fixture(),
-        version: "1",
+        manifest_sha256: manifest_sha256,
+        version: package_version,
         source: %{
           ref: "source",
           operation_id: source_operation.id,

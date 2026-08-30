@@ -106,13 +106,13 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
 
     test "classifies disabled parent authorities" do
       organization_fixture =
-        ResolutionFixtures.deployment_fixture("Disabled Organization")
+        ResolutionFixtures.deployment_fixture("Disabled Organization", installed: false)
 
       environment_fixture =
-        ResolutionFixtures.deployment_fixture("Disabled Environment")
+        ResolutionFixtures.deployment_fixture("Disabled Environment", installed: false)
 
       integration_fixture =
-        ResolutionFixtures.deployment_fixture("Disabled Integration")
+        ResolutionFixtures.deployment_fixture("Disabled Integration", installed: false)
 
       assert {:ok, _organization} =
                Organizations.disable(organization_fixture.organization.id)
@@ -186,6 +186,52 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
       |> Repo.update!()
 
       assert {:error, {:environment_deployment_not_executable, :package_version_mismatch}} =
+               Runs.create_from_deployment(fixture.deployment.id)
+
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects a PackageVersion without a manifest digest before persisting a Run" do
+      fixture = ResolutionFixtures.deployment_fixture()
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+      replace_manifest_sha256!(fixture.package_version.id, nil)
+
+      assert {:error, {:environment_deployment_not_executable, :package_not_bound}} =
+               Runs.create_from_deployment(fixture.deployment.id)
+
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects a package absent from the release before persisting a Run" do
+      fixture = ResolutionFixtures.deployment_fixture()
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      replace_manifest_sha256!(
+        fixture.package_version.id,
+        String.duplicate("f", 64)
+      )
+
+      assert {:error, {:environment_deployment_not_executable, :package_not_installed}} =
+               Runs.create_from_deployment(fixture.deployment.id)
+
+      assert Repo.aggregate(Run, :count) == run_count
+      assert Repo.aggregate(RunSnapshot, :count) == snapshot_count
+    end
+
+    test "rejects manifest projection drift before persisting a Run" do
+      fixture = ResolutionFixtures.deployment_fixture()
+      run_count = Repo.aggregate(Run, :count)
+      snapshot_count = Repo.aggregate(RunSnapshot, :count)
+
+      fixture.package
+      |> Changeset.change(name: "Different package name")
+      |> Repo.update!()
+
+      assert {:error, {:environment_deployment_not_executable, :manifest_mismatch}} =
                Runs.create_from_deployment(fixture.deployment.id)
 
       assert Repo.aggregate(Run, :count) == run_count
@@ -498,6 +544,22 @@ defmodule LeafcutterRuntime.RunsResolutionTest do
   defp manifest_sha256_fixture do
     hex = Ecto.UUID.generate() |> String.replace("-", "")
     hex <> hex
+  end
+
+  defp replace_manifest_sha256!(package_version_id, manifest_sha256) do
+    {:ok, dumped_package_version_id} = Ecto.UUID.dump(package_version_id)
+
+    SQL.query!(Repo, "SET LOCAL session_replication_role = replica", [])
+
+    try do
+      SQL.query!(
+        Repo,
+        "UPDATE package_versions SET manifest_sha256 = $2 WHERE id = $1",
+        [dumped_package_version_id, manifest_sha256]
+      )
+    after
+      SQL.query!(Repo, "SET LOCAL session_replication_role = origin", [])
+    end
   end
 
   defp unique_name(prefix) do

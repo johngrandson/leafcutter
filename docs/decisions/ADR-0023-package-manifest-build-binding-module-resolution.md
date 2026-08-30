@@ -1,7 +1,7 @@
 # ADR-0023 — Package Manifest v1, build inventory e resolução compilada
 
 - Status: Accepted
-- Estado de implementação: PARCIAL — PASSOS 35–37 MATERIALIZADOS
+- Estado de implementação: MATERIALIZADO — PASSOS 35–38
 - Data: 2026-08-30
 
 ## Contexto
@@ -347,7 +347,7 @@ um execution path completo. Congelá-los agora criaria contract especulativo.
 35. manifest validation + Package binding contract (materializado)
 36. PackageVersion manifest_sha256 + legacy enforcement (materializado)
 37. explicit build inventory + Mix/release integration (materializado)
-38. runtime resolution + Deployment/Run enforcement + quality gates
+38. runtime resolution + Deployment/Run enforcement + quality gates (materializado)
 ~~~
 
 Somente depois de 26C2 passar os gates o Slice 26C3 pode selecionar um sistema externo e
@@ -378,6 +378,12 @@ publicar a primeira Operation real.
 - `apps/leafcutter_runtime/mix.exs`
 - `apps/leafcutter_runtime/mix/package_build.exs`
 - `apps/leafcutter_runtime/lib/leafcutter_runtime/executable_packages/inventory.ex`
+- `apps/leafcutter_runtime/lib/leafcutter_runtime/executable_packages.ex`
+- `apps/leafcutter_runtime/lib/leafcutter_runtime/executable_packages/binding.ex`
+- `apps/leafcutter_core/lib/leafcutter/integrations/deployments.ex`
+- `apps/leafcutter_runtime/lib/leafcutter_runtime/runs.ex`
+- `apps/leafcutter_runtime/test/leafcutter_runtime/executable_packages_test.exs`
+- `apps/leafcutter_runtime/test/leafcutter_runtime/runs_resolution_test.exs`
 - `apps/leafcutter_runtime/test/leafcutter_runtime/executable_packages/inventory_test.exs`
 - `mix.exs`
 - `docs/specifications/package-manifest-v1.md`

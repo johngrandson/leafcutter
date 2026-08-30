@@ -91,11 +91,18 @@
 - cobertura, ordem, unicidade e behaviours validados em compile time;
 - callbacks puros sem acesso ao filesystem em runtime.
 
+### Package resolution compilada
+
+- inventory literal ligada às Mix dependencies e à closure da release;
+- resolução pública por digest exato e projeção imutável do Catalog;
+- composição in-memory de módulos compilados com IDs autoritativos;
+- rejeição de PackageVersion sem digest em Deployment e de binding indisponível/divergente em Run;
+- nenhuma alteração em RunSnapshot v1.
+
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- build inventory e resolução em runtime (26C2, passos 37–38);
 - primeira Operation HTTP real (26C3 aberta);
 - Integration Packages;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;

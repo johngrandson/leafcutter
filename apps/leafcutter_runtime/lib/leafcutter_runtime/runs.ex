@@ -36,6 +36,7 @@ defmodule LeafcutterRuntime.Runs do
   alias Leafcutter.Repo
 
   alias LeafcutterRuntime.{
+    ExecutablePackages,
     NodeHeartbeat,
     RunCoordinator,
     RunDynamicSupervisor,
@@ -59,12 +60,20 @@ defmodule LeafcutterRuntime.Runs do
   @typedoc "Error returned when a Run cannot be claimed or started locally."
   @type start_error :: DurableRuns.claim_error() | claimed_start_error()
 
+  @typedoc "A package-code resolution failure that prevents a new Run."
+  @type package_execution_error ::
+          :package_not_bound
+          | :package_not_installed
+          | :manifest_mismatch
+          | :invalid_binding
+
   @typedoc "Semantic reason why an EnvironmentDeployment cannot produce a new Run."
   @type deployment_not_executable_reason ::
           :organization_disabled
           | :environment_disabled
           | :integration_disabled
           | :package_version_mismatch
+          | package_execution_error()
           | {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}
           | {:binding_mismatch,
              %{
@@ -96,7 +105,7 @@ defmodule LeafcutterRuntime.Runs do
   * `{:ok, run}` after the Run and its immutable snapshot commit atomically
   * `{:error, :environment_deployment_not_found}` when the deployment does not exist
   * `{:error, {:environment_deployment_not_executable, reason}}` when an
-    authority is disabled or semantically incompatible
+    authority is disabled, semantically incompatible, or lacks compiled package code
   * `{:error, changeset}` when the final RunSnapshot definition is structurally invalid
 
   ## Examples
@@ -120,6 +129,7 @@ defmodule LeafcutterRuntime.Runs do
   * Mutable authorities are locked in the ratified deterministic order.
   * Catalog projections and SecretVersion identities are read without locks because they are immutable.
   * ContractVersion executability is revalidated from the immutable PackageVersion projection.
+  * Package manifest, inventory, and compiled binding compatibility are revalidated before persistence.
   * Effective config recursively merges promotable config with local config taking precedence.
   * Connection config and the exact current SecretVersion identifier are copied into definition v1.
   * The workflow does not start a local Run tree or perform any external effect.
@@ -158,7 +168,8 @@ defmodule LeafcutterRuntime.Runs do
              deployment.bindings,
              connections
            ),
-         :ok <- validate_secret_versions(connections, resolution_scope) do
+         :ok <- validate_secret_versions(connections, resolution_scope),
+         :ok <- resolve_executable_package(package_version) do
       definition =
         build_definition(
           deployment,
@@ -425,6 +436,26 @@ defmodule LeafcutterRuntime.Runs do
         :ok
 
       {:error, reason} ->
+        not_executable(reason)
+    end
+  end
+
+  @spec resolve_executable_package(PackageVersion.t()) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable, package_execution_error()}}
+  defp resolve_executable_package(package_version) do
+    case ExecutablePackages.resolve_projection(package_version) do
+      {:ok, _binding} ->
+        :ok
+
+      {:error, reason}
+      when reason in [
+             :package_not_bound,
+             :package_not_installed,
+             :manifest_mismatch,
+             :invalid_binding
+           ] ->
         not_executable(reason)
     end
   end

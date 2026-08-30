@@ -436,6 +436,7 @@ Falha confirmada causa rollback integral.
 - bloqueia e revalida todas as authorities mutáveis na ordem ratificada;
 - lê Catalog e SecretVersions imutáveis por APIs públicas;
 - rejeita ContractVersions identity-only com IDs únicos e ordenados;
+- resolve a binding compilada por digest e revalida name/version/topologia antes de persistir;
 - calcula effective config conforme o merge aprovado;
 - preserva destination order da PackageVersion;
 - congela Connection config e SecretVersion ID exato;
@@ -457,7 +458,8 @@ Falha confirmada causa rollback integral.
 - alteração concorrente de deployment ou Connection não produz snapshot híbrido;
 - definition v1 contém refs e configs resolvidas corretas;
 - destination order segue PackageVersionEndpoint.position;
-- erro semântico, inclusive ContractVersion legada, não persiste Run nem RunSnapshot;
+- erro semântico, inclusive ContractVersion legada ou package indisponível/divergente, não
+  persiste Run nem RunSnapshot;
 - duas chamadas válidas criam Runs distintas;
 - Run resultante permanece pending e elegível para RunRecovery;
 - `mix quality` passa.
@@ -480,4 +482,9 @@ Falha confirmada causa rollback integral.
 
 ## Evolução posterior
 
-O ADR-0019 e `contract-version-execution.md` materializam o Slice 26A posterior a esta specification: novas ContractVersions possuem schema/JSV e as boundaries de PackageVersion, deployment e resolver rejeitam versões identity-only legadas. Esta specification continua sendo a prova do resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudaram.
+O ADR-0019 e `contract-version-execution.md` materializam o Slice 26A posterior a esta
+specification: novas ContractVersions possuem schema/JSV e as boundaries de PackageVersion,
+deployment e resolver rejeitam versões identity-only legadas. O ADR-0023 e
+`package-manifest-v1.md` materializam posteriormente digest, inventory e resolução compilada,
+incluindo enforcement em Deployment e Run. Esta specification continua sendo a prova do
+resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudaram.
