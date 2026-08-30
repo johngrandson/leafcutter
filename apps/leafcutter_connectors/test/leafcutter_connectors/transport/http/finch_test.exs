@@ -63,9 +63,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.FinchTest do
       end)
 
     assert {:error, %Error{reason: :response_too_large}} =
-             HTTP.request(
-               request(TestHTTPServer.url(server), max_response_body_bytes: 3)
-             )
+             HTTP.request(request(TestHTTPServer.url(server), max_response_body_bytes: 3))
   end
 
   test "halts when streamed chunks cross the request limit" do
@@ -81,9 +79,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.FinchTest do
       end)
 
     assert {:error, %Error{reason: :response_too_large}} =
-             HTTP.request(
-               request(TestHTTPServer.url(server), max_response_body_bytes: 5)
-             )
+             HTTP.request(request(TestHTTPServer.url(server), max_response_body_bytes: 5))
   end
 
   test "applies the central hard maximum in addition to the request limit" do
@@ -91,9 +87,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.FinchTest do
     server = start_server(fn _request, _attempt -> fixed_response(200, [], body) end)
 
     assert {:error, %Error{reason: :response_too_large}} =
-             HTTP.request(
-               request(TestHTTPServer.url(server), max_response_body_bytes: 1_000)
-             )
+             HTTP.request(request(TestHTTPServer.url(server), max_response_body_bytes: 1_000))
   end
 
   test "normalizes receive timeouts" do
@@ -139,9 +133,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.FinchTest do
     assert_receive {:request_held, 1}, 500
 
     assert {:error, %Error{reason: :pool_timeout}} =
-             HTTP.request(
-               request(TestHTTPServer.url(server), pool_timeout_ms: 10)
-             )
+             HTTP.request(request(TestHTTPServer.url(server), pool_timeout_ms: 10))
 
     send(server.pid, :release_pool_request)
     assert {:ok, %Response{body: "released"}} = Task.await(first_request, 1_000)

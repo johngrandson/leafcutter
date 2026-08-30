@@ -51,7 +51,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.ResponseTest do
     refute inspected =~ "trailer-secret"
   end
 
-  defp response(overrides \\ []) do
+  defp response(overrides) do
     struct!(
       Response,
       Keyword.merge(

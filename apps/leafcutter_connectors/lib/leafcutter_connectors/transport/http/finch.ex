@@ -159,20 +159,22 @@ defmodule LeafcutterConnectors.Transport.HTTP.Finch do
   defp handle_entry({:status, _status}, accumulator), do: protocol_failure(accumulator)
 
   defp handle_entry({:headers, headers}, %{headers_seen?: false} = accumulator) do
-    with {:ok, normalized_headers} <- normalize_headers(headers) do
-      accumulator = %{
-        accumulator
-        | headers: normalized_headers,
-          headers_seen?: true
-      }
+    case normalize_headers(headers) do
+      {:ok, normalized_headers} ->
+        accumulator = %{
+          accumulator
+          | headers: normalized_headers,
+            headers_seen?: true
+        }
 
-      if content_length_over_limit?(normalized_headers, accumulator) do
-        response_too_large(accumulator)
-      else
-        {:cont, accumulator}
-      end
-    else
-      :error -> protocol_failure(accumulator)
+        if content_length_over_limit?(normalized_headers, accumulator) do
+          response_too_large(accumulator)
+        else
+          {:cont, accumulator}
+        end
+
+      :error ->
+        protocol_failure(accumulator)
     end
   end
 
@@ -209,17 +211,15 @@ defmodule LeafcutterConnectors.Transport.HTTP.Finch do
   defp store_trailers(headers, accumulator) do
     case normalize_headers(headers) do
       {:ok, normalized_headers} ->
-        {:cont,
-         %{accumulator | trailers: accumulator.trailers ++ normalized_headers}}
+        {:cont, %{accumulator | trailers: accumulator.trailers ++ normalized_headers}}
 
       :error ->
         protocol_failure(accumulator)
     end
   end
 
-  @spec normalize_stream_result(
-          {:ok, accumulator()} | {:error, Client.error(), accumulator()}
-        ) :: HTTP.result()
+  @spec normalize_stream_result({:ok, accumulator()} | {:error, Client.error(), accumulator()}) ::
+          HTTP.result()
   defp normalize_stream_result({:ok, %{failure: reason}}) when not is_nil(reason) do
     {:error, %Error{reason: reason}}
   end
@@ -323,7 +323,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.Finch do
   defp normalize_transport_reason({:certificate, _reason}), do: :tls
   defp normalize_transport_reason(_reason), do: :transport_failure
 
-  @spec pool_timeout_exception?(RuntimeError.t(), list()) :: boolean()
+  @spec pool_timeout_exception?(%{message: String.t()}, Exception.stacktrace()) :: boolean()
   defp pool_timeout_exception?(exception, stacktrace) do
     String.starts_with?(exception.message, @pool_timeout_message) and
       Enum.any?(stacktrace, fn

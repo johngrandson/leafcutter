@@ -81,7 +81,7 @@ defmodule LeafcutterConnectors.Transport.HTTP.RequestTest do
     refute invalid =~ "/private"
   end
 
-  defp request(overrides \\ []) do
+  defp request(overrides) do
     struct!(
       Request,
       Keyword.merge(
