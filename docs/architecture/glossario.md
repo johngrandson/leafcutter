@@ -36,11 +36,13 @@
 
 **RunRecovery** — processo de polling que reconcilia ownership durável e árvores locais.
 
-**Connector** — identidade global de um Connector no Catalog; a implementação executável permanece futura.
+**Connector** — identidade global de um Connector no Catalog; behaviours executáveis pertencem às Operations, e implementações vendor-specific de produto aguardam 26C3.
 
 **ConnectorVersion** — metadata versionada e imutável publicada atomicamente com suas Operations.
 
-**Operation** — metadata de uma ação source ou destination pertencente a uma ConnectorVersion.
+**Operation** — ação source ou destination pertencente a uma ConnectorVersion; metadata reside no Catalog e os behaviours Read/Write executáveis residem em `leafcutter_connectors`.
+
+**Transport** — execução de protocolo; o Transport HTTP bounded está materializado.
 
 **Contract** — identidade global de um data contract no Catalog.
 
@@ -52,13 +54,11 @@
 
 **PackageVersionEndpoint** — endpoint imutável que pinna uma Operation e uma ContractVersion; positions ordenam destinations.
 
+**Integration** — identidade lógica materializada de uma Organization ligada a um Package.
+
+**EnvironmentDeployment** — configuração executável materializada da Integration em um Environment.
+
 ## Ratificados para o futuro
-
-**Transport** — execução de protocolo, inicialmente HTTP.
-
-**Integration** — identidade lógica de uma Organization ligada a um Package.
-
-**EnvironmentDeployment** — configuração executável da Integration em um Environment.
 
 **Record** — ocorrência de um item source dentro da Run.
 

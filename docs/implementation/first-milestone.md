@@ -31,7 +31,10 @@ Broadway data plane
 OpenAPI product surface
 ```
 
-Esses elementos não pertenciam ao milestone. RunSnapshot, Catalog, Connections, Integration e EnvironmentDeployment foram materializados em slices posteriores; connectors executáveis, Broadway e OpenAPI de produto permanecem futuros.
+Esses elementos não pertenciam ao milestone. RunSnapshot, Catalog, Connections, Integration,
+EnvironmentDeployment, a boundary executável de Operation, o Transport HTTP e
+Manifest/resolução compilada foram materializados em slices posteriores; Operations/packages
+de produto, Broadway e OpenAPI de produto permanecem futuros.
 
 ## Resultado
 

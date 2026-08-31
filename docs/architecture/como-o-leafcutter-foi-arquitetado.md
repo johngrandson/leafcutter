@@ -88,7 +88,11 @@ leafcutter_runtime
 leafcutter_api
 ```
 
-Core hospeda Organizations, Catalog, Connections e Integrations mínimos, além de Repo, PubSub e Oban. Connectors é uma boundary ainda vazia. Runtime hospeda Executions foundation e OTP control plane. API é Phoenix API-only foundation.
+Core hospeda Organizations, Catalog, Connections e Integrations mínimos, além de Repo, PubSub
+e Oban. Connectors hospeda a boundary executável de Operation, o Transport HTTP bounded e
+Manifest/binding compilada. Runtime hospeda Executions foundation, OTP control plane,
+inventory/resolução compilada e o workflow de criação de Run a partir de
+EnvironmentDeployment. API é Phoenix API-only foundation.
 
 ## Organizations e autorização
 
@@ -196,7 +200,11 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. O ADR-0023 ratifica Manifest v1 e a binding de build sem mover execução para o Catalog. Availability e a materialização do build permanecem posteriores.
+Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das
+Operations, da topologia relacional de PackageVersion e do digest imutável do Manifest. O
+lifecycle de availability/deprecation permanece posterior. Manifest/binding são
+materializados em `leafcutter_connectors`; inventory, release closure e resolução compilada
+pertencem a `leafcutter_runtime`.
 
 ## Connections
 

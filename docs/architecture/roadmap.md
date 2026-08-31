@@ -163,7 +163,7 @@ real completo permanece em 26C3 e exige ratificação própria.
 ## Ecossistema
 
 - official/custom connectors;
-- package tooling e manifest v1;
+- ferramentas de autoria/publicação/distribuição sobre o Manifest v1 materializado;
 - build/publish/registry;
 - OpenAPI import;
 - Postman derivado.

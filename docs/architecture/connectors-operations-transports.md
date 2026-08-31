@@ -43,7 +43,8 @@ Transport
 ~~~
 
 Catalog possui metadata e versões. `leafcutter_connectors` possui a boundary executável
-sem depender de Catalog ou Repo. O runtime futuro comporá as duas applications.
+sem depender de Catalog ou Repo. O runtime já compõe as duas applications durante a resolução
+compilada de PackageVersion; a invocação das Operations pelo data plane permanece futura.
 
 ContractVersion + JSON Schema/JSV é uma boundary anterior e separada, owned pelo Catalog. A
 Operation não compila nem valida ContractVersion.

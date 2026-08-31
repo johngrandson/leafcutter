@@ -98,8 +98,8 @@ PostgreSQL decide ownership e recovery. Registry e processos OTP representam som
 
 ```text
 core       → Organizations + Catalog mínimo + Connections mínimo + Integrations mínimo + Repo + PubSub + Oban
-connectors → boundary executável ainda vazia
-runtime    → Executions foundation + deployment resolution + OTP runtime
+connectors → Operation Read/Write + Transport HTTP + Manifest/binding compilada
+runtime    → Executions foundation + deployment resolution + resolução compilada + OTP runtime
 api        → Phoenix API-only foundation
 ```
 
