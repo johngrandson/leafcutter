@@ -21,7 +21,7 @@ defmodule LeafcutterRuntime.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
-      test_ignore_filters: [~r{^test/fixtures/package_inventory/}],
+      test_ignore_filters: [~r{^test/fixtures/}],
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -52,6 +52,11 @@ defmodule LeafcutterRuntime.MixProject do
     [
       {:leafcutter_package_inventory_fixture,
        path: "test/fixtures/package_inventory/packages/conformance",
+       only: :test,
+       env: :test,
+       runtime: false},
+      {:leafcutter_http_passthrough_fixture,
+       path: "test/fixtures/http_passthrough_package_inventory/packages/http_passthrough",
        only: :test,
        env: :test,
        runtime: false}

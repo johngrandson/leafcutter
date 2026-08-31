@@ -18,7 +18,10 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
 
   alias LeafcutterHTTPPassthroughFixture, as: Fixture
   alias LeafcutterHTTPPassthroughFixture.Package
+  alias LeafcutterRuntime.PackageBuild
 
+  @fixture_root Path.expand("../fixtures/http_passthrough_package_inventory", __DIR__)
+  @fixture_build_file Path.join(@fixture_root, "build.exs")
   @response_body_limit 1_048_576
 
   setup do
@@ -32,6 +35,18 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
     )
 
     on_exit(fn -> restore_http_config(previous_config) end)
+  end
+
+  test "uses a canonical test-only package binding" do
+    entries = PackageBuild.load!(@fixture_build_file, @fixture_root)
+
+    assert [
+             %{
+               app: :leafcutter_http_passthrough_fixture,
+               binding: Package,
+               path: "packages/http_passthrough"
+             }
+           ] = PackageBuild.validate_compiled!(entries, @fixture_root)
   end
 
   test "crosses validated and transformed records from one HTTP source to one destination" do
@@ -196,7 +211,11 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
              }
            ] = trace.write_result.results
 
-    refute inspect(item_error) =~ "duplicate_email"
+    inspected_error = inspect(item_error)
+
+    refute inspected_error =~ "duplicate_email"
+    refute inspected_error =~ "source-token"
+    refute inspected_error =~ "destination-token"
     assert TestHTTPServer.attempts(destination_server) == 1
   end
 
@@ -227,7 +246,10 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
                publish_validators!()
              )
 
-    refute inspect(error) =~ "raw-rate-limit-body"
+    inspected_error = inspect(error)
+
+    refute inspected_error =~ "raw-rate-limit-body"
+    refute inspected_error =~ "source-token"
     assert TestHTTPServer.attempts(source_server) == 1
     assert TestHTTPServer.attempts(destination_server) == 0
   end

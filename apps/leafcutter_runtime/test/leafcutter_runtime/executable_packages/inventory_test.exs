@@ -24,15 +24,24 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
     assert Inventory.runtime_entries() == [@fixture_entry]
   end
 
-  test "does not expose the conformance package dependency outside the test environment" do
+  test "does not expose test package dependencies outside the test environment" do
     original_environment = Mix.env()
 
     try do
       Mix.env(:dev)
 
-      refute Enum.any?(LeafcutterRuntime.MixProject.project()[:deps], fn
-               {:leafcutter_package_inventory_fixture, _options} -> true
-               _dependency -> false
+      dependencies = LeafcutterRuntime.MixProject.project()[:deps]
+
+      refute Enum.any?(dependencies, fn
+               {app, _options}
+               when app in [
+                      :leafcutter_http_passthrough_fixture,
+                      :leafcutter_package_inventory_fixture
+                    ] ->
+                 true
+
+               _dependency ->
+                 false
              end)
     after
       Mix.env(original_environment)

@@ -276,8 +276,7 @@ defmodule LeafcutterHTTPPassthroughFixture.Destination do
     {:ok,
      %ItemResult{
        ref: ref,
-       outcome:
-         {:error, %OperationError{category: :validation, code: "destination_rejected"}}
+       outcome: {:error, %OperationError{category: :validation, code: "destination_rejected"}}
      }}
   end
 
@@ -300,7 +299,7 @@ defmodule LeafcutterHTTPPassthroughFixture.Package do
   @moduledoc false
 
   use LeafcutterConnectors.Package,
-    manifest: Path.expand("../http_passthrough_manifest.json", __DIR__),
+    manifest: Path.expand("../manifest.json", __DIR__),
     source: {"customers", LeafcutterHTTPPassthroughFixture.Source},
     destinations: [{"contacts", LeafcutterHTTPPassthroughFixture.Destination}]
 end
