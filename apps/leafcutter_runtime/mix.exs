@@ -45,12 +45,18 @@ defmodule LeafcutterRuntime.MixProject do
       {:leafcutter_connectors, in_umbrella: true}
     ] ++
       @package_dependencies ++
-      [
-        {:leafcutter_package_inventory_fixture,
-         path: "test/fixtures/package_inventory/packages/conformance",
-         only: :test,
-         env: :test,
-         runtime: false}
-      ]
+      test_dependencies(Mix.env())
   end
+
+  defp test_dependencies(:test) do
+    [
+      {:leafcutter_package_inventory_fixture,
+       path: "test/fixtures/package_inventory/packages/conformance",
+       only: :test,
+       env: :test,
+       runtime: false}
+    ]
+  end
+
+  defp test_dependencies(_environment), do: []
 end

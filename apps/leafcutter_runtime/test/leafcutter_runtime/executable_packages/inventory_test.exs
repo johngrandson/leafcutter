@@ -24,6 +24,21 @@ defmodule LeafcutterRuntime.ExecutablePackages.InventoryTest do
     assert Inventory.runtime_entries() == [@fixture_entry]
   end
 
+  test "does not expose the conformance package dependency outside the test environment" do
+    original_environment = Mix.env()
+
+    try do
+      Mix.env(:dev)
+
+      refute Enum.any?(LeafcutterRuntime.MixProject.project()[:deps], fn
+               {:leafcutter_package_inventory_fixture, _options} -> true
+               _dependency -> false
+             end)
+    after
+      Mix.env(original_environment)
+    end
+  end
+
   test "loads literal entries in deterministic application order" do
     source = """
     [
