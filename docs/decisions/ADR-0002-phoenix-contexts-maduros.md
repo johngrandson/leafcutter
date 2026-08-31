@@ -11,7 +11,10 @@ Contexts representam boundaries de domínio e podem expor facade raiz, capabilit
 
 `Organizations` está materializado com capabilities de Environments, Users, ServiceAccounts, Roles e Access. `Executions` possui foundation de RuntimeNode, Run, RunSnapshot, ownership e recovery. `Catalog` possui Connector, ConnectorVersion, Operation, Contract, ContractVersion, Package, PackageVersion e PackageVersionEndpoint materializados. `Connections` possui Connection, Secret e SecretVersion com APIs segmentadas e integridade de scope. `Integrations` possui Integration, EnvironmentDeployment, bindings e lifecycle mínimo em facade e capability module separados.
 
-Availability e manifest/build do Catalog, OAuth/rotation e secret providers de Connections, promotion/homologation de Integrations, Notifications e Audit permanecem ratificados, mas não materializados.
+Availability/deprecation do Catalog, OAuth/rotation e secret providers de Connections,
+promotion/homologation de Integrations, Notifications e Audit permanecem ratificados, mas não
+materializados. Manifest/binding, digest, build inventory, release closure e resolução
+compilada foram materializados em 26C2 sob os respectivos owners.
 
 ## Consequências
 

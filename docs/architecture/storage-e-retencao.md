@@ -8,8 +8,11 @@ PostgreSQL armazena:
 
 ```text
 Organizations/RBAC tables
+Catalog Connector/Contract/Package tables
+Connections + SecretVersion tables
+Integrations + EnvironmentDeployment tables
 runtime_nodes
-runs
+runs + run_snapshots
 Oban tables
 ```
 
