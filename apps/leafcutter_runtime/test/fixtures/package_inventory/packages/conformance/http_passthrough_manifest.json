@@ -1,0 +1,15 @@
+{
+  "manifest_version": 1,
+  "package": {
+    "name": "HTTP passthrough conformance fixture",
+    "version": "2026.08"
+  },
+  "source": {
+    "ref": "customers"
+  },
+  "destinations": [
+    {
+      "ref": "contacts"
+    }
+  ]
+}
