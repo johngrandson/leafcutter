@@ -242,16 +242,15 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
       cursor: nil
     }
 
-    with {:ok, %ReadResult{} = read_result} <- source_module.read(read_invocation),
-         true <- Read.valid_return?({:ok, read_result}, read_invocation),
+    with {:ok, %ReadResult{} = read_result} <- invoke_read(source_module, read_invocation),
          {:ok, items} <- build_items(read_result.records, validators),
          write_invocation = %WriteInvocation{
            config: %{"url" => destination_url},
            credentials: %{"token" => "destination-token"},
            items: items
          },
-         {:ok, %WriteResult{} = write_result} <- destination_module.write(write_invocation),
-         true <- Write.valid_return?({:ok, write_result}, write_invocation) do
+         {:ok, %WriteResult{} = write_result} <-
+           invoke_write(destination_module, write_invocation) do
       {:ok,
        %{
          read_invocation: read_invocation,
@@ -259,9 +258,26 @@ defmodule LeafcutterRuntime.HTTPPassthroughConformanceTest do
          write_invocation: write_invocation,
          write_result: write_result
        }}
+    end
+  end
+
+  defp invoke_read(module, invocation) do
+    result = module.read(invocation)
+
+    if Read.valid_return?(result, invocation) do
+      result
     else
-      {:error, error} -> {:error, error}
-      false -> {:error, :operation_contract_violation}
+      {:error, :operation_contract_violation}
+    end
+  end
+
+  defp invoke_write(module, invocation) do
+    result = module.write(invocation)
+
+    if Write.valid_return?(result, invocation) do
+      result
+    else
+      {:error, :operation_contract_violation}
     end
   end
 
