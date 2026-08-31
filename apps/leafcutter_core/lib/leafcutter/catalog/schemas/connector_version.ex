@@ -16,13 +16,16 @@ defmodule Leafcutter.Catalog.ConnectorVersion do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @typedoc "The identifier of one immutable ConnectorVersion."
   @type id :: Ecto.UUID.t()
 
+  @typedoc "Attributes accepted when publishing a ConnectorVersion."
   @type publish_attrs :: %{
           required(:connector_id) => Connector.id(),
           required(:version) => String.t()
         }
 
+  @typedoc "An immutable published ConnectorVersion with its Operations."
   @type t :: %__MODULE__{
           id: id() | nil,
           connector_id: Connector.id() | nil,

@@ -76,7 +76,9 @@ Package
 PackageVersion
 ```
 
-O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion materializam identities publicadas e imutáveis. Package, PackageVersion e seus endpoints relacionais completam o Catalog mínimo com cardinalidade, referências, ordem e imutabilidade protegidas no banco.
+O modelo mínimo de publicação e a projeção relacional de PackageVersion endpoints foram ratificados no ADR-0018. Connector, ConnectorVersion e Operation estão materializados com publicação atômica e sealing no PostgreSQL. Contract e ContractVersion materializam identities publicadas e imutáveis; novas versões também persistem schema Draft 2020-12 object/boolean validado e construído com JSV. Package, PackageVersion e seus endpoints relacionais completam o Catalog mínimo com cardinalidade, referências, ordem e imutabilidade protegidas no banco; novas PackageVersions rejeitam ContractVersions identity-only legadas.
+
+O ADR-0019 está materializado: publicação executável, `Contracts.compile/1`, `Contracts.validate/2` e as proteções em PackageVersion, EnvironmentDeployment e resolução de Run existem. Schema continua owned pelo Catalog e RunSnapshot v1 continua referenciando somente `contract_version_id`.
 
 ## Connections
 
@@ -105,7 +107,7 @@ O modelo mínimo ratificado está materializado e usa no máximo um EnvironmentD
 - promotable config;
 - local config.
 
-Create e replace persistem o estado completo e todos os bindings atomicamente. O banco protege identidade, JSON objects, PackageVersion compatível, cobertura exata de endpoints e compatibilidade de Connector. Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
+Create e replace persistem o estado completo e todos os bindings atomicamente e rejeitam PackageVersions com ContractVersion legada. O banco protege identidade, JSON objects, PackageVersion compatível, cobertura exata de endpoints e compatibilidade de Connector. Triggers, revision, history, promotion e lifecycle independente do deployment permanecem futuros.
 
 ## Run e RunSnapshot
 
@@ -122,7 +124,7 @@ resolved PackageVersion
 
 Runs legadas podem não possuir snapshot. Runs `pending` só são elegíveis no control plane quando possuem snapshot em formato suportado.
 
-Raw secrets permanecem fora do snapshot. O resolver transacional materializado pelo ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1.
+Raw secrets permanecem fora do snapshot. O resolver transacional materializado pelo ADR-0018 congela Connection config, SecretVersion bindings e effective config sem adicionar provenance IDs ao formato v1; antes da criação, ele revalida as ContractVersions e rejeita versões legadas sem persistir Run ou snapshot.
 
 ## Record, Delivery e Attempt
 

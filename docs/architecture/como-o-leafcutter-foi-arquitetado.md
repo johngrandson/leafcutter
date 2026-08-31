@@ -119,7 +119,7 @@ Package
     └── PackageVersionEndpoint
 ```
 
-ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. ContractVersion materializa somente uma identidade versionada, nasce publicada e também é imutável. PackageVersion e seus endpoints relacionais são publicados atomicamente, preservam uma source e destinations ordenadas e recebem a mesma proteção de sealing e imutabilidade.
+ConnectorVersion e Operations são publicados na mesma transação. PostgreSQL impede versões sem sealing e rejeita append, update ou delete do conteúdo publicado. ContractVersion nasce publicada com schema Draft 2020-12 object/boolean, validado e construído com JSV, e também é imutável; versões identity-only anteriores permanecem históricas. PackageVersion e seus endpoints relacionais são publicados atomicamente, preservam uma source e destinations ordenadas, rejeitam ContractVersions legadas em novas publicações e recebem a mesma proteção de sealing e imutabilidade.
 
 ## RuntimeNode
 
@@ -196,7 +196,7 @@ Essa separação impede que mudança de configuração altere uma Run em andamen
 
 ## Catalog
 
-Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. Availability, manifests e build permanecem na evolução ratificada. Catalog não executará artefatos.
+Catalog já controla identidades e versões de Connectors, Contracts e Packages, além das Operations e da topologia relacional de PackageVersion. O ADR-0023 ratifica Manifest v1 e a binding de build sem mover execução para o Catalog. Availability e a materialização do build permanecem posteriores.
 
 ## Connections
 
@@ -213,6 +213,8 @@ Promotion levará estado promovível aprovado sem copiar credenciais ou config l
 ## JSON Schema
 
 Source e destination payloads serão validados com JSON Schema Draft 2020-12 via JSV.
+
+O ADR-0019 ratifica a boundary de ContractVersion executável, publicação, compilação e validação do Slice 26A. O slice está materializado por PackageVersion, EnvironmentDeployment e pelo resolver de Run, que repetem a proteção contra versões legadas. O ADR-0021 ratifica a validação source depois da Read Operation e a validação destination depois da Transformation, antes da Write Operation.
 
 ```text
 external source
@@ -236,7 +238,7 @@ Transport
 → protocol
 ```
 
-HTTP será o primeiro Transport. Read Operations normalizarão paginação; Write Operations preservarão resultado por item.
+O ADR-0021 controla os Read/Write behaviours síncronos materializados. O ADR-0022 controla o primeiro Transport HTTP bounded. O ADR-0023 ratifica Manifest/build/module resolution em 26C2; o primeiro fluxo real completo permanece separado em 26C3.
 
 # Transformation, Enrichment e Interceptor
 
@@ -299,18 +301,26 @@ PostgreSQL armazena operational truth. JSONB pode simplificar a primeira versão
 
 # O que está aberto
 
-RunSnapshot v1, todas as authorities upstream mínimas, o resolver transacional e o merge de config estão materializados conforme o ADR-0018. Permanecem abertos os lifecycles ampliados de Catalog/Connections/Integrations, rolling upgrade de formatos, idempotência/invocation futura, retenção, Package Manifest, build de packages, contracts executáveis, data plane, lifecycle completo, secrets concretos, OpenAPI e infraestrutura de produção.
+RunSnapshot v1, as authorities upstream, ContractVersion, Operation executável, o Transport
+HTTP bounded e a resolução compilada de 26C2 estão materializados sem alterar o snapshot.
+Permanecem abertos os lifecycles ampliados, rolling upgrade,
+idempotência/invocation durável, retenção, primeiro fluxo externo real, data plane, secrets
+concretos, OpenAPI e infraestrutura de produção.
 
 # Conclusão
 
-O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, Integrations, EnvironmentDeployments e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, build de Integration Packages e Records já existem.
+O Leafcutter já possui uma base real de tenancy, autorização, Catalog, Connections, Integrations, EnvironmentDeployments e runtime recovery. A arquitetura completa preservada nos documentos descreve a evolução para uma plataforma de integração, não uma afirmação de que Broadway, packages de produto e Records já existem.
 
 ```text
 present
 → RBAC + authorities upstream + transactional resolution + ownership + recovery + RunSnapshot v1
+→ ContractVersion + JSON Schema/JSV + enforcement em PackageVersion/Deployment/Run
+→ Operation Read/Write behaviours + in-memory validation (26B)
+→ bounded HTTP Transport + supervised Finch HTTP/1 pool (26C1)
+→ Manifest v1 + build inventory + compiled module resolution (26C2)
 
 next
-→ ratificar Contracts/JSV + Connector/Operation/Transport executáveis
+→ ratificar o primeiro fluxo real 1 Read → 1..N Write (26C3)
 
 future
 → durable Broadway integration data plane

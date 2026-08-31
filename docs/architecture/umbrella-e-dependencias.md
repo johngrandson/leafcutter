@@ -1,6 +1,6 @@
 # Umbrella e dependências
 
-> **Status: MATERIALIZADO, COM EVOLUÇÕES FUTURAS PRESERVADAS.**
+> **Status: MATERIALIZADO ATÉ 26C2.**
 
 ## Estrutura real
 
@@ -12,16 +12,25 @@ apps/
 └── leafcutter_api
 ```
 
-Grafo materializado:
+Grafo materializado entre applications Leafcutter:
 
 ```text
 leafcutter_core       → none
 leafcutter_connectors → none
-leafcutter_runtime    → leafcutter_core + leafcutter_connectors
+leafcutter_runtime    → leafcutter_core + leafcutter_connectors + installed packages
 leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
 
 Não existe ciclo e nenhum context recebe OTP application própria.
+
+O ramo adicional é materializado somente quando `packages/build.exs` contém uma entry:
+
+```text
+leafcutter_runtime → installed packages → leafcutter_connectors
+```
+
+A inventory de produção atual é vazia. A fixture de conformance é uma dependency exclusiva de
+test e não integra o grafo ou a release de produção.
 
 ## `leafcutter_core`
 
@@ -31,6 +40,7 @@ Hospeda hoje:
 Organizations
 Catalog
 Connections
+Integrations
 Leafcutter.Repo
 Leafcutter.PubSub
 Oban
@@ -39,7 +49,6 @@ Oban
 Hospedará futuramente:
 
 ```text
-Integrations
 Notifications
 Audit
 ```
@@ -56,18 +65,18 @@ Isso inclui `runtime_nodes` e `runs`, embora seu ownership pertença a Execution
 
 ## `leafcutter_connectors`
 
-Boundary materializada, ainda sem implementação funcional.
+Boundary executável materializada para Operation, Transport HTTP e Package Manifest/binding.
 
-Hospedará:
+Hospeda hoje:
 
 ```text
-Connector behaviours
-Operation behaviours
-Transport behaviours
-HTTP Transport
-Generic HTTP Connector
-connector implementations
+Operation Read/Write behaviours and values
+bounded HTTP Transport facade
+Finch HTTP/1 adapter and supervised pool
+Package Manifest v1 validation and compiled bindings
 ```
+
+Hospedará futuramente outros transports e connector implementations conforme demanda real.
 
 Metadata e versionamento pertencem a Catalog; execução pertence a esta app.
 
@@ -85,6 +94,7 @@ RunRecovery
 RunSupervisor
 RunCoordinator
 runtime workflows
+compiled package inventory and resolution
 ```
 
 Supervision tree atual:
@@ -131,7 +141,7 @@ A app API não contém regra de negócio.
 
 ## Release
 
-Uma release homogênea inicial continua ratificada:
+Uma release homogênea inicial está materializada:
 
 ```text
 :leafcutter
@@ -139,28 +149,42 @@ Uma release homogênea inicial continua ratificada:
 
 Todos os nodes executarão core, connectors, runtime e api. Especialização de nodes só entra após necessidade medida.
 
+A configuração Mix da umbrella materializa `:leafcutter` com `leafcutter_api` como entrypoint.
+Core, Connectors, Runtime e os packages instalados entram pela dependency/application closure;
+o gate compara os apps da inventory com a closure produzida por `Mix.Release`.
+
 ## Integration Packages
 
 Localização ratificada:
 
 ```text
-packages/<package>/
-├── mix.exs
-├── manifest.json
-├── lib
-└── test
+packages/
+├── build.exs
+└── <package>/
+    ├── mix.exs
+    ├── manifest.json
+    ├── lib
+    └── test
 ```
 
-Packages não são uma quinta platform application. A estratégia física de inclusão no build/release ainda está aberta.
+Packages não são uma quinta platform application. O ADR-0023 ratifica inventory literal em
+`packages/build.exs`, path dependencies explícitas de `leafcutter_runtime` e prova da
+application closure da release. Essa estratégia está materializada no passo 37; a resolução
+pela projeção pública do Catalog está materializada no passo 38.
 
 ## Dependências permitidas
 
-Package pode depender de contracts públicos de `leafcutter_connectors`. Não depende de internals de runtime ou API. Dependência de core somente entra com contract público concreto.
+Package pode depender de contracts públicos de `leafcutter_connectors` e de dependencies Mix
+próprias. No contract v1, não depende de Core, Runtime ou API.
+
+Como o Mix compila path dependencies externas antes dos filhos da umbrella, o alias raiz de
+`compile` materializa `leafcutter_connectors` antes de iniciar packages instalados. Isso torna
+o build limpo determinístico sem inverter a dependency direction: packages continuam
+dependendo somente dos contracts públicos de Connectors.
 
 ## Pontos futuros preservados
 
-- build explícito dos packages instalados;
 - uma única release inicialmente;
 - possibilidade futura de especialização de nodes;
 - object storage, package isolation e analytics apenas após necessidade;
-- configuração concreta de Oban e HTTP pools ainda aberta.
+- configuração concreta de Oban e tuning futuro dos HTTP pools ainda abertos.

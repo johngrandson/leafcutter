@@ -11,9 +11,15 @@ defmodule LeafcutterRuntime.Runs do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{PackageVersion, PackageVersionEndpoint, Packages}
+  alias Leafcutter.Catalog.{
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
+  }
+
   alias Leafcutter.Connections
-  alias Leafcutter.Connections.{Connection, SecretVersion, Secrets}
+  alias Leafcutter.Connections.{Connection, Secrets, SecretVersion}
   alias Leafcutter.Executions.Run
   alias Leafcutter.Executions.Runs, as: DurableRuns
 
@@ -30,6 +36,7 @@ defmodule LeafcutterRuntime.Runs do
   alias Leafcutter.Repo
 
   alias LeafcutterRuntime.{
+    ExecutablePackages,
     NodeHeartbeat,
     RunCoordinator,
     RunDynamicSupervisor,
@@ -53,12 +60,21 @@ defmodule LeafcutterRuntime.Runs do
   @typedoc "Error returned when a Run cannot be claimed or started locally."
   @type start_error :: DurableRuns.claim_error() | claimed_start_error()
 
+  @typedoc "A package-code resolution failure that prevents a new Run."
+  @type package_execution_error ::
+          :package_not_bound
+          | :package_not_installed
+          | :manifest_mismatch
+          | :invalid_binding
+
   @typedoc "Semantic reason why an EnvironmentDeployment cannot produce a new Run."
   @type deployment_not_executable_reason ::
           :organization_disabled
           | :environment_disabled
           | :integration_disabled
           | :package_version_mismatch
+          | package_execution_error()
+          | {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}
           | {:binding_mismatch,
              %{
                required(:missing_refs) => [String.t()],
@@ -74,8 +90,7 @@ defmodule LeafcutterRuntime.Runs do
   @typedoc "Error returned while resolving an EnvironmentDeployment into a new Run."
   @type create_from_deployment_error ::
           :environment_deployment_not_found
-          | {:environment_deployment_not_executable,
-             deployment_not_executable_reason()}
+          | {:environment_deployment_not_executable, deployment_not_executable_reason()}
           | Changeset.t()
 
   @doc """
@@ -90,10 +105,18 @@ defmodule LeafcutterRuntime.Runs do
   * `{:ok, run}` after the Run and its immutable snapshot commit atomically
   * `{:error, :environment_deployment_not_found}` when the deployment does not exist
   * `{:error, {:environment_deployment_not_executable, reason}}` when an
-    authority is disabled or semantically incompatible
+    authority is disabled, semantically incompatible, or lacks compiled package code
   * `{:error, changeset}` when the final RunSnapshot definition is structurally invalid
 
   ## Examples
+
+  Given a persisted, executable EnvironmentDeployment:
+
+      iex> {:ok, run} =
+      ...>   LeafcutterRuntime.Runs.create_from_deployment(deployment.id)
+
+      iex> run.status
+      :pending
 
       iex> LeafcutterRuntime.Runs.create_from_deployment(
       ...>   "00000000-0000-0000-0000-000000000000"
@@ -105,6 +128,8 @@ defmodule LeafcutterRuntime.Runs do
   * One outer Repo transaction owns discovery, authority locks, resolution, and Run creation.
   * Mutable authorities are locked in the ratified deterministic order.
   * Catalog projections and SecretVersion identities are read without locks because they are immutable.
+  * ContractVersion executability is revalidated from the immutable PackageVersion projection.
+  * Package manifest, inventory, and compiled binding compatibility are revalidated before persistence.
   * Effective config recursively merges promotable config with local config taking precedence.
   * Connection config and the exact current SecretVersion identifier are copied into definition v1.
   * The workflow does not start a local Run tree or perform any external effect.
@@ -135,6 +160,7 @@ defmodule LeafcutterRuntime.Runs do
          {:ok, package_version} <-
            fetch_package_version(deployment.package_version_id),
          :ok <- validate_package_version(package_version, integration),
+         :ok <- validate_contract_versions_executable(package_version),
          :ok <- validate_binding_refs(package_version, deployment.bindings),
          :ok <-
            validate_connector_compatibility(
@@ -143,14 +169,15 @@ defmodule LeafcutterRuntime.Runs do
              connections
            ),
          :ok <- validate_secret_versions(connections, resolution_scope),
-         definition =
-           build_definition(
-             deployment,
-             package_version,
-             connections
-           ),
-         {:ok, run} <- DurableRuns.create(definition) do
-      {:ok, run}
+         :ok <- resolve_executable_package(package_version) do
+      definition =
+        build_definition(
+          deployment,
+          package_version,
+          connections
+        )
+
+      DurableRuns.create(definition)
     end
   end
 
@@ -188,9 +215,7 @@ defmodule LeafcutterRuntime.Runs do
 
   @spec lock_active_integration(Deployments.resolution_scope()) ::
           {:ok, Integration.t()}
-          | {:error,
-             {:environment_deployment_not_executable,
-              :integration_disabled}}
+          | {:error, {:environment_deployment_not_executable, :integration_disabled}}
   defp lock_active_integration(resolution_scope) do
     case Integrations.lock_active(
            resolution_scope.integration_id,
@@ -275,14 +300,42 @@ defmodule LeafcutterRuntime.Runs do
 
   @spec validate_package_version(PackageVersion.t(), Integration.t()) ::
           :ok
-          | {:error,
-             {:environment_deployment_not_executable,
-              :package_version_mismatch}}
+          | {:error, {:environment_deployment_not_executable, :package_version_mismatch}}
   defp validate_package_version(package_version, integration) do
     if package_version.package_id == integration.package_id do
       :ok
     else
       not_executable(:package_version_mismatch)
+    end
+  end
+
+  @spec validate_contract_versions_executable(PackageVersion.t()) ::
+          :ok
+          | {:error,
+             {:environment_deployment_not_executable,
+              {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}}}
+  defp validate_contract_versions_executable(package_version) do
+    contract_version_ids =
+      package_version.endpoints
+      |> Enum.flat_map(fn
+        %PackageVersionEndpoint{
+          contract_version_id: contract_version_id,
+          contract_version: %ContractVersion{schema: nil}
+        } ->
+          [contract_version_id]
+
+        _executable_endpoint ->
+          []
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case contract_version_ids do
+      [] ->
+        :ok
+
+      contract_version_ids ->
+        not_executable({:contract_versions_not_executable, contract_version_ids})
     end
   end
 
@@ -331,9 +384,7 @@ defmodule LeafcutterRuntime.Runs do
           [Connection.t()]
         ) ::
           :ok
-          | {:error,
-             {:environment_deployment_not_executable,
-              {:connector_mismatch, String.t()}}}
+          | {:error, {:environment_deployment_not_executable, {:connector_mismatch, String.t()}}}
   defp validate_connector_compatibility(
          package_version,
          bindings,
@@ -385,6 +436,25 @@ defmodule LeafcutterRuntime.Runs do
         :ok
 
       {:error, reason} ->
+        not_executable(reason)
+    end
+  end
+
+  @spec resolve_executable_package(PackageVersion.t()) ::
+          :ok
+          | {:error, {:environment_deployment_not_executable, package_execution_error()}}
+  defp resolve_executable_package(package_version) do
+    case ExecutablePackages.resolve(package_version.id) do
+      {:ok, _binding} ->
+        :ok
+
+      {:error, reason}
+      when reason in [
+             :package_not_bound,
+             :package_not_installed,
+             :manifest_mismatch,
+             :invalid_binding
+           ] ->
         not_executable(reason)
     end
   end
@@ -470,9 +540,7 @@ defmodule LeafcutterRuntime.Runs do
   end
 
   @spec not_executable(deployment_not_executable_reason()) ::
-          {:error,
-           {:environment_deployment_not_executable,
-            deployment_not_executable_reason()}}
+          {:error, {:environment_deployment_not_executable, deployment_not_executable_reason()}}
   defp not_executable(reason) do
     {:error, {:environment_deployment_not_executable, reason}}
   end

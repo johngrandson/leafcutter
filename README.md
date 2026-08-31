@@ -6,17 +6,27 @@ Este repositório concentra tanto a implementação quanto a arquitetura, decis�
 
 ## Estado atual
 
-O projeto está na fase de consolidação arquitetural.
+A foundation arquitetural e operacional está materializada em quatro OTP applications. O
+workflow transacional `EnvironmentDeployment → RunSnapshot v1`, ContractVersion
+executável, Operations Read/Write, Transport HTTP bounded e Package Manifest/resolução
+compilada estão concluídos até o Slice 26C2.
+
+A próxima fronteira de produto é o Slice 26C3. Ele ainda precisa de ratificação para
+selecionar um fluxo externo real completo: exatamente uma Operation Read de origem e uma
+ou mais Operations Write de destino. A escolha de sistemas, endpoints e semânticas
+vendor-specific permanece aberta; a inventory de packages de produção continua vazia.
+
+A trilha alternativa de qualidade materializou H0 e H1A. Os incrementos seguintes do
+harness permanecem separados da sequência de produto.
 
 Esta base diferencia explicitamente:
 
-- **Decisões aceitas**: regras arquiteturais que já foram discutidas e aprovadas.
-- **Propostas para ratificação**: decisões que ainda devem ser revisadas antes de influenciarem a implementação.
-- **Evoluções futuras**: capacidades planejadas que não devem contaminar a implementação inicial.
+- **Decisões aceitas**: regras arquiteturais discutidas e aprovadas.
+- **Propostas para ratificação**: decisões que não podem orientar implementação antes de aprovação.
+- **Evoluções futuras**: capacidades planejadas que não descrevem o código atual.
 
-Não trate uma seção marcada como `PROPOSTA` como decisão definitiva.
-
-Nenhuma application de domínio deve ser criada antes da ratificação do Context Map e das boundaries das applications da umbrella.
+Não trate uma seção marcada como `PROPOSTA` como decisão definitiva. O estado
+exato e a próxima tarefa ficam em `docs/checkpoint/CURRENT.md`.
 
 ## Estrutura do repositório
 
@@ -36,10 +46,11 @@ Responsabilidades principais:
 - `apps/`: OTP applications da umbrella.
 - `config/`: configuração compartilhada da umbrella.
 - `docs/`: arquitetura, ADRs, harness, checkpoints, especificações e guias de implementação.
-- `packages/`: Integration Packages executados pela plataforma. Sua estrutura definitiva ainda será ratificada.
+- `packages/`: Integration Packages separados da plataforma, selecionados por inventory explícita.
 - `AGENTS.md`: regras operacionais para agentes trabalhando no repositório.
 
-A estrutura interna de `apps/` ainda não é definitiva. As applications somente serão criadas após a ratificação do Context Map e do grafo de dependências.
+As quatro applications e seu grafo de dependências estão materializados. Novas divisões só
+podem surgir após ratificação explícita.
 
 ## Ordem de leitura
 
@@ -139,18 +150,17 @@ Tidewave e Bandit são dependências exclusivas de desenvolvimento e não fazem 
 
 ## Estado de implementação
 
-O projeto foi criado como uma umbrella vazia:
+A umbrella materializa:
 
-```bash
-mix new leafcutter --umbrella
-```
+~~~text
+leafcutter_core       → PostgreSQL, contexts duráveis, PubSub e Oban
+leafcutter_connectors → contracts de Operation, Package e Transport HTTP
+leafcutter_runtime    → resolução compilada, ownership e recovery de Runs
+leafcutter_api        → boundary Phoenix e raiz da release
+~~~
 
-A criação das applications de domínio será feita somente após a ratificação de:
+Os Slices 26A, 26B, 26C1 e 26C2 estão concluídos. `RunSnapshot v1` permanece
+inalterado, e nenhum package de produto entra na release antes da ratificação de 26C3.
 
-1. Phoenix Contexts;
-2. ownership dos conceitos;
-3. APIs públicas entre contexts;
-4. boundaries das applications;
-5. grafo de dependências da umbrella.
-
-O estado exato do trabalho sempre deve ser consultado em `docs/checkpoint/CURRENT.md`.
+Consulte `docs/checkpoint/CURRENT.md` para o inventário completo do estado
+materializado e `docs/implementation/quality-gates.md` para a validação local.

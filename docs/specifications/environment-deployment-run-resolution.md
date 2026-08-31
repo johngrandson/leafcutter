@@ -239,6 +239,8 @@ No instante da escrita:
 - Organization e Environment existem, correspondem e estão ativos;
 - Integration existe, pertence à Organization e está ativa;
 - PackageVersion pertence ao Package da Integration;
+- PackageVersion possui o digest executável ratificado pelo ADR-0023; ausência devolve
+  `{:error, :package_not_bound}`;
 - bindings correspondem exatamente aos endpoints da PackageVersion;
 - Connections pertencem ao mesmo Organization e Environment;
 - Connections estão ativas;
@@ -391,6 +393,12 @@ O resolver não adiciona Organization, Environment, Integration ou Deployment ID
         | :environment_disabled
         | :integration_disabled
         | :package_version_mismatch
+        | :package_not_bound
+        | :package_not_installed
+        | :manifest_mismatch
+        | :invalid_binding
+        | {:contract_versions_not_executable,
+           nonempty_list(ContractVersion.id())}
         | {:binding_mismatch,
            %{
              missing_refs: [String.t()],
@@ -404,7 +412,13 @@ O resolver não adiciona Organization, Environment, Integration ou Deployment ID
         | {:secret_version_scope_mismatch, SecretVersion.id()}
 ```
 
-Refs em erros são ordenadas. Erros podem expor IDs e refs, nunca config ou material sensível. Erros operacionais de banco continuam como exceções.
+Refs em erros são ordenadas. Erros podem expor IDs e refs, nunca config ou material sensível.
+Erros operacionais de banco continuam como exceções.
+
+Os reasons de package são allowlisted pelo ADR-0023. `:package_not_bound` repete no runtime a
+proteção aplicada por create/replace; os outros três representam availability ou divergência
+da binding compilada. `:package_version_not_found` não integra este envelope porque a foreign
+key do EnvironmentDeployment preserva a referência à PackageVersion.
 
 ## Repetição
 
@@ -421,6 +435,8 @@ Falha confirmada causa rollback integral.
 - descobre somente os parent IDs imutáveis antes dos locks;
 - bloqueia e revalida todas as authorities mutáveis na ordem ratificada;
 - lê Catalog e SecretVersions imutáveis por APIs públicas;
+- rejeita ContractVersions identity-only com IDs únicos e ordenados;
+- resolve a binding compilada por digest e revalida name/version/topologia antes de persistir;
 - calcula effective config conforme o merge aprovado;
 - preserva destination order da PackageVersion;
 - congela Connection config e SecretVersion ID exato;
@@ -442,16 +458,17 @@ Falha confirmada causa rollback integral.
 - alteração concorrente de deployment ou Connection não produz snapshot híbrido;
 - definition v1 contém refs e configs resolvidas corretas;
 - destination order segue PackageVersionEndpoint.position;
-- erro semântico não persiste Run;
+- erro semântico, inclusive ContractVersion legada ou package indisponível/divergente, não
+  persiste Run nem RunSnapshot;
 - duas chamadas válidas criam Runs distintas;
 - Run resultante permanece pending e elegível para RunRecovery;
 - `mix quality` passa.
 
 ## Fora do escopo
 
-- Package Manifest JSON Schema;
+- Package Manifest JSON Schema (ratificado posteriormente no ADR-0023; fora deste contract);
 - conteúdo JSON Schema de ContractVersion e validação JSV;
-- package build/release;
+- package build/release (ratificado posteriormente no ADR-0023; fora deste contract);
 - Connector/Operation/Transport executáveis;
 - raw secret storage ou retrieval;
 - OAuth, rotation, revocation e retention;
@@ -462,3 +479,12 @@ Falha confirmada causa rollback integral.
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway;
 - HTTP/API translation.
+
+## Evolução posterior
+
+O ADR-0019 e `contract-version-execution.md` materializam o Slice 26A posterior a esta
+specification: novas ContractVersions possuem schema/JSV e as boundaries de PackageVersion,
+deployment e resolver rejeitam versões identity-only legadas. O ADR-0023 e
+`package-manifest-v1.md` materializam posteriormente digest, inventory e resolução compilada,
+incluindo enforcement em Deployment e Run. Esta specification continua sendo a prova do
+resolver materializado pelo ADR-0018; RunSnapshot v1 e o lock order aqui definidos não mudaram.

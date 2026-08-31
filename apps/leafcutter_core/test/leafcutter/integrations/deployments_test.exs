@@ -1,5 +1,5 @@
 defmodule Leafcutter.Integrations.DeploymentsTest do
-  use Leafcutter.DataCase, async: true
+  use Leafcutter.DataCase, async: false
 
   alias Ecto.Adapters.SQL
   alias Ecto.Changeset
@@ -7,7 +7,10 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
   alias Leafcutter.Catalog.{
     Connectors,
     Contracts,
-    Packages
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
   }
 
   alias Leafcutter.Connections
@@ -195,6 +198,47 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
                )
     end
 
+    test "rejects a historical PackageVersion without a manifest digest" do
+      scope = deployment_scope()
+      clear_manifest_sha256!(scope.package_version.id)
+
+      assert {:error, :package_not_bound} =
+               Deployments.create(deployment_attrs(scope))
+
+      assert Repo.aggregate(EnvironmentDeployment, :count) == 0
+      assert Repo.aggregate(EnvironmentDeploymentBinding, :count) == 0
+    end
+
+    test "rejects legacy ContractVersions with unique sorted identifiers" do
+      scope = deployment_scope()
+      first_legacy = legacy_contract_version_fixture("create-first")
+      second_legacy = legacy_contract_version_fixture("create-second")
+
+      historical_package_version =
+        historical_package_version_fixture(
+          scope,
+          "legacy-create",
+          second_legacy,
+          [
+            {"crm", first_legacy},
+            {"warehouse", second_legacy}
+          ]
+        )
+
+      expected_ids = Enum.sort([first_legacy.id, second_legacy.id])
+
+      assert {:error, {:contract_versions_not_executable, ^expected_ids}} =
+               Deployments.create(
+                 deployment_attrs(scope,
+                   package_version_id: historical_package_version.id,
+                   bindings: three_endpoint_binding_attrs(scope)
+                 )
+               )
+
+      assert Repo.aggregate(EnvironmentDeployment, :count) == 0
+      assert Repo.aggregate(EnvironmentDeploymentBinding, :count) == 0
+    end
+
     test "validates Connection existence, scope, lifecycle, and Connector" do
       scope = deployment_scope()
       other_scope = deployment_scope("Other")
@@ -295,6 +339,36 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       assert {:ok, fetched} = Deployments.get(deployment.id)
       assert fetched.id == deployment.id
       assert Enum.map(fetched.bindings, & &1.ref) == ["crm", "source"]
+    end
+
+    test "keeps a historical deployment with legacy ContractVersions readable" do
+      scope = deployment_scope()
+      {:ok, deployment} = Deployments.create(deployment_attrs(scope))
+      legacy_contract_version = legacy_contract_version_fixture("deployment-history")
+
+      historical_package_version =
+        historical_package_version_fixture(
+          scope,
+          "deployment-history",
+          legacy_contract_version,
+          [{"crm", scope.contract_version}]
+        )
+
+      deployment
+      |> EnvironmentDeployment.replace_changeset(%{
+        package_version_id: historical_package_version.id,
+        promotable_config: deployment.promotable_config,
+        local_config: deployment.local_config
+      })
+      |> Repo.update!()
+
+      force_integrity_constraints()
+
+      assert {:ok, fetched} = Deployments.get(deployment.id)
+      assert fetched.package_version_id == historical_package_version.id
+
+      assert Enum.map(fetched.bindings, & &1.id) ==
+               Enum.map(deployment.bindings, & &1.id)
     end
 
     test "returns a named error when the deployment does not exist" do
@@ -520,6 +594,78 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       assert Enum.map(persisted.bindings, & &1.id) == original_binding_ids
     end
 
+    test "rejects a digest-less PackageVersion and preserves the complete deployment" do
+      scope = deployment_scope()
+
+      {:ok, deployment} =
+        Deployments.create(
+          deployment_attrs(scope,
+            promotable_config: %{"stable" => true},
+            local_config: %{"region" => "eu-west-1"}
+          )
+        )
+
+      original_binding_ids = Enum.map(deployment.bindings, & &1.id)
+      clear_manifest_sha256!(scope.package_version.id)
+
+      assert {:error, :package_not_bound} =
+               Deployments.replace(deployment.id, %{
+                 package_version_id: scope.package_version.id,
+                 promotable_config: %{"changed" => true},
+                 local_config: %{"region" => "us-east-1"},
+                 bindings: binding_attrs(scope)
+               })
+
+      assert {:ok, persisted} = Deployments.get(deployment.id)
+      assert persisted.package_version_id == deployment.package_version_id
+      assert persisted.promotable_config == %{"stable" => true}
+      assert persisted.local_config == %{"region" => "eu-west-1"}
+      assert Enum.map(persisted.bindings, & &1.id) == original_binding_ids
+    end
+
+    test "rejects legacy ContractVersions and preserves the complete deployment" do
+      scope = deployment_scope()
+
+      {:ok, deployment} =
+        Deployments.create(
+          deployment_attrs(scope,
+            promotable_config: %{"stable" => true},
+            local_config: %{"region" => "eu-west-1"}
+          )
+        )
+
+      original_binding_ids = Enum.map(deployment.bindings, & &1.id)
+      first_legacy = legacy_contract_version_fixture("replace-first")
+      second_legacy = legacy_contract_version_fixture("replace-second")
+
+      historical_package_version =
+        historical_package_version_fixture(
+          scope,
+          "legacy-replace",
+          second_legacy,
+          [
+            {"crm", first_legacy},
+            {"warehouse", second_legacy}
+          ]
+        )
+
+      expected_ids = Enum.sort([first_legacy.id, second_legacy.id])
+
+      assert {:error, {:contract_versions_not_executable, ^expected_ids}} =
+               Deployments.replace(deployment.id, %{
+                 package_version_id: historical_package_version.id,
+                 promotable_config: %{"changed" => true},
+                 local_config: %{"region" => "us-east-1"},
+                 bindings: three_endpoint_binding_attrs(scope)
+               })
+
+      assert {:ok, persisted} = Deployments.get(deployment.id)
+      assert persisted.package_version_id == deployment.package_version_id
+      assert persisted.promotable_config == %{"stable" => true}
+      assert persisted.local_config == %{"region" => "eu-west-1"}
+      assert Enum.map(persisted.bindings, & &1.id) == original_binding_ids
+    end
+
     test "requires an explicit PackageVersion and active parent authorities" do
       scope = deployment_scope()
       {:ok, deployment} = Deployments.create(deployment_attrs(scope))
@@ -704,12 +850,13 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       Contracts.create(%{name: "#{prefix} Contract #{suffix}"})
 
     {:ok, contract_version} =
-      Contracts.publish_version(contract.id, %{version: "1"})
+      Contracts.publish_version(contract.id, %{version: "1", schema: true})
 
     {:ok, package} = Packages.create(%{name: "#{prefix} Package #{suffix}"})
 
     {:ok, package_version} =
       Packages.publish_version(package.id, %{
+        manifest_sha256: manifest_sha256_fixture(),
         version: "1",
         source: %{
           ref: "source",
@@ -767,11 +914,104 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
     })
   end
 
+  defp legacy_contract_version_fixture(version) do
+    {:ok, contract} =
+      Contracts.create(%{
+        name: "Legacy Contract #{System.unique_integer([:positive])}"
+      })
+
+    contract_version_id = Ecto.UUID.generate()
+    {:ok, dumped_contract_id} = Ecto.UUID.dump(contract.id)
+    {:ok, dumped_contract_version_id} = Ecto.UUID.dump(contract_version_id)
+
+    SQL.query!(
+      Repo,
+      "ALTER TABLE contract_versions DISABLE TRIGGER contract_versions_require_schema",
+      []
+    )
+
+    try do
+      SQL.query!(
+        Repo,
+        """
+        INSERT INTO contract_versions (
+          id,
+          contract_id,
+          version,
+          schema,
+          published_at,
+          inserted_at
+        )
+        VALUES ($1, $2, $3, NULL, clock_timestamp(), clock_timestamp())
+        """,
+        [dumped_contract_version_id, dumped_contract_id, version]
+      )
+    after
+      SQL.query!(
+        Repo,
+        "ALTER TABLE contract_versions ENABLE TRIGGER contract_versions_require_schema",
+        []
+      )
+    end
+
+    Repo.get!(ContractVersion, contract_version_id)
+  end
+
+  defp historical_package_version_fixture(
+         scope,
+         version,
+         source_contract_version,
+         destinations
+       ) do
+    package_version =
+      %PackageVersion{}
+      |> PackageVersion.publish_changeset(%{
+        package_id: scope.package.id,
+        manifest_sha256: manifest_sha256_fixture(),
+        version: version
+      })
+      |> Repo.insert!()
+
+    source = %{
+      ref: "source",
+      role: :source,
+      position: nil,
+      operation_id: scope.source_operation.id,
+      contract_version_id: source_contract_version.id
+    }
+
+    destination_endpoints =
+      destinations
+      |> Enum.with_index()
+      |> Enum.map(fn {{ref, contract_version}, position} ->
+        %{
+          ref: ref,
+          role: :destination,
+          position: position,
+          operation_id: scope.destination_operation.id,
+          contract_version_id: contract_version.id
+        }
+      end)
+
+    for attrs <- [source | destination_endpoints] do
+      %PackageVersionEndpoint{}
+      |> PackageVersionEndpoint.publish_changeset(
+        Map.put(attrs, :package_version_id, package_version.id)
+      )
+      |> Repo.insert!()
+    end
+
+    package_version
+    |> Changeset.change(published_at: DateTime.utc_now(:microsecond))
+    |> Repo.update!()
+  end
+
   defp package_version_fixture(scope, overrides) do
     attrs = Map.new(overrides)
 
     {:ok, package_version} =
       Packages.publish_version(scope.package.id, %{
+        manifest_sha256: manifest_sha256_fixture(),
         version: Map.fetch!(attrs, :version),
         source: %{
           ref: "source",
@@ -808,6 +1048,35 @@ defmodule Leafcutter.Integrations.DeploymentsTest do
       %{ref: "crm", connection_id: scope.destination_connection.id},
       %{ref: "source", connection_id: scope.source_connection.id}
     ]
+  end
+
+  defp three_endpoint_binding_attrs(scope) do
+    [
+      %{ref: "crm", connection_id: scope.destination_connection.id},
+      %{ref: "source", connection_id: scope.source_connection.id},
+      %{ref: "warehouse", connection_id: scope.destination_connection.id}
+    ]
+  end
+
+  defp manifest_sha256_fixture do
+    hex = Ecto.UUID.generate() |> String.replace("-", "")
+    hex <> hex
+  end
+
+  defp clear_manifest_sha256!(package_version_id) do
+    {:ok, dumped_package_version_id} = Ecto.UUID.dump(package_version_id)
+
+    SQL.query!(Repo, "SET LOCAL session_replication_role = replica", [])
+
+    try do
+      SQL.query!(
+        Repo,
+        "UPDATE package_versions SET manifest_sha256 = NULL WHERE id = $1",
+        [dumped_package_version_id]
+      )
+    after
+      SQL.query!(Repo, "SET LOCAL session_replication_role = origin", [])
+    end
   end
 
   defp force_integrity_constraints do

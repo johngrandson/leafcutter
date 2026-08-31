@@ -11,7 +11,13 @@ defmodule Leafcutter.Integrations.Deployments do
 
   alias Ecto.Changeset
 
-  alias Leafcutter.Catalog.{Packages, PackageVersion, PackageVersionEndpoint}
+  alias Leafcutter.Catalog.{
+    ContractVersion,
+    Packages,
+    PackageVersion,
+    PackageVersionEndpoint
+  }
+
   alias Leafcutter.Connections
   alias Leafcutter.Connections.Connection
 
@@ -25,6 +31,8 @@ defmodule Leafcutter.Integrations.Deployments do
 
   alias Leafcutter.Organizations.Environments
   alias Leafcutter.Repo
+
+  @manifest_sha256_bytes 64
 
   @typedoc "Attributes that bind one PackageVersion endpoint ref to a Connection."
   @type binding_attrs ::
@@ -65,12 +73,18 @@ defmodule Leafcutter.Integrations.Deployments do
              unexpected_refs: [String.t()]
            }}
 
+  @typedoc "Unique, sorted identifiers for ContractVersions without executable schema content."
+  @type contract_versions_not_executable ::
+          {:contract_versions_not_executable, nonempty_list(ContractVersion.id())}
+
   @typedoc "Authority or semantic error returned while validating deployment state."
   @type validation_error ::
           Environments.active_scope_state_error()
           | Integrations.active_integration_state_error()
           | :package_version_not_found
           | :package_version_mismatch
+          | :package_not_bound
+          | contract_versions_not_executable()
           | binding_mismatch()
           | {:connection_not_found, Connection.id()}
           | {:connection_disabled, Connection.id()}
@@ -105,10 +119,28 @@ defmodule Leafcutter.Integrations.Deployments do
 
   * `{:ok, deployment}` with bindings loaded when the complete state is persisted
   * `{:error, reason}` when an authority is absent, incompatible, or disabled
+  * `{:error, :package_not_bound}` when the PackageVersion has no executable manifest digest
+  * `{:error, {:contract_versions_not_executable, ids}}` when schema content is unavailable
   * `{:error, {:binding_mismatch, details}}` when endpoint coverage is incomplete
   * `{:error, changeset}` when an attribute or database constraint is invalid
 
   ## Examples
+
+  Given active authorities and bindings matching the PackageVersion endpoints:
+
+      iex> {:ok, deployment} =
+      ...>   Leafcutter.Integrations.Deployments.create(%{
+      ...>     organization_id: organization.id,
+      ...>     environment_id: environment.id,
+      ...>     integration_id: integration.id,
+      ...>     package_version_id: package_version.id,
+      ...>     promotable_config: %{"batch_size" => 100},
+      ...>     local_config: %{"region" => "eu-west-1"},
+      ...>     bindings: bindings
+      ...>   })
+
+      iex> deployment.package_version_id == package_version.id
+      true
 
       iex> match?(
       ...>   {:error, %{valid?: false}},
@@ -121,6 +153,8 @@ defmodule Leafcutter.Integrations.Deployments do
   * At most one deployment exists per Integration and Environment.
   * Missing config fields become empty JSON objects.
   * Bindings must match every PackageVersion endpoint ref exactly.
+  * PackageVersions without an executable manifest digest are rejected.
+  * PackageVersions containing identity-only ContractVersions are rejected.
   * Connections are locked once in deterministic identifier order.
   * Effective config, SecretVersion freezing, and Run creation remain outside this capability.
   """
@@ -151,6 +185,14 @@ defmodule Leafcutter.Integrations.Deployments do
 
   ## Examples
 
+  Given a persisted EnvironmentDeployment:
+
+      iex> {:ok, fetched} =
+      ...>   Leafcutter.Integrations.Deployments.get(deployment.id)
+
+      iex> fetched.id == deployment.id
+      true
+
       iex> Leafcutter.Integrations.Deployments.get(
       ...>   "00000000-0000-0000-0000-000000000000"
       ...> )
@@ -159,7 +201,8 @@ defmodule Leafcutter.Integrations.Deployments do
   ## Notes
 
   * Parent authorities and Catalog projections are not preloaded.
-  * Lookup does not revalidate lifecycle or semantic compatibility.
+  * Lookup does not revalidate lifecycle, semantic compatibility, or executability.
+  * Historical deployments containing identity-only ContractVersions remain readable.
   * Bindings contain only ref and Connection identity.
   """
   @spec get(EnvironmentDeployment.id()) ::
@@ -187,6 +230,20 @@ defmodule Leafcutter.Integrations.Deployments do
   * `{:error, :not_found}` when no EnvironmentDeployment has the identifier
 
   ## Examples
+
+  Given a persisted EnvironmentDeployment:
+
+      iex> {:ok, scope} =
+      ...>   Leafcutter.Integrations.Deployments.fetch_resolution_scope(
+      ...>     deployment.id
+      ...>   )
+
+      iex> scope
+      %{
+        organization_id: deployment.organization_id,
+        environment_id: deployment.environment_id,
+        integration_id: deployment.integration_id
+      }
 
       iex> Leafcutter.Integrations.Deployments.fetch_resolution_scope(
       ...>   "00000000-0000-0000-0000-000000000000"
@@ -285,10 +342,28 @@ defmodule Leafcutter.Integrations.Deployments do
   * `{:ok, deployment}` with the replacement bindings loaded
   * `{:error, :not_found}` when the EnvironmentDeployment does not exist
   * `{:error, reason}` when an authority is absent, incompatible, or disabled
+  * `{:error, :package_not_bound}` when the PackageVersion has no executable manifest digest
+  * `{:error, {:contract_versions_not_executable, ids}}` when schema content is unavailable
   * `{:error, {:binding_mismatch, details}}` when endpoint coverage is incomplete
   * `{:error, changeset}` when replacement state or a database constraint is invalid
 
   ## Examples
+
+  Given a persisted EnvironmentDeployment and complete replacement bindings:
+
+      iex> {:ok, replaced} =
+      ...>   Leafcutter.Integrations.Deployments.replace(
+      ...>     deployment.id,
+      ...>     %{
+      ...>       package_version_id: package_version.id,
+      ...>       promotable_config: %{"batch_size" => 250},
+      ...>       local_config: %{"region" => "us-east-1"},
+      ...>       bindings: bindings
+      ...>     }
+      ...>   )
+
+      iex> replaced.id == deployment.id
+      true
 
       iex> Leafcutter.Integrations.Deployments.replace(
       ...>   "00000000-0000-0000-0000-000000000000",
@@ -302,6 +377,8 @@ defmodule Leafcutter.Integrations.Deployments do
   * Missing config fields become empty JSON objects instead of preserving old values.
   * Organization, Environment, and Integration identity are immutable and ignored in attrs.
   * The deployment row is locked before its bindings and Connections are read.
+  * PackageVersions without an executable manifest digest are rejected.
+  * PackageVersions containing identity-only ContractVersions are rejected.
   * Any failure rolls back PackageVersion, config, and every binding change.
   """
   @spec replace(EnvironmentDeployment.id(), replace_attrs()) ::
@@ -362,6 +439,8 @@ defmodule Leafcutter.Integrations.Deployments do
            {:ok, package_version} <-
              fetch_package_version(package_version_id),
            :ok <- validate_package_version(package_version, integration),
+           :ok <- validate_package_bound(package_version),
+           :ok <- validate_contract_versions_executable(package_version),
            :ok <- validate_binding_refs(package_version, binding_changesets),
            :ok <-
              validate_connector_compatibility(
@@ -413,6 +492,8 @@ defmodule Leafcutter.Integrations.Deployments do
            {:ok, package_version} <-
              fetch_package_version(package_version_id),
            :ok <- validate_package_version(package_version, integration),
+           :ok <- validate_package_bound(package_version),
+           :ok <- validate_contract_versions_executable(package_version),
            :ok <- validate_binding_refs(package_version, binding_changesets),
            :ok <-
              validate_connector_compatibility(
@@ -556,6 +637,50 @@ defmodule Leafcutter.Integrations.Deployments do
       {:error, :package_version_mismatch}
     end
   end
+
+  @spec validate_package_bound(PackageVersion.t()) :: :ok | {:error, :package_not_bound}
+  defp validate_package_bound(%PackageVersion{manifest_sha256: manifest_sha256}) do
+    if valid_manifest_sha256?(manifest_sha256) do
+      :ok
+    else
+      {:error, :package_not_bound}
+    end
+  end
+
+  @spec validate_contract_versions_executable(PackageVersion.t()) ::
+          :ok | {:error, contract_versions_not_executable()}
+  defp validate_contract_versions_executable(package_version) do
+    contract_version_ids =
+      package_version.endpoints
+      |> Enum.flat_map(fn
+        %PackageVersionEndpoint{
+          contract_version_id: contract_version_id,
+          contract_version: %ContractVersion{schema: nil}
+        } ->
+          [contract_version_id]
+
+        _executable_endpoint ->
+          []
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case contract_version_ids do
+      [] -> :ok
+      contract_version_ids -> {:error, {:contract_versions_not_executable, contract_version_ids}}
+    end
+  end
+
+  @spec valid_manifest_sha256?(term()) :: boolean()
+  defp valid_manifest_sha256?(manifest_sha256)
+       when is_binary(manifest_sha256) and
+              byte_size(manifest_sha256) == @manifest_sha256_bytes do
+    manifest_sha256
+    |> :binary.bin_to_list()
+    |> Enum.all?(fn byte -> byte in ?0..?9 or byte in ?a..?f end)
+  end
+
+  defp valid_manifest_sha256?(_manifest_sha256), do: false
 
   @spec validate_binding_refs(PackageVersion.t(), [Changeset.t()]) ::
           :ok | {:error, binding_mismatch()}

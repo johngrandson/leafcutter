@@ -16,15 +16,20 @@ defmodule Leafcutter.Catalog.Operation do
   @foreign_key_type :binary_id
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @typedoc "The identifier of one immutable Operation."
   @type id :: Ecto.UUID.t()
+
+  @typedoc "The endpoint role supported by an Operation."
   @type role :: :source | :destination
 
+  @typedoc "Attributes accepted when publishing an Operation with its ConnectorVersion."
   @type publish_attrs :: %{
           required(:connector_version_id) => ConnectorVersion.id(),
           required(:ref) => String.t(),
           required(:role) => role() | String.t()
         }
 
+  @typedoc "An immutable Operation published as part of one ConnectorVersion."
   @type t :: %__MODULE__{
           id: id() | nil,
           connector_version_id: ConnectorVersion.id() | nil,

@@ -1,5 +1,5 @@
 defmodule Leafcutter.Catalog.PackagesTest do
-  use Leafcutter.DataCase, async: true
+  use Leafcutter.DataCase, async: false
 
   alias Ecto.Adapters.SQL
   alias Ecto.Changeset
@@ -15,6 +15,10 @@ defmodule Leafcutter.Catalog.PackagesTest do
     PackageVersion,
     PackageVersionEndpoint
   }
+
+  @manifest_sha256 String.duplicate("a", 64)
+  @alternate_manifest_sha256 String.duplicate("b", 64)
+  @third_manifest_sha256 String.duplicate("c", 64)
 
   @typep topology_fixture :: %{
            source_operation: Operation.t(),
@@ -86,6 +90,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
 
       assert package_version.package == package
       assert package_version.version == "release-2026.08"
+      assert package_version.manifest_sha256 == @manifest_sha256
       assert %DateTime{} = package_version.published_at
 
       assert package_version.published_at !=
@@ -123,6 +128,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
       topology = topology_fixture()
 
       attrs = %{
+        "manifest_sha256" => @manifest_sha256,
         "version" => "opaque",
         "source" => %{
           "ref" => "source",
@@ -142,7 +148,41 @@ defmodule Leafcutter.Catalog.PackagesTest do
                Packages.publish_version(package.id, attrs)
 
       assert package_version.version == "opaque"
+      assert package_version.manifest_sha256 == @manifest_sha256
       assert Enum.map(package_version.endpoints, & &1.ref) == ["source", "crm"]
+    end
+
+    test "treats a false boolean schema as executable" do
+      package = package_fixture()
+      topology = topology_fixture()
+
+      {:ok, contract} = Contracts.create(%{name: "Reject All"})
+
+      {:ok, contract_version} =
+        Contracts.publish_version(contract.id, %{
+          version: "1",
+          schema: false
+        })
+
+      attrs =
+        topology
+        |> publication_attrs()
+        |> Map.update!(
+          :source,
+          &Map.put(&1, :contract_version_id, contract_version.id)
+        )
+        |> Map.update!(:destinations, fn destinations ->
+          Enum.map(destinations, fn destination ->
+            Map.put(destination, :contract_version_id, contract_version.id)
+          end)
+        end)
+
+      assert {:ok, package_version} =
+               Packages.publish_version(package.id, attrs)
+
+      assert Enum.all?(package_version.endpoints, fn endpoint ->
+               endpoint.contract_version_id == contract_version.id
+             end)
     end
 
     test "returns package_not_found without persisting a version" do
@@ -166,10 +206,16 @@ defmodule Leafcutter.Catalog.PackagesTest do
 
       invalid_attrs = [
         %{},
-        %{version: "1", source: nil, destinations: [valid_destination]},
-        %{version: "1", source: valid_source, destinations: nil},
-        %{version: "1", source: valid_source, destinations: []},
-        %{version: "1", source: valid_source, destinations: [:invalid]}
+        publication_attrs(topology,
+          source: nil,
+          destinations: [valid_destination]
+        ),
+        publication_attrs(topology, source: valid_source, destinations: nil),
+        publication_attrs(topology, source: valid_source, destinations: []),
+        publication_attrs(topology,
+          source: valid_source,
+          destinations: [:invalid]
+        )
       ]
 
       for attrs <- invalid_attrs do
@@ -177,6 +223,36 @@ defmodule Leafcutter.Catalog.PackagesTest do
                  Packages.publish_version(package.id, attrs)
 
         refute changeset.valid?
+      end
+
+      assert Repo.aggregate(PackageVersion, :count) == 0
+      assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
+    end
+
+    test "rejects missing or malformed manifest digests" do
+      package = package_fixture()
+      topology = topology_fixture()
+
+      invalid_digests = [
+        nil,
+        "",
+        String.duplicate("a", 63),
+        String.duplicate("a", 65),
+        String.duplicate("A", 64),
+        String.duplicate("g", 64),
+        <<255>> <> String.duplicate("a", 63)
+      ]
+
+      for manifest_sha256 <- invalid_digests do
+        attrs =
+          publication_attrs(topology,
+            manifest_sha256: manifest_sha256
+          )
+
+        assert {:error, %Changeset{} = changeset} =
+                 Packages.publish_version(package.id, attrs)
+
+        assert %{manifest_sha256: [_error | _rest]} = errors_on(changeset)
       end
 
       assert Repo.aggregate(PackageVersion, :count) == 0
@@ -266,6 +342,66 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
     end
 
+    test "rejects a legacy source ContractVersion and rolls back publication" do
+      package = package_fixture()
+      topology = topology_fixture()
+      legacy_contract_version = legacy_contract_version_fixture("source-legacy")
+
+      attrs =
+        publication_attrs(topology,
+          source:
+            topology
+            |> source_attrs()
+            |> Map.put(:contract_version_id, legacy_contract_version.id)
+        )
+
+      assert {:error, %Changeset{} = changeset} =
+               Packages.publish_version(package.id, attrs)
+
+      assert %{contract_version_id: [_ | _]} = errors_on(changeset)
+      assert {_message, metadata} = Keyword.fetch!(changeset.errors, :contract_version_id)
+      assert Keyword.fetch!(metadata, :validation) == :contract_version_executable
+
+      assert Repo.aggregate(PackageVersion, :count) == 0
+      assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
+      assert is_nil(Repo.get!(ContractVersion, legacy_contract_version.id).schema)
+    end
+
+    test "rolls back earlier endpoints when several destinations reference legacy versions" do
+      package = package_fixture()
+      topology = topology_fixture()
+      first_legacy = legacy_contract_version_fixture("first-destination-legacy")
+      second_legacy = legacy_contract_version_fixture("second-destination-legacy")
+
+      attrs =
+        publication_attrs(topology,
+          destinations: [
+            destination_attrs(topology),
+            %{
+              ref: "warehouse",
+              operation_id: topology.second_destination_operation.id,
+              contract_version_id: first_legacy.id
+            },
+            %{
+              ref: "archive",
+              operation_id: topology.second_destination_operation.id,
+              contract_version_id: second_legacy.id
+            }
+          ]
+        )
+
+      assert {:error, %Changeset{} = changeset} =
+               Packages.publish_version(package.id, attrs)
+
+      assert %{contract_version_id: [_ | _]} = errors_on(changeset)
+      assert Repo.aggregate(PackageVersion, :count) == 0
+      assert Repo.aggregate(PackageVersionEndpoint, :count) == 0
+
+      assert Enum.all?([first_legacy.id, second_legacy.id], fn id ->
+               is_nil(Repo.get!(ContractVersion, id).schema)
+             end)
+    end
+
     test "enforces version uniqueness within one Package" do
       first_package = package_fixture("First")
       second_package = package_fixture("Second")
@@ -280,7 +416,9 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert {:error, %Changeset{} = changeset} =
                Packages.publish_version(
                  first_package.id,
-                 publication_attrs(topology)
+                 publication_attrs(topology,
+                   manifest_sha256: @alternate_manifest_sha256
+                 )
                )
 
       assert %{package_id: [_ | _]} = errors_on(changeset)
@@ -288,8 +426,41 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert {:ok, _version} =
                Packages.publish_version(
                  second_package.id,
+                 publication_attrs(topology,
+                   manifest_sha256: @third_manifest_sha256
+                 )
+               )
+    end
+
+    test "enforces manifest digest uniqueness across Packages" do
+      first_package = package_fixture("First")
+      second_package = package_fixture("Second")
+      topology = topology_fixture()
+
+      assert {:ok, _version} =
+               Packages.publish_version(
+                 first_package.id,
                  publication_attrs(topology)
                )
+
+      assert {:error, %Changeset{} = changeset} =
+               Packages.publish_version(
+                 second_package.id,
+                 publication_attrs(topology, version: "2")
+               )
+
+      assert %{manifest_sha256: [_error | _rest]} = errors_on(changeset)
+
+      assert {:ok, package_version} =
+               Packages.publish_version(
+                 second_package.id,
+                 publication_attrs(topology,
+                   version: "2",
+                   manifest_sha256: @alternate_manifest_sha256
+                 )
+               )
+
+      assert package_version.manifest_sha256 == @alternate_manifest_sha256
     end
   end
 
@@ -306,6 +477,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
 
       assert {:ok, fetched} = Packages.get_version(published.id)
       assert fetched.package == package
+      assert fetched.manifest_sha256 == @manifest_sha256
 
       assert Enum.map(fetched.endpoints, fn endpoint ->
                {endpoint.ref, endpoint.role, endpoint.position}
@@ -320,6 +492,27 @@ defmodule Leafcutter.Catalog.PackagesTest do
         assert %ConnectorVersion{} = endpoint.operation.connector_version
         assert %ContractVersion{} = endpoint.contract_version
       end
+    end
+
+    test "keeps a digest-less PackageVersion with a legacy ContractVersion readable" do
+      package = package_fixture()
+      topology = topology_fixture()
+      legacy_contract_version = legacy_contract_version_fixture("historical")
+
+      historical =
+        historical_package_version_fixture(
+          package,
+          topology,
+          legacy_contract_version
+        )
+
+      assert {:ok, fetched} = Packages.get_version(historical.id)
+      assert is_nil(fetched.manifest_sha256)
+
+      assert Enum.any?(fetched.endpoints, fn endpoint ->
+               endpoint.contract_version_id == legacy_contract_version.id and
+                 is_nil(endpoint.contract_version.schema)
+             end)
     end
 
     test "returns a named error when the PackageVersion does not exist" do
@@ -354,6 +547,21 @@ defmodule Leafcutter.Catalog.PackagesTest do
         end
 
       assert version_error.postgres.message ==
+               "package_versions content is immutable"
+
+      digest_error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              package_version
+              |> Changeset.change(manifest_sha256: @alternate_manifest_sha256)
+              |> Repo.update!()
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert digest_error.postgres.message ==
                "package_versions content is immutable"
 
       endpoint_error =
@@ -411,6 +619,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
               %PackageVersion{}
               |> PackageVersion.publish_changeset(%{
                 package_id: package.id,
+                manifest_sha256: @manifest_sha256,
                 version: "unsealed"
               })
               |> Repo.insert!()
@@ -441,6 +650,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
                 %PackageVersion{}
                 |> PackageVersion.publish_changeset(%{
                   package_id: package.id,
+                  manifest_sha256: @manifest_sha256,
                   version: "incomplete"
                 })
                 |> Repo.insert!()
@@ -467,6 +677,103 @@ defmodule Leafcutter.Catalog.PackagesTest do
       assert error.postgres.message ==
                "package_versions require at least one destination endpoint"
     end
+
+    test "rejects raw inserts without a manifest digest" do
+      package = package_fixture()
+      {:ok, dumped_package_id} = Ecto.UUID.dump(package.id)
+      {:ok, dumped_version_id} = Ecto.UUID.dump(Ecto.UUID.generate())
+
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              SQL.query!(
+                Repo,
+                """
+                INSERT INTO package_versions (
+                  id,
+                  package_id,
+                  version,
+                  manifest_sha256,
+                  published_at,
+                  inserted_at
+                )
+                VALUES ($1, $2, 'missing-digest', NULL, NULL, clock_timestamp())
+                """,
+                [dumped_version_id, dumped_package_id]
+              )
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert error.postgres.message ==
+               "package_versions manifest_sha256 is required"
+    end
+
+    test "rejects malformed raw manifest digests" do
+      package = package_fixture()
+      {:ok, dumped_package_id} = Ecto.UUID.dump(package.id)
+      {:ok, dumped_version_id} = Ecto.UUID.dump(Ecto.UUID.generate())
+
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              SQL.query!(
+                Repo,
+                """
+                INSERT INTO package_versions (
+                  id,
+                  package_id,
+                  version,
+                  manifest_sha256,
+                  published_at,
+                  inserted_at
+                )
+                VALUES ($1, $2, 'bad-digest', $3, NULL, clock_timestamp())
+                """,
+                [dumped_version_id, dumped_package_id, String.duplicate("A", 64)]
+              )
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert error.postgres.constraint ==
+               "package_versions_manifest_sha256_format"
+    end
+
+    test "rejects changing the manifest digest while sealing" do
+      package = package_fixture()
+
+      error =
+        assert_raise Postgrex.Error, fn ->
+          Repo.transaction(
+            fn ->
+              package_version =
+                %PackageVersion{}
+                |> PackageVersion.publish_changeset(%{
+                  package_id: package.id,
+                  manifest_sha256: @manifest_sha256,
+                  version: "digest-swap"
+                })
+                |> Repo.insert!()
+
+              package_version
+              |> Changeset.change(
+                manifest_sha256: @alternate_manifest_sha256,
+                published_at: DateTime.utc_now(:microsecond)
+              )
+              |> Repo.update!()
+            end,
+            mode: :savepoint
+          )
+        end
+
+      assert error.postgres.message ==
+               "package_versions content is immutable"
+    end
   end
 
   @spec package_fixture(String.t()) :: Package.t()
@@ -492,7 +799,9 @@ defmodule Leafcutter.Catalog.PackagesTest do
     operations_by_ref = Map.new(connector_version.operations, &{&1.ref, &1})
 
     {:ok, contract} = Contracts.create(%{name: "Customer"})
-    {:ok, contract_version} = Contracts.publish_version(contract.id, %{version: "1"})
+
+    {:ok, contract_version} =
+      Contracts.publish_version(contract.id, %{version: "1", schema: true})
 
     %{
       source_operation: Map.fetch!(operations_by_ref, "read"),
@@ -500,6 +809,124 @@ defmodule Leafcutter.Catalog.PackagesTest do
       second_destination_operation: Map.fetch!(operations_by_ref, "write_warehouse"),
       contract_version: contract_version
     }
+  end
+
+  @spec legacy_contract_version_fixture(String.t()) :: ContractVersion.t()
+  defp legacy_contract_version_fixture(version) do
+    {:ok, contract} =
+      Contracts.create(%{
+        name: "Legacy Contract #{System.unique_integer()}"
+      })
+
+    contract_version_id = Ecto.UUID.generate()
+    {:ok, dumped_contract_id} = Ecto.UUID.dump(contract.id)
+    {:ok, dumped_contract_version_id} = Ecto.UUID.dump(contract_version_id)
+
+    SQL.query!(
+      Repo,
+      "ALTER TABLE contract_versions DISABLE TRIGGER contract_versions_require_schema",
+      []
+    )
+
+    try do
+      SQL.query!(
+        Repo,
+        """
+        INSERT INTO contract_versions (
+          id,
+          contract_id,
+          version,
+          schema,
+          published_at,
+          inserted_at
+        )
+        VALUES ($1, $2, $3, NULL, clock_timestamp(), clock_timestamp())
+        """,
+        [dumped_contract_version_id, dumped_contract_id, version]
+      )
+    after
+      SQL.query!(
+        Repo,
+        "ALTER TABLE contract_versions ENABLE TRIGGER contract_versions_require_schema",
+        []
+      )
+    end
+
+    Repo.get!(ContractVersion, contract_version_id)
+  end
+
+  @spec historical_package_version_fixture(
+          Package.t(),
+          topology_fixture(),
+          ContractVersion.t()
+        ) :: PackageVersion.t()
+  defp historical_package_version_fixture(package, topology, legacy_contract_version) do
+    package_version_id = Ecto.UUID.generate()
+    {:ok, dumped_package_id} = Ecto.UUID.dump(package.id)
+    {:ok, dumped_package_version_id} = Ecto.UUID.dump(package_version_id)
+
+    # This models a pre-migration row without changing trigger definitions while
+    # the sandbox transaction may still have deferred publication events.
+    SQL.query!(
+      Repo,
+      "SET LOCAL session_replication_role = replica",
+      []
+    )
+
+    try do
+      SQL.query!(
+        Repo,
+        """
+        INSERT INTO package_versions (
+          id,
+          package_id,
+          version,
+          manifest_sha256,
+          published_at,
+          inserted_at
+        )
+        VALUES ($1, $2, 'historical', NULL, NULL, clock_timestamp())
+        """,
+        [dumped_package_version_id, dumped_package_id]
+      )
+    after
+      SQL.query!(
+        Repo,
+        "SET LOCAL session_replication_role = origin",
+        []
+      )
+    end
+
+    package_version = Repo.get!(PackageVersion, package_version_id)
+
+    endpoints = [
+      %{
+        ref: "source",
+        role: :source,
+        position: nil,
+        operation_id: topology.source_operation.id,
+        contract_version_id: legacy_contract_version.id
+      },
+      %{
+        ref: "destination",
+        role: :destination,
+        position: 0,
+        operation_id: topology.first_destination_operation.id,
+        contract_version_id: topology.contract_version.id
+      }
+    ]
+
+    for attrs <- endpoints do
+      %PackageVersionEndpoint{}
+      |> PackageVersionEndpoint.publish_changeset(
+        Map.put(attrs, :package_version_id, package_version.id)
+      )
+      |> Repo.insert!()
+    end
+
+    package_version
+    |> Changeset.change(published_at: DateTime.utc_now(:microsecond))
+    |> Repo.update!()
   end
 
   @spec publication_attrs(topology_fixture(), keyword()) :: map()
@@ -512,6 +939,7 @@ defmodule Leafcutter.Catalog.PackagesTest do
   @spec default_publication_attrs(topology_fixture()) :: map()
   defp default_publication_attrs(topology) do
     %{
+      manifest_sha256: @manifest_sha256,
       version: "1",
       source: source_attrs(topology),
       destinations: [

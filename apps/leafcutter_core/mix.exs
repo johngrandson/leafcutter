@@ -32,6 +32,8 @@ defmodule LeafcutterCore.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.13"},
+      {:jason, "~> 1.4"},
+      {:jsv, "~> 0.22.0"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_pubsub, "~> 2.1"},
       {:oban, "~> 2.23"}

@@ -1,9 +1,10 @@
 defmodule Leafcutter.Catalog.ContractVersion do
   @moduledoc """
-  Represents one immutable published identity for a Contract version.
+  Represents one immutable published version of a Contract.
 
-  The initial Catalog slice persists identity only. JSON Schema content and
-  executable validation remain outside this model.
+  The persistence model stores object and boolean JSON Schema roots. New
+  publications require executable schema content, while `nil` remains
+  loadable for identity-only legacy rows.
   """
 
   use Ecto.Schema
@@ -11,6 +12,7 @@ defmodule Leafcutter.Catalog.ContractVersion do
   import Ecto.Changeset
 
   alias Leafcutter.Catalog.Contract
+  alias Leafcutter.Catalog.Types.SchemaDocument
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -19,18 +21,20 @@ defmodule Leafcutter.Catalog.ContractVersion do
   @typedoc "The identifier of one immutable ContractVersion identity."
   @type id :: Ecto.UUID.t()
 
-  @typedoc "Attributes accepted when publishing a ContractVersion identity."
+  @typedoc "Attributes accepted when publishing an executable ContractVersion."
   @type publish_attrs :: %{
           required(:contract_id) => Contract.id(),
-          required(:version) => String.t()
+          required(:version) => String.t(),
+          required(:schema) => SchemaDocument.t()
         }
 
-  @typedoc "An immutable published ContractVersion without executable schema content."
+  @typedoc "An immutable published ContractVersion with optional persisted schema content."
   @type t :: %__MODULE__{
           id: id() | nil,
           contract_id: Contract.id() | nil,
           contract: Contract.t() | Ecto.Association.NotLoaded.t(),
           version: String.t() | nil,
+          schema: SchemaDocument.t() | nil,
           published_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil
         }
@@ -39,18 +43,19 @@ defmodule Leafcutter.Catalog.ContractVersion do
     belongs_to(:contract, Contract)
 
     field(:version, :string)
+    field(:schema, SchemaDocument)
     field(:published_at, :utc_datetime_usec)
 
     timestamps(updated_at: false)
   end
 
   @doc """
-  Builds a changeset for publishing a ContractVersion identity.
+  Builds a changeset for publishing an executable ContractVersion.
 
   ## Parameters
 
   * `contract_version` - The ContractVersion schema receiving publication attributes
-  * `attrs` - The Contract identity and opaque version string
+  * `attrs` - The Contract identity, opaque version string, and schema document
 
   ## Returns
 
@@ -64,7 +69,8 @@ defmodule Leafcutter.Catalog.ContractVersion do
       ...>     %Leafcutter.Catalog.ContractVersion{},
       ...>     %{
       ...>       contract_id: Ecto.UUID.generate(),
-      ...>       version: "2026.08"
+      ...>       version: "2026.08",
+      ...>       schema: true
       ...>     }
       ...>   )
 
@@ -89,17 +95,19 @@ defmodule Leafcutter.Catalog.ContractVersion do
   ## Notes
 
   * The version is opaque, required, valid UTF-8, and may contain at most 255 characters.
+  * Schema content is required and cast through `SchemaDocument`.
   * Version values are unique within one Contract.
   * Semantic Versioning is not interpreted.
   * `published_at` is assigned internally and cannot be supplied by callers.
-  * Schema content is deliberately absent from this identity-only slice.
+  * Executable schema policy and JSV build checks are enforced by the public context
+    boundary.
   * Published rows are protected against update and delete by PostgreSQL.
   """
   @spec publish_changeset(t(), publish_attrs()) :: Ecto.Changeset.t()
   def publish_changeset(contract_version, attrs) do
     contract_version
-    |> cast(attrs, [:contract_id, :version])
-    |> validate_required([:contract_id, :version])
+    |> cast(attrs, [:contract_id, :version, :schema])
+    |> validate_required([:contract_id, :version, :schema])
     |> validate_utf8(:version)
     |> validate_length(:version, max: 255)
     |> put_change(:published_at, DateTime.utc_now(:microsecond))

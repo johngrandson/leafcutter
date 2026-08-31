@@ -16,6 +16,7 @@ defmodule Leafcutter.Catalog.Connectors do
 
   alias Leafcutter.Repo
 
+  @typedoc "Attributes that define one Operation during ConnectorVersion publication."
   @type operation_attrs ::
           %{
             required(:ref) => String.t(),
@@ -25,6 +26,7 @@ defmodule Leafcutter.Catalog.Connectors do
               required(String.t()) => String.t()
             }
 
+  @typedoc "Attributes accepted when publishing an immutable ConnectorVersion."
   @type publish_version_attrs ::
           %{
             required(:version) => String.t(),
@@ -34,6 +36,7 @@ defmodule Leafcutter.Catalog.Connectors do
               required(String.t()) => String.t() | [operation_attrs()]
             }
 
+  @typedoc "Error returned when a ConnectorVersion cannot be published."
   @type publish_error :: :connector_not_found | Changeset.t()
 
   @doc """

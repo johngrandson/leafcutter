@@ -44,7 +44,7 @@
 
 **Contract** — identidade global de um data contract no Catalog.
 
-**ContractVersion** — identidade versionada, publicada e imutável de um Contract; o conteúdo JSON Schema permanece futuro.
+**ContractVersion** — versão publicada e imutável de um Contract; novas versões persistem JSON Schema Draft 2020-12 executável, enquanto versões identity-only legadas permanecem históricas.
 
 **Package** — identidade global reutilizável de uma integração no Catalog.
 

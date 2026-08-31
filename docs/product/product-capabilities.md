@@ -18,6 +18,7 @@
 - criação atômica de Run + RunSnapshot v1;
 - criação transacional de Run a partir de EnvironmentDeployment;
 - congelamento de PackageVersion, ContractVersions, destination order, effective config, Connections e SecretVersion IDs;
+- revalidação de ContractVersions executáveis antes de persistir Run e RunSnapshot;
 - per-Run supervision;
 - automatic recovery de Runs `running` e `pending` elegíveis;
 - concorrência distribuída baseada em PostgreSQL.
@@ -35,9 +36,12 @@
 - Operations source/destination;
 - publicação atômica de versão e Operations;
 - sealing e imutabilidade no PostgreSQL;
-- Contract e ContractVersion identity-only;
+- Contract e ContractVersion com publicação executável por schema JSONB object/boolean;
+- publicação com validação e build JSV, compilação e validação reutilizáveis;
 - Package, PackageVersion e endpoints relacionais;
 - topologia 1 Source → 1..N Destinations publicada atomicamente;
+- manifest digest obrigatório, imutável e globalmente único em novas PackageVersions;
+- rejeição de ContractVersions identity-only legadas em novas PackageVersions;
 - ordem, references, role compatibility e imutabilidade protegidas no banco.
 
 ### Connections mínimo
@@ -57,16 +61,51 @@
 - um EnvironmentDeployment completo por Integration/Environment;
 - PackageVersion, promotable/local config e bindings completos por endpoint;
 - create/get/replace atômicos;
-- validação de scope, lifecycle, cobertura e Connector compatibility sob locks determinísticos.
+- validação de scope, lifecycle, executabilidade de ContractVersion, cobertura e Connector compatibility sob locks determinísticos;
 - descoberta de scope imutável e locks de resolução por APIs públicas.
+
+### Operation executável
+
+- behaviours síncronos de Read e Write;
+- invocation/result values com credentials redigidas;
+- cursor JSON opaco e conclusão por `nil`;
+- write batch completo, ordenado e correlacionado por ref;
+- partial success e erro normalizado;
+- invariantes puras da Operation, independentes de Transport, Repo ou processo próprio.
+
+### Transport HTTP bounded
+
+- facade e Adapter contract síncronos;
+- Request/Response/Error validados e com Inspect redigido;
+- exatamente uma tentativa, sem redirect ou retry automático;
+- Finch HTTP/1 com pool nomeado supervisionado e compartilhado por origem;
+- connect/pool/receive/request timeouts finitos;
+- response body limitado pelo menor cap central/por request;
+- testes determinísticos sem internet nem credenciais reais.
+
+### Package Manifest e binding compilada
+
+- Manifest v1 com parsing bounded e JSON Schema Draft 2020-12;
+- SHA-256 dos bytes exatos do manifest;
+- refs source/destination ligadas a módulos Read/Write literais;
+- cobertura, ordem, unicidade e behaviours validados em compile time;
+- callbacks puros sem acesso ao filesystem em runtime;
+- build inventory literal, dependencies Mix explícitas e closure da release.
+
+### Package resolution compilada
+
+- inventory literal ligada às Mix dependencies e à closure da release;
+- resolução pública por digest exato e projeção imutável do Catalog;
+- composição in-memory de módulos compilados com IDs autoritativos;
+- rejeição de PackageVersion sem digest em Deployment e resolução completa da binding antes de persistir Run;
+- nenhuma alteração em RunSnapshot v1.
 
 ## Capacidades ratificadas em desenvolvimento futuro
 
 ### Core de integração
 
-- Contracts JSON Schema;
-- Connector/Operation/Transport;
-- Integration Packages;
+- primeiro fluxo HTTP real, com uma Read source e uma ou mais Write destinations (26C3 aberto);
+- Integration Packages de produto;
 - lifecycle ampliado de Connections, OAuth, rotation e secret providers;
 - lifecycle ampliado de Integrations, Triggers, promotion e homologation.
 

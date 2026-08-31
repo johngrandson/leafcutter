@@ -1,15 +1,15 @@
 # ADR-0008 — Connector → Operation → Transport
 
 - Status: Accepted
-- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA DE CONNECTOR/OPERATION
+- Estado de implementação: PARCIALMENTE MATERIALIZADO — METADATA + OPERATION + HTTP 26C1 + 26C2
 
 ## Decisão
 
-```text
+~~~text
 Connector  → semântica do sistema externo
 Operation  → ação específica
 Transport  → protocolo
-```
+~~~
 
 HTTP será o primeiro Transport.
 
@@ -22,11 +22,30 @@ Materializado no Catalog:
 - Operation metadata com `ref` e role source/destination;
 - publicação atômica e sealing no PostgreSQL.
 
-Ainda não materializado:
+Materializado em `leafcutter_connectors`:
 
-- behaviours executáveis de Connector e Operation;
-- paginação e partial-success contracts;
-- Transport e implementação HTTP.
+- behaviours, invocation/result structs e error contract de Operation definidos no ADR-0021;
+- paginação opaca, partial-success completo/ordenado, redaction e invariantes puras;
+- Manifest v1 bounded e binding compilada de refs para módulos Read/Write literais.
+
+Materializado conforme o ADR-0022:
+
+- facade/Adapter HTTP-specific;
+- Request/Response/Error bounded;
+- Finch HTTP/1 com pool supervisionado e uma tentativa por chamada.
+
+Materializado conforme o ADR-0023:
+
+- Manifest e binding compilada existem no passo 35;
+- persistência imutável do digest existe no passo 36;
+- build inventory/release existem no passo 37;
+- resolução compilada e enforcement em Deployment/Run existem no passo 38.
+
+Ainda não ratificado:
+
+- behaviour executável de Connector, caso uma necessidade além de Operation apareça;
+- fluxo HTTP real completo, com uma Read source, uma ou mais Write destinations e vendor
+  mapping por endpoint (26C3).
 
 ## Consequências
 
@@ -34,3 +53,19 @@ Ainda não materializado:
 - Read Operations normalizam paginação;
 - Write Operations preservam partial success;
 - outros transports entram somente com necessidade real.
+
+## Evolução
+
+A fronteira seguinte ao ADR-0018 foi dividida:
+
+~~~text
+26A ContractVersion + JSON Schema/JSV
+26B Operation executable contract
+26C1 HTTP Transport boundary + Finch adapter
+26C2 Package Manifest/build binding + module resolution
+26C3 first production integration flow, 1 Read → 1..N Write
+~~~
+
+O ADR-0019 controla 26A, o ADR-0021 controla 26B e o ADR-0022 controla 26C1, todos
+materializados. O ADR-0023 controla 26C2 sem registry implícito; os passos 35–38 estão
+materializados e o fluxo real completo permanece em 26C3.

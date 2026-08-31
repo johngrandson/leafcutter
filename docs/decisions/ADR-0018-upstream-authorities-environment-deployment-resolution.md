@@ -383,7 +383,7 @@ Rejeitada para este slice porque criaria um segundo document contract antes da r
 
 ### Usar diretamente o Package Manifest como persistência
 
-Rejeitada porque `package-manifest-v1.md` continua DRAFT e seus field names não são canônicos.
+Rejeitada neste slice porque os field names de `package-manifest-v1.md` ainda não estavam ratificados. O ADR-0023 os ratificou posteriormente sem substituir a projeção relacional.
 
 ### Duplicar ConnectorVersion no endpoint
 
@@ -446,13 +446,24 @@ Continuam fora deste slice:
 - carregamento do snapshot no RunCoordinator;
 - Record, Delivery, Attempt, Checkpoint e Broadway.
 
+## Evolução posterior
+
+O ADR-0019 dividiu a fronteira executável citada neste ADR: ContractVersion + JSON Schema/JSV
+forma o Slice 26A; Operation executável e HTTP foram preservados como 26B/26C. Os ADRs 0021
+e 0022 materializaram essas boundaries sem alterar o modelo upstream, o lock order nem
+RunSnapshot v1. O ADR-0023 ratificou posteriormente os field names mínimos do
+Manifest v1, seu digest em PackageVersion, a inventory explícita de build e a resolução
+compilada. Os passos 35–38 materializam esse contract completo. Auto-publication do Catalog a
+partir de package code continua proibida.
+
 ## Consequências
 
 - Catalog já publica ConnectorVersion e Operations sem transformar o manifest aberto em contract persistido;
 - o resolver obtém refs, Operations e ContractVersions por uma API pública do owner;
 - referências relacionais e cardinalidade são revalidadas antes da criação da Run;
 - a ingestão futura de packages precisará traduzir o manifest para a projeção interna;
-- a próxima fronteira volta a ser Contracts/JSV e os contracts executáveis de Connector/Operation/Transport.
+- após este ADR, Contracts/JSV e os contracts executáveis de Operation/Transport/package
+  resolution foram materializados; a próxima fronteira é o fluxo real completo de 26C3.
 
 ## Evidência
 

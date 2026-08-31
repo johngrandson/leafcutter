@@ -2,12 +2,15 @@
 
 > **Status: ABERTO.** Itens já ratificados ou materializados foram removidos desta lista.
 
-RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentDeployment → definition v1 estão materializados conforme o ADR-0018. A próxima fronteira requer confirmar o menor recorte executável de Contracts/JSV + Connector/Operation/Transport.
+RunSnapshot v1 e as authorities upstream estão materializados conforme o ADR-0018.
+ContractVersion, Operation executável, Transport HTTP 26C1 e Package
+Manifest/build/module resolution 26C2 estão materializados conforme os ADRs 0019, 0021, 0022
+e 0023. O primeiro fluxo completo de produto permanece separado em 26C3.
 
 ## Domínio
 
 - provenance futura de Organization/Environment/Integration/Deployment;
-- modelo futuro de invocation/idempotency além da semântica atual de criar Runs distintas;
+- modelo durável futuro de invocation/idempotency além da semântica atual de criar Runs distintas;
 - histórico de deployment;
 - homologation evidence e promotion records;
 - Record/Delivery/Attempt/Checkpoint;
@@ -28,11 +31,12 @@ RunSnapshot v1, todas as authorities upstream mínimas e o workflow EnvironmentD
 
 ## Contracts e packages
 
-- Package Manifest JSON Schema v1;
-- package inclusion no build/release;
-- Connector/Operation/Transport behaviours;
-- JSON Schema compilation/cache;
-- HTTP client e pool strategy.
+- primeiro fluxo HTTP de produto, com uma Read source, uma ou mais Write destinations e vendor
+  mapping por endpoint (26C3);
+- artifact hashing/signing, remote distribution e package retention/rolling upgrade;
+- request payload/batch limits além do response body cap de 26C1;
+- cache compartilhado de validators somente se medição justificar;
+- bundling/registry para referências externas futuras.
 
 ## Segurança
 

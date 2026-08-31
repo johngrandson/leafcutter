@@ -38,6 +38,6 @@ Public API/workflow:
 ## Definition of done
 
 - tests;
-- quality gates;
+- `mix quality` conforme `docs/implementation/quality-gates.md`;
 - docs/ADR/spec;
 - checkpoint, se milestone.

@@ -1,21 +1,11 @@
 # LeafcutterConnectors
 
-**TODO: Add description**
+É responsável pelos contracts executáveis de Operations, pela binding compilada de Packages
+e pelas fronteiras de Transport com limites explícitos.
 
-## Installation
+A application materializa behaviours Read/Write, Manifest v1, o contract de Package e o
+Transport HTTP de uma tentativa. Sua única árvore de processo supervisiona o cliente Finch
+HTTP/1 compartilhado pelos packages instalados.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `leafcutter_connectors` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:leafcutter_connectors, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/leafcutter_connectors>.
-
+Não depende de Catalog, Ecto, Repo, `leafcutter_core` ou internals de
+`leafcutter_runtime`. Detalhes vendor-specific pertencem às Operations de produto.

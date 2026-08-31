@@ -1,69 +1,115 @@
 # Integration Packages
 
-> **Status: PARCIALMENTE MATERIALIZADO.** A authority e a projeção relacional do Catalog existem; manifest, código executável e build permanecem futuros.
+> **Status: MATERIALIZADO EM 26C2.** Authority relacional, Manifest/binding, digest,
+> inventory/release e module resolution existem. O primeiro package de produto completo,
+> com uma Read source e uma ou mais Write destinations reais, permanece em 26C3.
 
 ## Estado materializado
 
-O Catalog materializa a authority necessária para resolução:
+O Catalog materializa:
 
-```text
+~~~text
 Package
 └── immutable PackageVersion
+    ├── globally unique manifest_sha256
     ├── exactly one source endpoint
     └── one or more ordered destination endpoints
-```
+~~~
 
-Cada endpoint pinna uma Operation compatível com seu role e uma ContractVersion. A publicação é atômica e o PostgreSQL impede topologia incompleta, append tardio, update e delete. Essa projeção interna não ratifica field names do manifest.
-
-## Papel
-
-O Integration Package futuro combina código e metadata reutilizáveis. Não contém credenciais nem configuração concreta de cliente.
-
-```text
-Package
-└── immutable PackageVersion
-    ├── exactly one Source
-    ├── one or more Destinations
-    ├── ConnectorVersion + Operation refs
-    ├── ContractVersion refs
-    ├── SourceIdentity rule
-    ├── Transformations
-    ├── optional Enrichments
-    └── explicit Interceptors
-```
+Cada endpoint pinna uma Operation compatível com seu role e uma ContractVersion executável. A
+publicação é atômica e o PostgreSQL impede topologia incompleta, append tardio, update e delete.
 
 ## Estrutura física ratificada
 
-```text
-packages/<package>/
-├── mix.exs
-├── manifest.json
-├── lib
-└── test
-```
+~~~text
+packages/
+├── build.exs
+└── <package>/
+    ├── mix.exs
+    ├── manifest.json
+    ├── lib
+    └── test
+~~~
 
-Cada Package é um Mix project independente fora de `apps/`.
+Cada Package é um Mix project independente fora de `apps/`. Ele é uma OTP application de
+produto, não uma quinta platform application.
 
-## Imutabilidade
+## Manifest v1 materializado na boundary
 
-PackageVersion publicada já é imutável no Catalog. Evolução cria nova versão. `PackageDependency` não faz parte do V1.
+O Manifest v1 contém somente:
+
+~~~text
+manifest_version = 1
+package.name + package.version
+one source ref
+one or more ordered destination refs
+~~~
+
+Os bytes exatos produzem um SHA-256 lowercase. O parser bounded e a binding compilada calculam
+e embutem esse digest. PackageVersion o persiste e `packages/build.exs` repete o valor para
+ligar o build ao mesmo manifest.
+
+O JSON não contém UUID, app atom, module name, config concreta, credential ou raw secret.
+Operation e ContractVersion permanecem pinadas exclusivamente na projeção relacional.
+
+## Binding compilada
+
+Package code usa `LeafcutterConnectors.Package` para ligar refs locais a módulos literais:
+
+~~~text
+source ref      → Operation.Read module
+destination ref → Operation.Write module
+~~~
+
+A macro valida cobertura, ordem, unicidade e behaviours em compile time e embute somente a
+projeção validada, o digest e módulos literais. `leafcutter_runtime` resolve o digest na
+inventory compilada, revalida a projeção e combina os módulos com `operation_id` e
+`contract_version_id` lidos pela API pública do Catalog. O resultado é in-memory e não altera
+RunSnapshot v1.
+
+## Build e release
+
+`packages/build.exs` lista explicitamente app, path, binding module e manifest digest. Não
+existe glob ou auto-discovery. Cada entry vira Mix path dependency de `leafcutter_runtime`,
+entrando na dependency closure da release.
+
+O parser aceita somente literals e valida shape, duplicidade, contenção por realpath e arquivos
+obrigatórios antes de derivar as dependencies. Depois da compilação, a inventory verifica o
+Mix app, manifest/digest, `@external_resource`, ownership do binding, topology e behaviours.
+Um diretório não listado não compila nem resolve.
+
+A release homogênea `:leafcutter` parte de `leafcutter_api`; sua closure transitiva inclui os
+packages instalados pelo runtime. `mix quality` prova essa closure e executa compile, format,
+tests e Dialyzer de cada package listado. A inventory de produção atual é vazia e a fixture de
+conformance é `only: :test`/`runtime: false`.
+
+## Imutabilidade e legado
+
+PackageVersion publicada continua imutável. A coluna `manifest_sha256` é nullable somente para
+rows históricas; validação, CHECK e trigger exigem digest lowercase hex de 64 caracteres em
+novas publicações, e um índice garante unicidade global. Versões legadas permanecem legíveis e
+sem backfill. Novos deployments/replacements e novas Runs rejeitam essas versões conforme o
+passo 38.
 
 ## Dependências
 
-Package pode depender de contracts públicos de `leafcutter_connectors`. Não depende de internals de runtime ou API.
+Package pode depender de contracts públicos de `leafcutter_connectors` e dependencies Mix
+próprias. Não depende de Core, Runtime ou API.
 
-## Build futuro
+## Fora do primeiro caminho
 
-Packages instalados serão compilados na mesma release inicial. O mecanismo físico para incluí-los no dependency graph continua aberto e deverá ser explícito e auditável.
-
-## Manifest
-
-O JSON Schema definitivo do `manifest.json` ainda não está fechado. Não tratar exemplos atuais como contract final.
-
-## Não antecipar
-
-- registry remoto;
+- package de produto completo, autenticação e vendor semantics por endpoint (26C3);
+- SourceIdentity/Transformation/Enrichment/Interceptor no Manifest;
+- remote registry/distribution;
+- artifact signing/provenance;
+- hot install/uninstall;
 - package isolation;
-- dependency solver complexo;
-- filesystem auto-discovery implícito;
-- standalone CLI antes de Mix tooling se mostrar insuficiente.
+- retention e rolling upgrade de package code;
+- dependency solver de domínio.
+
+## Referências
+
+- `docs/decisions/ADR-0007-integration-packages.md`
+- `docs/decisions/ADR-0023-package-manifest-build-binding-module-resolution.md`
+- `docs/specifications/package-manifest-v1.md`
+- `docs/architecture/connectors-operations-transports.md`

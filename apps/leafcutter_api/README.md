@@ -1,18 +1,14 @@
 # LeafcutterApi
 
-To start your Phoenix server:
+É a boundary Phoenix do Leafcutter e a raiz da release homogênea `:leafcutter`.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server`
+Materializa Endpoint, Router, Telemetry e o scaffolding HTTP atual. Regras de domínio
+permanecem nos contexts de `leafcutter_core`, enquanto coordenação operacional e
+resolução executável pertencem a `leafcutter_runtime`. OpenAPI completo,
+autenticação e o error envelope público continuam futuros.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+Dependências:
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
-
-## Learn more
-
-* Official website: https://www.phoenixframework.org/
-* Guides: https://phoenix.hexdocs.pm/overview.html
-* Docs: https://phoenix.hexdocs.pm
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+~~~text
+leafcutter_api → leafcutter_core + leafcutter_runtime
+~~~

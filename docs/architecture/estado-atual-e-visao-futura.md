@@ -34,9 +34,12 @@ Grafo real:
 ```text
 leafcutter_core       → none
 leafcutter_connectors → none
-leafcutter_runtime    → leafcutter_core + leafcutter_connectors
+leafcutter_runtime    → leafcutter_core + leafcutter_connectors + installed packages
 leafcutter_api        → leafcutter_core + leafcutter_runtime
 ```
+
+Installed packages são derivados somente de `packages/build.exs`; a inventory de produção
+atual é vazia. A fixture de conformance existe somente no ambiente de test.
 
 ### Infraestrutura compartilhada
 
@@ -99,7 +102,7 @@ Package
     └── PackageVersionEndpoint
 ```
 
-`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract e publicação de ContractVersion identity-only, já selada no insert e imutável no PostgreSQL. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
+`Catalog.Connectors` expõe criação e leitura de Connector e publicação atômica de ConnectorVersion com suas Operations. A versão permanece não publicada somente dentro da transação de publicação; constraints e triggers impedem commit sem sealing, inclusão posterior de Operations, update e delete do conteúdo publicado. `Catalog.Contracts` expõe criação e leitura de Contract, publicação de ContractVersion com schema Draft 2020-12 object/boolean, compilação explícita e validação reutilizável de payload. Versões identity-only legadas permanecem legíveis com `schema: nil`, mas novos inserts exigem schema e o PostgreSQL preserva a imutabilidade. `Catalog.Packages` cria e lê Package, publica PackageVersion com uma source e destinations ordenadas, rejeita ContractVersions legadas em novas publicações e lê a projeção completa por versão. PostgreSQL protege cardinalidade, compatibilidade de role, referências, sealing e imutabilidade. Os identificadores textuais desses agregados rejeitam UTF-8 inválido antes da persistência.
 
 ### Connections mínimo
 
@@ -119,7 +122,7 @@ Writes validam Organization e Environment ativos por uma API pública do owner q
 
 `Leafcutter.Integrations` cria, lê e desabilita identidades Integration organization-scoped ligadas a uma Package estável. Organization, Package e name são imutáveis depois da criação. Writes validam a Organization ativa sob lock compartilhado, e disable preserva um único timestamp sob locks na ordem Organization → Integration.
 
-`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
+`Leafcutter.Integrations.Deployments` cria, lê e substitui um EnvironmentDeployment completo por Integration/Environment. O agregado persiste PackageVersion, promotable/local config como JSON objects e um binding de Connection para cada endpoint. Escritas validam scope e lifecycle ativos, PackageVersion compatível e executável, cobertura exata de refs e Connector compatível sob locks determinísticos; constraints e triggers repetem as invariantes essenciais no PostgreSQL.
 
 ### Runtime e Executions foundation
 
@@ -156,7 +159,7 @@ Ownership é serializado no PostgreSQL. `generation` é o fencing token monotôn
 
 `RunSnapshot` usa o id de `Run` como primary key, congela a definition v1 estruturalmente validada e rejeita updates no PostgreSQL. `Runs.create/1` persiste Run `pending` e snapshot atomicamente. `Runs.fetch_snapshot/1` fornece leitura explícita.
 
-`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, calcula effective config e cria Run + RunSnapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
+`LeafcutterRuntime.Runs.create_from_deployment/1` materializa a composição semântica cross-context. Uma única transação descobre o scope imutável, bloqueia Organization, Environment, Integration, deployment, bindings e Connections na ordem ratificada, lê Catalog/SecretVersion imutáveis, revalida todas as ContractVersions, calcula effective config e cria Run + RunSnapshot. Versões legadas produzem IDs únicos e ordenados no erro sem persistir Run ou snapshot. Chamadas repetidas criam Runs distintas e o workflow não inicia processos locais.
 
 ### Supervision e recovery atuais
 
@@ -199,21 +202,42 @@ Falhas operacionais retornadas pelo contrato de recovery e exceções esperadas 
 
 ### Connectors atuais
 
-`leafcutter_connectors` existe como OTP application e boundary, mas ainda não possui behaviours, transports ou implementações executáveis de connector.
+`leafcutter_connectors` materializa os behaviours síncronos de Read/Write, seus valores,
+`Operation.Error`, redaction de credentials e invariantes puras. Também materializa o
+Transport HTTP bounded de 26C1, com facade/Adapter, Request/Response/Error e Finch HTTP/1
+supervisionado. Os passos 35–36 de 26C2 adicionam parsing bounded do Manifest v1, digest dos
+bytes exatos, binding compilada de refs para módulos Read/Write literais e persistência
+imutável do digest em PackageVersion. O passo 37 adiciona inventory literal, dependencies Mix
+explícitas e a closure da release sob ownership do runtime; o passo 38 resolve a projeção do
+Catalog e aplica a enforcement em Deployment/Run. Ainda não existe Connector/Operation
+concreta de produto.
 
 ## Arquitetura ratificada ainda não materializada
 
 ### Catalog futuro
 
-O modelo mínimo ratificado no ADR-0018 está materializado. Permanecem posteriores:
+O modelo mínimo ratificado no ADR-0018 e o Slice 26A estão materializados:
+
+```text
+ContractVersion.schema JSONB object | boolean
+→ legacy schema: nil remains historical and non-executable
+→ fixed Draft 2020-12
+→ local-only refs
+→ validation + complete JSV build before publication
+→ Contracts.compile/1
+→ Contracts.validate/2
+→ no global cache
+→ RunSnapshot v1 unchanged
+```
+
+O schema permanece owned pelo Catalog. Novas PackageVersions, novos deployments/replacements e novas resoluções de Run rejeitam versões legadas sem reescrever estado histórico.
+
+Permanecem posteriores:
 
 ```text
 availability/deprecation metadata
-Package Manifest e build
-ContractVersion JSON Schema/JSV
+first production HTTP flow, 1 Read → 1..N Write (26C3)
 ```
-
-O slice materializado usa identidades globais estáveis, versões nascidas publicadas e uma projeção relacional de endpoints de PackageVersion. Todo o conteúdo versionado do Catalog mínimo é imutável. Package Manifest, JSON Schema/JSV e availability lifecycle permanecem posteriores.
 
 ### Connections futuro
 
@@ -274,18 +298,24 @@ Source persiste Records, Deliveries e Checkpoint atomicamente. Destination conso
 
 ### Connectors e contracts
 
-Planejado:
+Sequência ratificada:
 
 ```text
-Connector
-→ Operation
-→ Transport
+26A ContractVersion executable
+→ Draft 2020-12 + JSV
 
-JSON Schema Draft 2020-12
-→ JSV validation
+26B Operation executable
+→ behaviours and result contracts
+
+26C1 HTTP Transport boundary
+→ bounded one-attempt Finch adapter
+→ 26C2 Package binding/module resolution (materializado)
+→ 26C3 first production HTTP flow, 1 Read → 1..N Write
 ```
 
-HTTP é o primeiro Transport. Outras opções entram somente com demanda real.
+26A, 26B, o HTTP Transport 26C1 e a resolução compilada de 26C2 estão materializados. 26C3
+preserva o fluxo real completo como decisão própria. Outros transports entram somente com demanda
+real.
 
 ### Notifications e Audit
 
@@ -312,7 +342,10 @@ packages/<package>/
 └── test
 ```
 
-A estratégia física para incluí-los na release continua aberta.
+O ADR-0023 ratifica `packages/build.exs`, Mix path dependencies explícitas em runtime,
+Manifest v1 por digest e resolução compilada. Manifest/binding estão materializados em
+`leafcutter_connectors`; inventory/release e resolução estão materializadas em
+`leafcutter_runtime`. O package de produto permanece pendente.
 
 ## Decisões abertas
 
@@ -323,9 +356,8 @@ Entre as principais:
 - política de rolling upgrade e formatos de RunSnapshot suportados;
 - mecanismo físico de durable cross-context facts;
 - histórico concreto de EnvironmentDeployment;
-- Package Manifest JSON Schema v1;
-- inclusão de `packages/*` no build;
-- cliente HTTP e pool strategy;
+- artifact signing/distribution e retenção de packages por rolling upgrade;
+- tuning futuro do client/pool HTTP por métricas;
 - lifecycle completo de Run, pause/resume/cancel e terminalização;
 - Record/Delivery/Attempt/Checkpoint e data plane Broadway;
 - secret provider/encryption;
@@ -342,7 +374,7 @@ Não criar schema, processo OTP ou abstraction para preencher diagramas. Cada el
 
 ## Próxima fronteira
 
-Catalog, Connections, Integration, EnvironmentDeployment e seu resolver transacional estão materializados. A próxima fronteira segue a ordem ratificada:
+Catalog, Connections, Integration, EnvironmentDeployment, seu resolver transacional e os Slices 26A/26B/26C1 estão materializados. A próxima fronteira segue a ordem ratificada:
 
 ```text
 Catalog mínimo (materializado)
@@ -355,7 +387,18 @@ EnvironmentDeployment + bindings (materialized)
 ↓
 resolver em leafcutter_runtime (materialized)
 ↓
-Contracts/JSV + Connector/Operation/Transport
+ContractVersion executable + JSON Schema/JSV em PackageVersion/Deployment/Run (26A materializado)
+↓
+Operation executable contract (26B materializado)
+↓
+HTTP Transport boundary (26C1 materializado)
+↓
+Package binding/module resolution (26C2 materializado)
+↓
+production flow, 1 Read → 1..N Write (26C3 aberto)
 ```
 
-O ADR-0018 e a specification correspondente controlam o milestone concluído. RunSnapshot continua provando somente presença e versão suportada no control plane; `create_from_deployment/1` acrescenta a resolução semântica no instante de criação. O próximo recorte executável precisa ser ratificado antes de materialização. O carregamento no coordinator e a execução Broadway permanecem posteriores.
+O ADR-0018 controla o milestone upstream, o ADR-0019 controla 26A, o ADR-0021 controla 26B e
+o ADR-0022 com `http-transport.md` controla 26C1, todos materializados. O ADR-0023 e
+`package-manifest-v1.md` controlam 26C2, materializado nos passos 35–38. A próxima fronteira é
+ratificar o fluxo real completo de 26C3; coordinator e Broadway permanecem posteriores.

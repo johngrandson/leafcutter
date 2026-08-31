@@ -144,7 +144,7 @@ Esses elementos não são copiados para o formato v1.
 
 As referências de PackageVersion, ContractVersion, Connection e SecretVersion são uma resolução congelada. O resolver materializado pelo ADR-0018 verifica sua composição antes da criação a partir de EnvironmentDeployment; `Executions.Runs.create/1` permanece uma validação estrutural.
 
-`source.ref` e `destinations[].ref` são nomes do formato RunSnapshot v1. Eles não ratificam field names do Package Manifest, que continua DRAFT.
+O ADR-0023 ratifica `source.ref` e `destinations[].ref` também no Manifest v1. O digest permanece em PackageVersion e não é copiado para RunSnapshot v1; este formato continua inalterado.
 
 ### Raw secrets e config
 

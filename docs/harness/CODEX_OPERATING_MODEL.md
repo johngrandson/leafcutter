@@ -8,11 +8,9 @@ Aumentar precisão, compreensão e velocidade sem terceirizar autoria nem invent
 
 ## Leitura antes de agir
 
-1. `AGENTS.md`.
-2. `docs/checkpoint/CURRENT.md`.
-3. `docs/architecture/estado-atual-e-visao-futura.md`.
-4. ADRs/specifications relevantes.
-5. Código e testes atuais.
+Siga integralmente a seção `Leitura obrigatória antes de trabalhar` de
+`AGENTS.md`. Ela é a ordem canônica e inclui checkpoint, documentos relevantes,
+ADRs, código e testes. Este operating model não mantém uma segunda lista.
 
 ## Modos
 
